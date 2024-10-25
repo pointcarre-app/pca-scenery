@@ -35,11 +35,44 @@
 #         env:
 #           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+# name: Documentation
+# on:
+#   push:
+#     branches:
+#       - master
+
+# permissions:
+#   contents: write
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+      
+#       - name: Setup Python
+#         uses: actions/setup-python@v4
+#         with:
+#           python-version: '3.x'
+          
+#       - name: Install dependencies
+#         run: |
+#           pip install .
+#           pip install mkdocs
+#           pip install mkdocs-material
+#           pip install mkdocstrings[python]
+          
+#       - name: Deploy
+#         run: |
+#           git config --global user.name "github-actions"
+#           git config --global user.email "github-actions@github.com"
+#           mkdocs gh-deploy --force
+
 name: Documentation
 on:
   push:
     branches:
-      - master
+      - master  # or main, depending on your default branch name
 
 permissions:
   contents: write
@@ -58,12 +91,12 @@ jobs:
       - name: Install dependencies
         run: |
           pip install .
-          pip install mkdocs
           pip install mkdocs-material
           pip install mkdocstrings[python]
           
       - name: Deploy
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+          mkdocs build
           mkdocs gh-deploy --force
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
