@@ -1,10 +1,10 @@
-[![License](https://img.shields.io/pypi/l/YOUR-PACKAGE-NAME.svg)](https://github.com/selimPCA/pca-scenery/blob/master/LICENSE)
+[![License](https://img.shields.io/pypi/l/YOUR-PACKAGE-NAME.svg)](https://github.com/pointcarre-app/pca-scenery/blob/master/LICENSE)
 [![TestPyPI version](https://img.shields.io/testpypi/v/pca-scenery.svg)](https://test.pypi.org/project/pca-scenery/)
-[![Test](https://github.com/selimPCA/pca-scenery/actions/workflows/test.yml/badge.svg)](https://github.com/selimPCA/pca-scenery/actions/workflows/test.yml)
+[![Test](https://github.com/pointcarre-app/pca-scenery/actions/workflows/test.yml/badge.svg)](https://github.com/selimPCA/pca-scenery/actions/workflows/test.yml)
 <!-- [![Python](https://img.shields.io/testpypi/pyversions/pca-scenery)](https://img.shields.io/testpypi/pyversions/pca-scenery) -->
 <!-- [![Python Versions](https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13--dev-blue?logo=python&logoColor=white)](https://test.pypi.org/project/pca-scenery/) -->
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://selimpca.github.io/pca-scenery)
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://pointcarre-app.github.io/pca-scenery)
 
 # scenery
 
@@ -111,13 +111,13 @@ For more detailed information, please refer to our [documentation]().
 
 ## Contributing
 
-<!-- We welcome contributions to `scenery`! Here are some ways you can contribute:
+We welcome contributions to `scenery`! Here are some ways you can contribute:
 
 1. Report bugs or request features by opening an issue
 2. Improve documentation
 3. Submit pull requests with bug fixes or new features
 
-Please read our [Contributing Guide](CONTRIBUTING.md) for more details. -->
+Please read our [Contributing Guide](CONTRIBUTING.md) for more details.
 
 ## License
 
@@ -131,7 +131,8 @@ It relies on other great open-source projects:
 - [Beautifulsoup4](https://pypi.org/project/beautifulsoup4/)
 - [Django](https://www.djangoproject.com/)
 - [pyyaml](https://pypi.org/project/PyYAML/)
-
+- [MyPy](https://mypy-lang.org/)
+- [Ruff](https://github.com/astral-sh/ruff)
 
 ---
 
