@@ -1,6 +1,6 @@
 site_name: Scenery
-site_url: https://selimPCA.github.io/pca-scenery/
-repo_url: https://github.com/selimPCA/pca-scenery
+site_url: https://pointcarre-app.github.io/pca-scenery/
+repo_url: https://github.com/pointcarre-app/pca-scenery
 repo_name: username/repo-name
 
 theme:
@@ -24,8 +24,8 @@ nav:
   - Installation: installation.md
   - Glossary: glossary.md
   - Usage: usage.md
-  - Settings: settings.md
   - Manifest specification: manifest_specification.md
+  - Settings: settings.md
   - API Reference: api.md 
   - Examples: examples/basic.md
   - Contributing: contributing.md
