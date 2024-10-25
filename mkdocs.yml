@@ -1,7 +1,7 @@
 site_name: Scenery
-site_url: https://selimPCA.github.io/pca-scenery/
-repo_url: https://github.com/selimPCA/pca-scenery
-repo_name: username/repo-name
+site_url: https://pointcarre-app.github.io/pca-scenery/
+repo_url: https://github.com/pointcarre-app/pca-scenery
+repo_name: pointcarre-app/pca-scenery
 
 theme:
   name: material
