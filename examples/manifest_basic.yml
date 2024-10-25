@@ -1,0 +1,26 @@
+set_up_test_data:
+  - create_user:
+      username: testuser
+      email: test@example.com
+
+cases:
+  case1:
+    user:
+      username: testuser
+      password: password123
+
+scenes:
+  - method: GET
+    url: "homepage"
+    directives:
+      - status_code: 200
+      - dom_element:
+          find: "h1"
+          text: "Welcome to the homepage"
+
+  - method: POST
+    url: "login"
+    data: !case user
+    directives:
+      - status_code: 302
+      - redirect_url: "/dashboard"
