@@ -107,7 +107,7 @@ python -m scenery --django_settings=your_project.settings.test
 
 You can also add additional command-line arguments to filter tests, set verbosity, etc. Run `python -m scenery --help` for more information.
 
-For more detailed information, please refer to our [documentation]().
+For more detailed information, please visit our [official documentation](https://pointcarre-app.github.io/pca-scenery/).
 
 ## Contributing
 
@@ -136,4 +136,4 @@ It relies on other great open-source projects:
 
 ---
 
-For more information, examples, and advanced usage, please visit our [official documentation](https://link-to-your-docs).
+For more information, examples, and advanced usage, please visit our [official documentation](https://pointcarre-app.github.io/pca-scenery/).
