@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pca-scenery"
+version = "0.1.2"
+
+requires-python = ">= 3.11"
+dependencies = [
+    "bs4>=0.0.1",
+    "django>=4.2.7",
+    "pyyaml>=6.0.1"
+]
+
+license = {file = "LICENSE"}
+readme = "README.md"
+
+description = "Versatile integration tests for django app views"
+keywords = ["test", "integration", "django", "view", "app"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Testing",
+    "Programming Language :: Python :: 3",
+    "Framework :: Django :: 4.2",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+]
+
+authors = [
+  {name = "Etienne Madinier"},
+]
+maintainers = [
+  {name = "Etienne Madinier"}
+]
+
+[project.scripts]
+
+[project.urls]
+# Homepage = "https://pointcarre.app"
+# Documentation = "https://readthedocs.org"
+# Repository = "https://github.com/SelimPCA/pca-scenery.git"
+# "Bug Tracker" = "https://github.com/SelimPCA/pca-scenery/issues"
+# Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+
+[tool.setuptools]
+package-dir = {"" = "src"}  # Using src layout$
+include-package-data = true
+
+[tool.setuptools.package-data]
+scenery = ["LICENSE"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["scenery*"]  # Import as 'scenery'

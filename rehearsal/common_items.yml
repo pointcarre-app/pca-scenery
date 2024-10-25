@@ -1,0 +1,21 @@
+EMAIL: &email some@mail.com
+PASSWORD: &password somepassword
+
+CREDENTIALS: &credentials
+  user_email : *email
+  password : *password
+
+SOMEONE: &someone
+  first_name : John
+  last_name : Doe
+  birth_date_year : 1980
+  birth_date_month : 01
+  birth_date_day : 01
+
+TESTUSER:
+  <<: *credentials
+  <<: *someone
+  is_active : True
+  foo : bar
+
+

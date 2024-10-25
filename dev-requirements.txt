@@ -1,0 +1,11 @@
+build==1.2.2.post1
+django-stubs==5.1.0
+django-stubs-ext==5.1.0
+packaging==24.1
+pyproject_hooks==1.2.0
+mypy==1.13.0
+mypy-extensions==1.0.0
+types-beautifulsoup4==4.12.0.20241020
+types-html5lib==1.1.11.20241018
+types-PyYAML==6.0.12.20240917
+typing_extensions==4.12.2
