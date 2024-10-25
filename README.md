@@ -130,7 +130,7 @@ Please read our [Contributing Guide](CONTRIBUTING.md) for more details.
 It relies on other great open-source projects:
 - [Beautifulsoup4](https://pypi.org/project/beautifulsoup4/)
 - [Django](https://www.djangoproject.com/)
-- [pyyaml](https://pypi.org/project/PyYAML/)
+- [PyYAML](https://pypi.org/project/PyYAML/)
 - [MyPy](https://mypy-lang.org/)
 - [Ruff](https://github.com/astral-sh/ruff)
 

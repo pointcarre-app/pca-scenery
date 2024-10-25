@@ -3,55 +3,74 @@ site_url: https://pointcarre-app.github.io/pca-scenery/
 repo_url: https://github.com/pointcarre-app/pca-scenery
 repo_name: pointcarre-app/pca-scenery
 
+# theme:
+#   name: material
+#   features:
+#     - navigation.tabs
+#     - navigation.sections
+#     - navigation.top
+#     - navigation.tracking
+#     - navigation.expand
+#   palette:
+#     - scheme: default
+#       primary: indigo
+#       accent: indigo
+#       toggle:
+#         icon: material/brightness-7
+#         name: Switch to dark mode
+#     - scheme: slate
+#       primary: indigo
+#       accent: indigo
+#       toggle:
+#         icon: material/brightness-4
+#         name: Switch to light mode
+
 theme:
   name: material
   features:
     - navigation.tabs
     - navigation.sections
-    - navigation.top
-    - navigation.tracking
-    - navigation.expand
-  palette:
-    - scheme: default
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - scheme: slate
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+
+# nav:
+#   - Home: index.md
+#   - Installation: installation.md
+#   - Glossary: glossary.md
+#   - Usage: usage.md
+#   - Manifest specification: manifest_specification.md
+#   - Settings: settings.md
+#   - API Reference: api.md
+#   - Examples: examples/basic.md
+#   - Contributing: contributing.md
+
 
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Glossary: glossary.md
   - Usage: usage.md
-  - Manifest specification: manifest_specification.md
-  - Settings: settings.md
   - API Reference: api.md
-  - Examples: examples/basic.md
-  - Contributing: contributing.md
 
 plugins:
   - search
   - mkdocstrings:
       default_handler: python
-      handlers:
-        python:
-          rendering:
-            show_source: true
 
-markdown_extensions:
-  - pymdownx.highlight:
-      anchor_linenums: true
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - pymdownx.superfences
-  - admonition
-  - pymdownx.details
-  - pymdownx.tasklist:
-      custom_checkbox: true
+
+# plugins:
+#   - search
+#   - mkdocstrings:
+#       default_handler: python
+#       handlers:
+#         python:
+#           rendering:
+#             show_source: true
+
+# markdown_extensions:
+#   - pymdownx.highlight:
+#       anchor_linenums: true
+#   - pymdownx.inlinehilite
+#   - pymdownx.snippets
+#   - pymdownx.superfences
+#   - admonition
+#   - pymdownx.details
+#   - pymdownx.tasklist:
+#       custom_checkbox: true
