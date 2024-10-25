@@ -3,10 +3,10 @@ name: Test
 on:
   push:
     branches: 
-      - master
+      - test
   pull_request:
     branches: 
-      - master
+      - test
   # schedule:
   #   # cron every week on monday
   #   - cron: "0 0 * * 1"
