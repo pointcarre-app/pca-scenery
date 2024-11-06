@@ -106,7 +106,7 @@ class HttpChecker:
     @staticmethod
     def check_redirect_url(
         django_testcase: django.test.TestCase,
-        response: django.http.HttpResponseRedirect,
+        response: django.http.HttpResponse,
         args: str,
     ) -> None:
         """
@@ -117,6 +117,11 @@ class HttpChecker:
             response (django.http.HttpResponseRedirect): The HTTP redirect response to check.
             args (str): The expected redirect URL.
         """
+        django_testcase.assertIsInstance(
+            response,
+            django.http.HttpResponseRedirect,
+            f"Expected HttpResponseRedirect but got {type(response)}",
+        )
         django_testcase.assertEqual(
             response.url,
             args,
