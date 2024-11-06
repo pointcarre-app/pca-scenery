@@ -192,7 +192,7 @@ def tabulate(d: dict, color: typing.Callable | str | None = None, delim: str = "
 ##################
 
 
-def serialize_unittest_result(result: unittest.TestResult) -> dict:
+def serialize_unittest_result(result: unittest.TestResult) -> dict[str, int]:
     """
     Serialize a unittest.TestResult object into a dictionary.
 
@@ -202,7 +202,7 @@ def serialize_unittest_result(result: unittest.TestResult) -> dict:
     Returns:
         dict: A dictionary containing the serialized TestResult data.
     """
-    d: dict = {
+    d = {
         attr: getattr(result, attr)
         for attr in [
             "failures",

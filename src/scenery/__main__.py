@@ -2,12 +2,12 @@ import sys
 import typing
 
 
-def main() -> sys._ExitCode:
+def main() -> int:
     """
     Executes the main functionality of the scenery test runner.
 
     Returns:
-        dict: A dictionary containing the results of the test run and other metadata.
+        exit_code (int): Exit code indicating success (0) or failure (1)
     """
 
     out: dict[str, dict[str, typing.Any]] = {}
@@ -139,14 +139,14 @@ def main() -> sys._ExitCode:
     runner = MetaTestRunner()
     result = runner.run(tests_discovered, args.verbosity)
     out.update(result)
-    for val in result.values():
-        summary.update(val)
+    for result_value in result.values():
+        summary.update(result_value)
 
     ###############
     # OUTPUT RESULT
     ###############
 
-    if args.outupt is not None:
+    if args.output is not None:
         import json
 
         with open(args.output, "w") as f:
@@ -159,16 +159,16 @@ def main() -> sys._ExitCode:
             fail = False
 
     if fail:
-        msg, color, exit = "FAIL", "red", 1
+        msg, color, exit_code = "FAIL", "red", 1
     else:
-        msg, color, exit = "OK", "green", 0
+        msg, color, exit_code = "OK", "green", 0
 
     print(f"Summary:\n{scenery.common.tabulate(summary)}")
     print(f"{scenery.common.colorize(color, msg)}\n\n")
 
-    return exit
+    return exit_code
 
 
 if __name__ == "__main__":
-    exit = main()
-    sys.exit(exit)
+    exit_code = main()
+    sys.exit(exit_code)

@@ -48,7 +48,7 @@ class MetaTest(type):
         bases: tuple[type],
         manifest: Manifest,
         restrict: typing.Optional[str] = None,
-    ) -> "MetaTest":
+    ) -> type[django.test.TestCase]:
         if restrict is not None:
             restrict_args = restrict.split(".")
             if len(restrict_args) == 1:
@@ -68,6 +68,7 @@ class MetaTest(type):
             "setUp": setUp,
         }
 
+        # Handle restriction
         for (case_id, case), (scene_pos, scene) in itertools.product(
             manifest.cases.items(), enumerate(manifest.scenes)
         ):
@@ -81,7 +82,11 @@ class MetaTest(type):
             test = MethodBuilder.build_test_from_take(take)
             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
 
-        return super().__new__(cls, clsname, bases, cls_attrs)
+        test_cls = super().__new__(cls, clsname, bases, cls_attrs)
+
+        # NOTE: mypy is struggling with the metaclass,
+        # I just ignore here instead of casting which does not do the trick
+        return test_cls  # type: ignore[return-value]
 
 
 class MetaTestDiscoverer:
@@ -158,14 +163,18 @@ class MetaTestDiscoverer:
             manifest = ManifestParser.parse_yaml(os.path.join(folder, filename))
 
             # Create class
-            cls = MetaTest(manifest_name, (django.test.TestCase,), manifest, restrict=restrict_test)
+            test_cls = MetaTest(
+                manifest_name, (django.test.TestCase,), manifest, restrict=restrict_test
+            )
 
             # Log / verbosity
             if verbosity >= 2:
-                print(f"> {cls.__qualname__}")
+                print(f"> {test_cls.__qualname__}")
 
             # Load
-            tests = self.loader.loadTestsFromTestCase(cls)
+            tests = self.loader.loadTestsFromTestCase(
+                typing.cast(type[django.test.TestCase], test_cls)
+            )
             for test in tests:
                 test_name = scenery.common.pretty_test_name(test)
                 suite = suite_cls()
@@ -214,7 +223,7 @@ class MetaTestRunner:
         app_logger = logging.getLogger("app.close_watch")
         app_logger.propagate = True
 
-    def run(self, tests_discovered: list, verbosity: int) -> dict[str, dict[str, typing.Any]]:
+    def run(self, tests_discovered: list, verbosity: int) -> dict[str, dict[str, int]]:
         """
         Run the discovered tests and collect results.
 
