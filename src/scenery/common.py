@@ -7,7 +7,6 @@ import re
 import types
 import typing
 import unittest
-import numbers
 
 import django
 from django.test.runner import DiscoverRunner
@@ -102,46 +101,6 @@ def snake_to_camel_case(s: str) -> str:
 ##################
 # TERMINAL OUTPUT
 ##################
-
-
-def floor(n: numbers.Real) -> int:
-    """
-    Return the floor of a number.
-
-    If the input is an integer, it returns the input unchanged.
-    For floating-point numbers, it returns the largest integer less than or equal to the input.
-
-    Args:
-        n (int or float): The number to floor.
-
-    Returns:
-        int: The floor of the input number.
-    """
-    # NOTE: this was just to avoid another dependency
-    if isinstance(n, int):
-        return n
-    else:
-        return int(n // 1)
-
-
-def ceil(n: numbers.Real) -> int:
-    """
-    Return the ceiling of a number.
-
-    If the input is an integer, it returns the input unchanged.
-    For floating-point numbers, it returns the smallest integer greater than or equal to the input.
-
-    Args:
-        n (int or float): The number to ceil.
-
-    Returns:
-        int: The ceiling of the input number.
-    """
-    # NOTE: this was just to avoid another dependency
-    if isinstance(n, int):
-        return n
-    else:
-        return int(n // 1) + 1
 
 
 class colorize:
@@ -293,8 +252,12 @@ def django_setup(settings_module: str) -> None:
 # DJANGO TEST
 ###################
 
+# from typing import IO, Any, TypeVar, Union
 
-def overwrite_get_runner_kwargs(django_runner: DiscoverRunner, stream: typing.IO) -> dict:
+
+def overwrite_get_runner_kwargs(
+    django_runner: DiscoverRunner, stream: typing.IO
+) -> dict[str, typing.Any]:
     """
     Overwrite the get_runner_kwargs method of Django's DiscoverRunner.
 

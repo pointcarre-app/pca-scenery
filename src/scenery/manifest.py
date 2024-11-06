@@ -208,8 +208,8 @@ class Case:
         return self.items[item_id]
 
     @classmethod
-    def from_id_and_dict(cls, case_id: str, items: dict[str, dict[str, Any]]) -> "Case":
-        items = {item_id: Item(item_id, item_dict) for item_id, item_dict in items.items()}
+    def from_id_and_dict(cls, case_id: str, items_dict: dict[str, dict[str, Any]]) -> "Case":
+        items = {item_id: Item(item_id, item_dict) for item_id, item_dict in items_dict.items()}
         return cls(case_id, items)
 
 
@@ -220,17 +220,20 @@ class Case:
 
 @dataclass
 class Substituable:
-    field_repr: re.Match
+    field_repr: str
+    # field_repr: re.Match
     regex_field = re.compile(r"^(?P<item_id>[a-z_]+):?(?P<field_name>[a-z_]+)?$")
 
     def __post_init__(self) -> None:
         if not (re_match := re.match(self.regex_field, self.field_repr)):
             raise ValueError(f"Invalid field representation '{self.field_repr}'")
         else:
-            self.field_repr = re_match
+            # self.field_repr = re_match
+            self.field_repr_match = re_match
 
     def shoot(self, case: Case) -> Any:
-        match self.field_repr.groups():
+        # match self.field_repr.groups():
+        match self.field_repr_match.groups():
             case item_id, None:
                 # There is only a reference to the item
                 # In this case , we pass all the variables with the dict
@@ -295,7 +298,7 @@ class HttpDirective:
             case DirectiveCommand.REDIRECT_URL, Substituable():
                 pass
             case DirectiveCommand.COUNT_INSTANCES, {"model": str(s), "n": int(n)}:
-                app_config = django_apps.get_app_config(os.getenv("SCENERY_TESTED_APP_NAME"))
+                app_config = django_apps.get_app_config(os.environ["SCENERY_TESTED_APP_NAME"])
                 self.args["model"] = app_config.get_model(s)
             case DirectiveCommand.COUNT_INSTANCES, Substituable():
                 pass
@@ -457,11 +460,11 @@ class HttpCheck(HttpDirective):
                     self.args[DomArgument.ATTRIBUTE]["value"] = (
                         self._format_dom_element_attribute_value(attribute["value"])
                     )
-            case DirectiveCommand.REDIRECT_URL, str(s):
+            case DirectiveCommand.REDIRECT_URL, str(_):
                 pass
             case DirectiveCommand.COUNT_INSTANCES, {"model": ModelBase(), "n": int(n)}:
                 # Validate model is registered
-                app_config = django_apps.get_app_config(os.getenv("SCENERY_TESTED_APP_NAME"))
+                app_config = django_apps.get_app_config(os.environ["SCENERY_TESTED_APP_NAME"])
                 app_config.get_model(self.args["model"].__name__)
             case _:
                 raise ValueError(
@@ -470,17 +473,14 @@ class HttpCheck(HttpDirective):
 
     @staticmethod
     def _format_dom_element_attribute_value(value: str | int | list[str]) -> list[str] | str:
-        match value:
-            case str(s):
-                return value
-            case list(l):
-                return value
-            case int(n):
-                return str(n)
-            case x:
-                raise ValueError(
-                    f"attribute value can only be `str` or `list[str]` not {x} ('{type(x)}')"
-                )
+        if isinstance(value, (str, list)):
+            return value
+        elif isinstance(value, int):
+            return str(value)
+        else:
+            raise TypeError(
+                f"attribute value can only be `str` or `list[str]` not {value} ('{type(value)}')"
+            )
 
 
 @dataclass

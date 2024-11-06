@@ -20,7 +20,9 @@ class HttpChecker:
     """
 
     @staticmethod
-    def get_http_client_response(client, take: scenery.manifest.HttpTake):
+    def get_http_client_response(
+        client: django.test.Client, take: scenery.manifest.HttpTake
+    ) -> django.http.HttpResponse:
         """
         Execute an HTTP request based on the given HttpTake object.
 
@@ -35,19 +37,18 @@ class HttpChecker:
             NotImplementedError: If the HTTP method specified in the take is not implemented.
         """
 
-        match take.method:
-            case http.HTTPMethod.GET:
-                response = client.get(
-                    take.url,
-                    take.data,
-                )
-            case http.HTTPMethod.POST:
-                response = client.post(
-                    take.url,
-                    take.data,
-                )
-            case _:
-                raise NotImplementedError(take.method)
+        if take.method == http.HTTPMethod.GET:
+            response = client.get(
+                take.url,
+                take.data,
+            )
+        elif take.method == http.HTTPMethod.POST:
+            response = client.post(
+                take.url,
+                take.data,
+            )
+        else:
+            raise NotImplementedError(take.method)
 
         return response
 
@@ -56,7 +57,7 @@ class HttpChecker:
         django_testcase: django.test.TestCase,
         response: django.http.HttpResponse,
         check: scenery.manifest.HttpCheck,
-    ):
+    ) -> None:
         """
         Execute a specific check on an HTTP response.
 
@@ -71,24 +72,23 @@ class HttpChecker:
         Raises:
             NotImplementedError: If the check instruction is not implemented.
         """
-        match check.instruction:
-            case scenery.manifest.DirectiveCommand.STATUS_CODE:
-                HttpChecker.check_status_code(django_testcase, response, check.args)
-            case scenery.manifest.DirectiveCommand.REDIRECT_URL:
-                HttpChecker.check_redirect_url(django_testcase, response, check.args)
-            case scenery.manifest.DirectiveCommand.COUNT_INSTANCES:
-                HttpChecker.check_count_instances(django_testcase, response, check.args)
-            case scenery.manifest.DirectiveCommand.DOM_ELEMENT:
-                HttpChecker.check_dom_element(django_testcase, response, check.args)
-            case _:
-                raise NotImplementedError(check)
+        if check.instruction == scenery.manifest.DirectiveCommand.STATUS_CODE:
+            HttpChecker.check_status_code(django_testcase, response, check.args)
+        elif check.instruction == scenery.manifest.DirectiveCommand.REDIRECT_URL:
+            HttpChecker.check_redirect_url(django_testcase, response, check.args)
+        elif check.instruction == scenery.manifest.DirectiveCommand.COUNT_INSTANCES:
+            HttpChecker.check_count_instances(django_testcase, response, check.args)
+        elif check.instruction == scenery.manifest.DirectiveCommand.DOM_ELEMENT:
+            HttpChecker.check_dom_element(django_testcase, response, check.args)
+        else:
+            raise NotImplementedError(check)
 
     @staticmethod
     def check_status_code(
         django_testcase: django.test.TestCase,
         response: django.http.HttpResponse,
         args: int,
-    ):
+    ) -> None:
         """
         Check if the response status code matches the expected code.
 
@@ -108,7 +108,7 @@ class HttpChecker:
         django_testcase: django.test.TestCase,
         response: django.http.HttpResponseRedirect,
         args: str,
-    ):
+    ) -> None:
         """
         Check if the response redirect URL matches the expected URL.
 
@@ -128,7 +128,7 @@ class HttpChecker:
         django_testcase: django.test.TestCase,
         response: django.http.HttpResponse,
         args: dict,
-    ):
+    ) -> None:
         """
         Check if the count of model instances matches the expected count.
 
@@ -149,7 +149,7 @@ class HttpChecker:
         django_testcase: django.test.TestCase,
         response: django.http.HttpResponse,
         args: dict[scenery.manifest.DomArgument, Any],
-    ):
+    ) -> None:
         """
         Check for the presence and properties of DOM elements in the response content.
 
@@ -208,15 +208,14 @@ class HttpChecker:
                 )
             if attribute := args.get(scenery.manifest.DomArgument.ATTRIBUTE):
                 # TODO: should this move to manifest parser? we will decide in v2
-                match attribute["value"]:
-                    case str(v) | list(v):
-                        pass
-                    case int(n):
-                        attribute["value"] = str(n)
-                    case x:
-                        raise ValueError(
-                            f"attribute value can only by `str` or `list[str]` not '{type(x)}'"
-                        )
+                if isinstance(attribute["value"], (str, list)):
+                    pass
+                elif isinstance(attribute["value"], int):
+                    attribute["value"] = str(attribute["value"])
+                else:
+                    raise TypeError(
+                        f"attribute value can only by `str` or `list[str]` not '{type(attribute["value"])}'"
+                    )
                 django_testcase.assertEqual(
                     dom_element[attribute["name"]],
                     attribute["value"],

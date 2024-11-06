@@ -20,15 +20,13 @@ class SetUpHandler:
         logger: A logger instance for debug output.
     """
 
-    module = importlib.import_module(
-        os.getenv("SCENERY_SET_UP_INSTRUCTIONS"),
-    )
+    module = importlib.import_module(os.environ["SCENERY_SET_UP_INSTRUCTIONS"])
 
     @staticmethod
     def exec_set_up_instruction(
         django_testcase: django.test.TestCase,
         instruction: scenery.manifest.SetUpInstruction,
-    ):
+    ) -> None:
         """
         Execute the method corresponding to the SetUpInstruction.
 

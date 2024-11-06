@@ -1,4 +1,5 @@
 import os
+import typing
 
 import scenery.common
 import scenery.manifest
@@ -18,14 +19,14 @@ class ManifestParser:
         common_items (dict): Common items loaded from a YAML file specified by the SCENERY_COMMON_ITEMS environment variable.
     """
 
-    common_items = scenery.common.read_yaml(os.getenv("SCENERY_COMMON_ITEMS"))
+    common_items = scenery.common.read_yaml(os.environ["SCENERY_COMMON_ITEMS"])
 
     ################
     # FORMATTED DICT
     ################
 
     @staticmethod
-    def parse_formatted_dict(d: dict):
+    def parse_formatted_dict(d: dict) -> scenery.manifest.Manifest:
         """
         Parse a dictionary with all expected keys into a Manifest object.
 
@@ -49,7 +50,7 @@ class ManifestParser:
     ##########
 
     @staticmethod
-    def validate_dict(d: dict):
+    def validate_dict(d: dict) -> None:
         """
         Validate the top-level keys of a manifest dictionary.
 
@@ -120,9 +121,11 @@ class ManifestParser:
             return [d["scene"]]
         elif has_many:
             return d["scenes"]
+        else:
+            raise ValueError
 
     @staticmethod
-    def parse_dict(d: dict):
+    def parse_dict(d: dict) -> scenery.manifest.Manifest:
         """
         Parse a manifest dictionary into a Manifest object.
 
@@ -143,7 +146,7 @@ class ManifestParser:
     ##########
 
     @staticmethod
-    def validate_yaml(yaml):
+    def validate_yaml(yaml: typing.Any) -> None:
         """
         Validate the structure of a YAML-loaded manifest.
 
@@ -157,7 +160,7 @@ class ManifestParser:
             ValueError: If the YAML content contains unexpected keys.
         """
 
-        if type(yaml) is not dict:
+        if not isinstance(yaml, dict):
             raise TypeError(f"Manifest need to be a dict not a '{type(yaml)}'")
 
         if not all(
@@ -168,14 +171,16 @@ class ManifestParser:
             )
 
     @staticmethod
-    def _yaml_constructor_case(loader: yaml.SafeLoader, node: yaml.nodes.Node):
+    def _yaml_constructor_case(
+        loader: yaml.SafeLoader, node: yaml.nodes.Node
+    ) -> scenery.manifest.Substituable:
         if isinstance(node, yaml.nodes.ScalarNode):
             return scenery.manifest.Substituable(loader.construct_scalar(node))
         else:
             raise ConstructorError
 
     @staticmethod
-    def _yaml_constructor_common_item(loader: yaml.SafeLoader, node: yaml.nodes.Node):
+    def _yaml_constructor_common_item(loader: yaml.SafeLoader, node: yaml.nodes.Node) -> dict:
         if isinstance(node, yaml.nodes.ScalarNode):
             return ManifestParser.common_items[loader.construct_scalar(node)]
         if isinstance(node, yaml.nodes.MappingNode):
@@ -188,7 +193,7 @@ class ManifestParser:
             raise ConstructorError
 
     @staticmethod
-    def read_manifest_yaml(fn):
+    def read_manifest_yaml(filename: str) -> typing.Any:
         """
         Read a YAML manifest file with custom tags.
 
@@ -208,13 +213,13 @@ class ManifestParser:
         Loader.add_constructor("!case", ManifestParser._yaml_constructor_case)
         Loader.add_constructor("!common-item", ManifestParser._yaml_constructor_common_item)
 
-        with open(fn) as f:
+        with open(filename) as f:
             content = yaml.load(f, Loader)
 
         return content
 
     @staticmethod
-    def parse_yaml(filename):
+    def parse_yaml(filename: str) -> scenery.manifest.Manifest:
         """
         Parse a YAML manifest file into a Manifest object.
 
