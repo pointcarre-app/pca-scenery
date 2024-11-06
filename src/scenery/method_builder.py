@@ -39,6 +39,11 @@ class MethodBuilder:
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase, instruction)
 
+        # def setUpTestData(cls: type[django.test.TestCase]) -> None:
+        #     django_testcase = cls()
+        #     for instruction in instructions:
+        #         SetUpHandler.exec_set_up_instruction(django_testcase, instruction)
+
         return classmethod(setUpTestData)
 
     @staticmethod

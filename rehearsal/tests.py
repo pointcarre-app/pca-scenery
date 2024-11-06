@@ -29,9 +29,9 @@ class TestSingleKeyDict(unittest.TestCase):
             d = scenery.manifest.SingleKeyDict({"1": None, "2": None})
 
 
-#####################
-# MANIFEST DATCLASSES
-#####################
+######################
+# MANIFEST DATACLASSES
+######################
 
 
 class TestSetUpInstruction(unittest.TestCase):
@@ -277,11 +277,27 @@ class TestManifest(unittest.TestCase):
 
         scenery.manifest.Manifest(set_up_test_data, set_up, scenes, cases, "origin")
         scenery.manifest.Manifest.from_formatted_dict(
+            # {
+            #     scenery.manifest.ManifestFormattedDictKeys.set_up_test_data: ["reset_db"],
+            #     scenery.manifest.ManifestFormattedDictKeys.set_up: ["login"],
+            #     scenery.manifest.ManifestFormattedDictKeys.cases: {"case_id": {"item_id": {}}},
+            #     scenery.manifest.ManifestFormattedDictKeys.scenes: [
+            #         {
+            #             "method": "GET",
+            #             "url": "https://www.example.com",
+            #             "data": [],
+            #             "url_parameters": {},
+            #             "query_parameters": {},
+            #             "directives": [{"status_code": 200}],
+            #         }
+            #     ],
+            #     scenery.manifest.ManifestFormattedDictKeys.manifest_origin: "origin",
+            # }
             {
-                scenery.manifest.ManifestFormattedDictKeys.SET_UP_TEST_DATA: ["reset_db"],
-                scenery.manifest.ManifestFormattedDictKeys.SET_UP: ["login"],
-                scenery.manifest.ManifestFormattedDictKeys.CASES: {"case_id": {"item_id": {}}},
-                scenery.manifest.ManifestFormattedDictKeys.SCENES: [
+                "set_up_test_data": ["reset_db"],
+                "set_up": ["login"],
+                "cases": {"case_id": {"item_id": {}}},
+                "scenes": [
                     {
                         "method": "GET",
                         "url": "https://www.example.com",
@@ -291,7 +307,7 @@ class TestManifest(unittest.TestCase):
                         "directives": [{"status_code": 200}],
                     }
                 ],
-                scenery.manifest.ManifestFormattedDictKeys.MANIFEST_ORIGIN: "origin",
+                "manifest_origin": "origin",
             }
         )
 
@@ -534,7 +550,7 @@ class TestManifestParser(unittest.TestCase):
 
         # success
         manifest = {
-            "variables": object(),
+            # "variables": object(),
             "cases": object(),
             "scenes": object(),
             "manifest_origin": "origin",

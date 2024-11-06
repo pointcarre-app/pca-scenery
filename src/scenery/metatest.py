@@ -12,6 +12,7 @@ import scenery.common
 
 import django.test
 from django.test.utils import get_runner
+from django.test.runner import DiscoverRunner
 
 from django.conf import settings
 
@@ -141,7 +142,7 @@ class MetaTestDiscoverer:
 
         suite_cls = self.runner.test_suite
 
-        folder = os.getenv("SCENERY_MANIFESTS_FOLDER")
+        folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
 
         if verbosity >= 1:
             print("Manifests discovered:")
@@ -199,7 +200,7 @@ class MetaTestRunner:
 
         self.stream = io.StringIO()
 
-        def overwrite(runner):
+        def overwrite(runner: DiscoverRunner) -> dict[str, typing.Any]:
             return scenery.common.overwrite_get_runner_kwargs(runner, self.stream)
 
         self.runner.get_test_runner_kwargs = overwrite.__get__(self.runner)
@@ -213,7 +214,7 @@ class MetaTestRunner:
         app_logger = logging.getLogger("app.close_watch")
         app_logger.propagate = True
 
-    def run(self, tests_discovered, verbosity) -> dict[str, dict[str, typing.Any]]:
+    def run(self, tests_discovered: list, verbosity: int) -> dict[str, dict[str, typing.Any]]:
         """
         Run the discovered tests and collect results.
 

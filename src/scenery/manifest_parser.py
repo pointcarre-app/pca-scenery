@@ -8,6 +8,11 @@ import yaml
 from yaml.constructor import ConstructorError
 
 
+#####################
+# PARSER
+#####################
+
+
 class ManifestParser:
     """
     A class responsible for parsing test manifest files in YAML format.
@@ -19,14 +24,14 @@ class ManifestParser:
         common_items (dict): Common items loaded from a YAML file specified by the SCENERY_COMMON_ITEMS environment variable.
     """
 
-    common_items = scenery.common.read_yaml(os.environ["SCENERY_COMMON_ITEMS"])
+    common_items: dict[str, dict] = scenery.common.read_yaml(os.environ["SCENERY_COMMON_ITEMS"])
 
     ################
     # FORMATTED DICT
     ################
 
     @staticmethod
-    def parse_formatted_dict(d: dict) -> scenery.manifest.Manifest:
+    def parse_formatted_dict(d: scenery.manifest.ManifestDict) -> scenery.manifest.Manifest:
         """
         Parse a dictionary with all expected keys into a Manifest object.
 
@@ -42,15 +47,17 @@ class ManifestParser:
             scenery.manifest.Manifest: A Manifest object created from the input dictionary.
         """
 
-        d = {key: d[key.value] for key in scenery.manifest.ManifestFormattedDictKeys}
+        # d = {key: d[key.value] for key in scenery.manifest.ManifestFormattedDictKeys}
+        # enum_dict = {key: d[key.value] for key in scenery.manifest.ManifestFormattedDictKeys}
         return scenery.manifest.Manifest.from_formatted_dict(d)
+        # return scenery.manifest.Manifest.from_formatted_dict(enum_dict)
 
     ##########
-    # ANY DICT
+    # RAW DICT
     ##########
 
     @staticmethod
-    def validate_dict(d: dict) -> None:
+    def validate_dict(d: scenery.manifest.RawManifestDict) -> None:
         """
         Validate the top-level keys of a manifest dictionary.
 
@@ -64,9 +71,15 @@ class ManifestParser:
             ValueError: If invalid keys are present or if the case/scene keys are not correctly specified.
         """
 
-        if not all(key in [x.value for x in scenery.manifest.ManifestDictKeys] for key in d.keys()):
+        # if not all(key in [x.value for x in scenery.manifest.ManifestDictKeys] for key in d.keys()):
+        #     raise ValueError(
+        #         f"Invalid key(s) in {d.keys()} ({d.get('manifest_origin', 'No origin found.')})."
+        #     )
+        if not all(
+            key in scenery.manifest.RawManifestDict.__annotations__.keys() for key in d.keys()
+        ):
             raise ValueError(
-                f"Invalid key(s) in {d.keys()} ({d.get('manifest_origin', 'No origin found.')})."
+                f"Invalid key(s) in {d.keys()} ({d.get('manifest_origin', 'No origin found.')})"
             )
 
         for key in ["case", "scene"]:
@@ -84,7 +97,7 @@ class ManifestParser:
                 )
 
     @staticmethod
-    def format_dict(manifest: dict) -> dict:
+    def format_dict(d: scenery.manifest.RawManifestDict) -> scenery.manifest.ManifestDict:
         """
         Reformat the manifest dictionary to ensure it has all expected keys and provide default values if needed.
 
@@ -95,15 +108,16 @@ class ManifestParser:
             dict: A formatted dictionary with all expected keys.
         """
         return {
-            "set_up_test_data": manifest.get("set_up_test_data", []),
-            "set_up": manifest.get("set_up", []),
-            "scenes": ManifestParser._format_dict_scenes(manifest),
-            "cases": ManifestParser._format_dict_cases(manifest),
-            "manifest_origin": manifest["manifest_origin"],
+            "set_up_test_data": d.get("set_up_test_data", []),
+            "set_up": d.get("set_up", []),
+            "scenes": ManifestParser._format_dict_scenes(d),
+            "cases": ManifestParser._format_dict_cases(d),
+            "manifest_origin": d["manifest_origin"],
         }
 
     @staticmethod
-    def _format_dict_cases(d: dict) -> dict[str, dict]:
+    # def _format_dict_cases(d: dict) -> dict[str, dict]:
+    def _format_dict_cases(d: scenery.manifest.RawManifestDict) -> dict[str, dict]:
         has_one = "case" in d
         has_many = "cases" in d
         if has_one:
@@ -114,7 +128,7 @@ class ManifestParser:
             return {"NO_CASE": {}}
 
     @staticmethod
-    def _format_dict_scenes(d: dict) -> list[dict]:
+    def _format_dict_scenes(d: scenery.manifest.RawManifestDict) -> list[dict]:
         has_one = "scene" in d
         has_many = "scenes" in d
         if has_one:
@@ -125,7 +139,7 @@ class ManifestParser:
             raise ValueError
 
     @staticmethod
-    def parse_dict(d: dict) -> scenery.manifest.Manifest:
+    def parse_dict(d: scenery.manifest.RawManifestDict) -> scenery.manifest.Manifest:
         """
         Parse a manifest dictionary into a Manifest object.
 
@@ -138,15 +152,15 @@ class ManifestParser:
             scenery.manifest.Manifest: A Manifest object created from the input dictionary.
         """
         ManifestParser.validate_dict(d)
-        d = ManifestParser.format_dict(d)
-        return ManifestParser.parse_formatted_dict(d)
+        formatted_d = ManifestParser.format_dict(d)
+        return ManifestParser.parse_formatted_dict(formatted_d)
 
     ##########
     # YAML
     ##########
 
     @staticmethod
-    def validate_yaml(yaml: typing.Any) -> None:
+    def validate_yaml(obj: typing.Any) -> None:
         """
         Validate the structure of a YAML-loaded manifest.
 
@@ -159,15 +173,21 @@ class ManifestParser:
             TypeError: If the YAML content is not a dictionary.
             ValueError: If the YAML content contains unexpected keys.
         """
+        # ...
+        if not isinstance(obj, dict):
+            raise TypeError(f"Manifest need to be a dict not a '{type(obj)}'")
 
-        if not isinstance(yaml, dict):
-            raise TypeError(f"Manifest need to be a dict not a '{type(yaml)}'")
-
+        # if not all(
+        #     key in [x.value for x in scenery.manifest.ManifestYAMLKeys] for key in yaml.keys()
+        # ):
+        #     raise ValueError(
+        #         f"Invalid key(s) in {yaml.keys()} ({yaml.get('origin', 'No origin found.')})"
+        #     )
         if not all(
-            key in [x.value for x in scenery.manifest.ManifestYAMLKeys] for key in yaml.keys()
+            key in scenery.manifest.RawManifestDict.__annotations__.keys() for key in obj.keys()
         ):
             raise ValueError(
-                f"Invalid key(s) in {yaml.keys()} ({yaml.get('origin', 'No origin found.')})"
+                f"Invalid key(s) in {obj.keys()} ({obj.get('manifest_origin', 'No origin found.')})"
             )
 
     @staticmethod
@@ -234,6 +254,6 @@ class ManifestParser:
         d = ManifestParser.read_manifest_yaml(filename)
         ManifestParser.validate_yaml(d)
         d["manifest_origin"] = d.get("manifest_origin", filename)
-        if "variables" in d:
-            del d["variables"]
+        # if "variables" in d:
+        #     del d["variables"]
         return ManifestParser.parse_dict(d)

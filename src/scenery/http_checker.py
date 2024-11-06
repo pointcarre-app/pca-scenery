@@ -1,7 +1,7 @@
 """Perform assertions on HTTP response"""
 
 import http
-from typing import Any
+import typing
 
 import scenery.manifest
 
@@ -122,10 +122,12 @@ class HttpChecker:
             django.http.HttpResponseRedirect,
             f"Expected HttpResponseRedirect but got {type(response)}",
         )
+        # NOTE: this is done for static type checking
+        redirect = typing.cast(django.http.HttpResponseRedirect, response)
         django_testcase.assertEqual(
-            response.url,
+            redirect.url,
             args,
-            f"Expected redirect URL '{args}', but got '{response.url}'",
+            f"Expected redirect URL '{args}', but got '{redirect.url}'",
         )
 
     @staticmethod
@@ -153,7 +155,7 @@ class HttpChecker:
     def check_dom_element(
         django_testcase: django.test.TestCase,
         response: django.http.HttpResponse,
-        args: dict[scenery.manifest.DomArgument, Any],
+        args: dict[scenery.manifest.DomArgument, typing.Any],
     ) -> None:
         """
         Check for the presence and properties of DOM elements in the response content.

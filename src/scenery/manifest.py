@@ -16,6 +16,44 @@ from django.urls.exceptions import NoReverseMatch
 from django.db.models.base import ModelBase
 
 
+#############################
+# TYPE HINTS
+#############################
+
+
+# class SceneDict(typing.TypedDict):
+#     name: str
+#     steps: typing.List[dict]
+#     # description: typing.NotRequired[str]
+#     # timeout: typing.NotRequired[int]
+
+
+# class CaseDict(typing.TypedDict):
+#     steps: typing.List[dict]
+#     expected: dict
+#     description: typing.NotRequired[str]
+#     timeout: typing.NotRequired[int]
+
+
+class RawManifestDict(typing.TypedDict, total=False):
+    set_up_test_data: typing.List[dict]
+    set_up: typing.List[dict]
+    case: dict
+    cases: dict[str, dict]
+    scene: dict
+    scenes: typing.List[dict]
+    manifest_origin: str
+    # variables: dict[str, typing.Any]
+
+
+class ManifestDict(typing.TypedDict):
+    scenes: typing.List[dict]
+    cases: dict[str, dict]
+    manifest_origin: str
+    set_up_test_data: typing.List[dict]
+    set_up: typing.List[dict]
+
+
 ########################
 # SINGLE KEY DICTIONNARY
 ########################
@@ -69,48 +107,46 @@ class SingleKeyDict(typing.Generic[SingleKeyDictKey, SingleKeyDictKeyValue]):
 # ENUMS
 ####################################
 
-
 ####################
 # MANIFEST TOP LEVEL
 ####################
 
 
-class ManifestFormattedDictKeys(enum.Enum):
-    """Used in formated dict, they are exactly contained when passed in Manifest.from_formatted_dict"""
+# class ManifestFormattedDictKeys(enum.Enum):
+#     """Used in formated dict, they are exactly contained when passed in Manifest.from_formatted_dict"""
 
-    SET_UP_TEST_DATA = "set_up_test_data"
-    SET_UP = "set_up"
-    CASES = "cases"
-    SCENES = "scenes"
-    MANIFEST_ORIGIN = "manifest_origin"
-
-
-class ManifestDictKeys(enum.Enum):
-    """Keys allowed for Manifest.from_dict (and .from_yaml)"""
-
-    SET_UP_TEST_DATA = "set_up_test_data"
-    SET_UP = "set_up"
-    CASES = "cases"
-    SCENES = "scenes"
-    MANIFEST_ORIGIN = "manifest_origin"
-
-    CASE = "case"
-    SCENE = "scene"
+#     set_up_test_data = "set_up_test_data"
+#     set_up = "set_up"
+#     cases = "cases"
+#     scenes = "scenes"
+#     manifest_origin = "manifest_origin"
 
 
-class ManifestYAMLKeys(enum.Enum):
-    """Keys allowed for Manifest.from_yaml compared to Manifest.from_dict"""
+# class ManifestDictKeys(enum.Enum):
+#     """Keys allowed for Manifest.from_dict (and .from_yaml)"""
 
-    SET_UP_TEST_DATA = "set_up_test_data"
-    SET_UP = "set_up"
-    CASES = "cases"
-    SCENES = "scenes"
-    MANIFEST_ORIGIN = "manifest_origin"
+#     set_up_test_data = "set_up_test_data"
+#     set_up = "set_up"
+#     cases = "cases"
+#     scenes = "scenes"
+#     manifest_origin = "manifest_origin"
+#     case = "case"
+#     scene = "scene"
 
-    CASE = "case"
-    SCENE = "scene"
 
-    VARIABLES = "variables"
+# class ManifestYAMLKeys(enum.Enum):
+#     """Keys allowed for Manifest.from_yaml compared to Manifest.from_dict"""
+
+#     set_up_test_data = "set_up_test_data"
+#     set_up = "set_up"
+#     cases = "cases"
+#     scenes = "scenes"
+#     manifest_origin = "manifest_origin"
+
+#     case = "case"
+#     scene = "scene"
+
+# VARIABLES = "variables"
 
 
 ########
@@ -420,22 +456,29 @@ class Manifest:
     manifest_origin: str
 
     @classmethod
-    def from_formatted_dict(cls, d: dict) -> "Manifest":
+    def from_formatted_dict(cls, d: ManifestDict) -> "Manifest":
         return cls(
             [
                 SetUpInstruction.from_object(instruction)
-                for instruction in d[ManifestFormattedDictKeys.SET_UP_TEST_DATA]
+                for instruction in d[
+                    "set_up_test_data"
+                ]  # d[ManifestFormattedDictKeys.set_up_test_data]
             ],
             [
                 SetUpInstruction.from_object(instruction)
-                for instruction in d[ManifestFormattedDictKeys.SET_UP]
+                for instruction in d["set_up"]  # d[ManifestFormattedDictKeys.set_up]
             ],
-            [HttpScene.from_dict(scene) for scene in d[ManifestFormattedDictKeys.SCENES]],
+            [
+                HttpScene.from_dict(scene) for scene in d["scenes"]
+            ],  # d[ManifestFormattedDictKeys.scenes]],
             {
                 case_id: Case.from_id_and_dict(case_id, case_dict)
-                for case_id, case_dict in d[ManifestFormattedDictKeys.CASES].items()
+                for case_id, case_dict in d[
+                    "cases"
+                ].items()  # d[ManifestFormattedDictKeys.cases].items()
             },
-            d[ManifestFormattedDictKeys.MANIFEST_ORIGIN],
+            # d[ManifestFormattedDictKeys.manifest_origin],
+            d["manifest_origin"],
         )
 
 

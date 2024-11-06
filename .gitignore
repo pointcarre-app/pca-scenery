@@ -5,3 +5,4 @@ build/
 dist/
 **/__pycache__/
 pca_scenery.egg-info/
+.mypy_cache

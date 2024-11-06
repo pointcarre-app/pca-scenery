@@ -252,8 +252,6 @@ def django_setup(settings_module: str) -> None:
 # DJANGO TEST
 ###################
 
-# from typing import IO, Any, TypeVar, Union
-
 
 def overwrite_get_runner_kwargs(
     django_runner: DiscoverRunner, stream: typing.IO
@@ -278,6 +276,8 @@ def overwrite_get_runner_kwargs(
         "resultclass": django_runner.get_resultclass(),
         "verbosity": django_runner.verbosity,
         "buffer": django_runner.buffer,
+        # NOTE: this is the line below that changes compared to the original
+        "stream": stream,
     }
-    kwargs.update({"stream": stream})
+    # kwargs.update({"stream": stream})
     return kwargs
