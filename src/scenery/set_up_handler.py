@@ -24,7 +24,10 @@ class SetUpHandler:
 
     @staticmethod
     def exec_set_up_instruction(
-        django_testcase: django.test.TestCase,
+        # NOTE: it either takes the instance or the class
+        # depending whether it is class method or not
+        # (setUp vs. setUpTestData)
+        django_testcase: django.test.TestCase | type[django.test.TestCase],
         instruction: scenery.manifest.SetUpInstruction,
     ) -> None:
         """
