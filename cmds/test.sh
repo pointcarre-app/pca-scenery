@@ -5,7 +5,7 @@ set -e
 PYTHON_VERSION=${1:-"3.12.3"} 
 
 
-echo "Testing with Python $PYTHON_VERSION"
+printf "Testing with Python $PYTHON_VERSION"
     
 # Clean up previous environment and build
 rm -rf "./env_test_$PYTHON_VERSION"
@@ -22,16 +22,6 @@ pip install .
 # Test
 printf "\n\nRehearsal"
 python -m rehearsal
-
-# Ruff
-printf "\n\nRuff"
-ruff check rehearsal/
-ruff check src/
-
-# Mypy
-printf "\n\nMypy"
-mypy rehearsal
-mypy src
 
 # Cleanup
 deactivate

@@ -1,4 +1,4 @@
-"""Perform assertions on HTTP response"""
+"""Perform assertions on HTTP response from the test client."""
 
 import http
 import typing
@@ -12,8 +12,7 @@ import bs4
 
 
 class HttpChecker:
-    """
-    A utility class for performing HTTP requests and assertions on responses.
+    """A utility class for performing HTTP requests and assertions on responses.
 
     This class provides static methods to execute HTTP requests and perform
     various checks on the responses, as specified in the test manifests.
@@ -23,8 +22,7 @@ class HttpChecker:
     def get_http_client_response(
         client: django.test.Client, take: scenery.manifest.HttpTake
     ) -> django.http.HttpResponse:
-        """
-        Execute an HTTP request based on the given HttpTake object.
+        """Execute an HTTP request based on the given HttpTake object.
 
         Args:
             client: The Django test client to use for the request.
@@ -36,7 +34,6 @@ class HttpChecker:
         Raises:
             NotImplementedError: If the HTTP method specified in the take is not implemented.
         """
-
         if take.method == http.HTTPMethod.GET:
             response = client.get(
                 take.url,
@@ -61,8 +58,7 @@ class HttpChecker:
         response: django.http.HttpResponse,
         check: scenery.manifest.HttpCheck,
     ) -> None:
-        """
-        Execute a specific check on an HTTP response.
+        """Execute a specific check on an HTTP response.
 
         This method delegates to the appropriate check method based on the instruction
         specified in the HttpCheck object.
@@ -92,8 +88,7 @@ class HttpChecker:
         response: django.http.HttpResponse,
         args: int,
     ) -> None:
-        """
-        Check if the response status code matches the expected code.
+        """Check if the response status code matches the expected code.
 
         Args:
             django_testcase (django.test.TestCase): The Django test case instance.
@@ -112,8 +107,7 @@ class HttpChecker:
         response: django.http.HttpResponse,
         args: str,
     ) -> None:
-        """
-        Check if the response redirect URL matches the expected URL.
+        """Check if the response redirect URL matches the expected URL.
 
         Args:
             django_testcase (django.test.TestCase): The Django test case instance.
@@ -139,8 +133,7 @@ class HttpChecker:
         response: django.http.HttpResponse,
         args: dict,
     ) -> None:
-        """
-        Check if the count of model instances matches the expected count.
+        """Check if the count of model instances matches the expected count.
 
         Args:
             django_testcase (django.test.TestCase): The Django test case instance.
@@ -160,8 +153,7 @@ class HttpChecker:
         response: django.http.HttpResponse,
         args: dict[scenery.manifest.DomArgument, typing.Any],
     ) -> None:
-        """
-        Check for the presence and properties of DOM elements in the response content.
+        """Check for the presence and properties of DOM elements in the response content.
 
         This method uses BeautifulSoup to parse the response content and perform various
         checks on DOM elements as specified in the args dictionary.
@@ -175,7 +167,6 @@ class HttpChecker:
         Raises:
             ValueError: If neither 'find' nor 'find_all' arguments are provided in args.
         """
-
         soup = bs4.BeautifulSoup(response.content, "html.parser")
 
         # Apply the scope

@@ -27,6 +27,8 @@ jobs:
           pip install mkdocstrings[python]
           # pip install mkdocs-awesome-pages-plugin
       
+      - name: Check docstring style
+        run: pydocstyle src
       - name: Build documentation
         run: mkdocs build
       

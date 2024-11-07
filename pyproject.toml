@@ -54,3 +54,7 @@ scenery = ["LICENSE"]
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["scenery*"]  # Import as 'scenery'
+
+[tool.pydocstyle]
+convention = "google"
+match = ".*\\.py"

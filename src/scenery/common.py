@@ -1,4 +1,4 @@
-"""General functions and classes used by other modules"""
+"""General functions and classes used by other modules."""
 
 import os
 import importlib
@@ -20,8 +20,8 @@ import yaml
 
 
 def scenery_setup(settings_location: str) -> None:
-    """
-    Read the settings module and set the corresponding environment variables.
+    """Read the settings module and set the corresponding environment variables.
+
     This function imports the specified settings module and sets environment variables
     based on its contents. The following environment variables are set:
 
@@ -32,10 +32,10 @@ def scenery_setup(settings_location: str) -> None:
 
     Args:
         settings_location (str): The location (import path) of the settings module.
+
     Raises:
         ImportError: If the settings module cannot be imported.
     """
-
     # Load from module
     settings = importlib.import_module(settings_location)
 
@@ -52,8 +52,7 @@ def scenery_setup(settings_location: str) -> None:
 
 
 def read_yaml(filename: str) -> typing.Any:
-    """
-    Read and parse a YAML file.
+    """Read and parse a YAML file.
 
     Args:
         filename (str): The path to the YAML file to be read.
@@ -75,8 +74,7 @@ def read_yaml(filename: str) -> typing.Any:
 
 
 def snake_to_camel_case(s: str) -> str:
-    """
-    Transform a string from snake_case to CamelCase.
+    """Transform a string from snake_case to CamelCase.
 
     This function assumes the input string is in snake_case format and converts it to CamelCase.
     It also handles strings containing '/' and '-' characters.
@@ -105,8 +103,7 @@ def snake_to_camel_case(s: str) -> str:
 
 
 class colorize:
-    """
-    A context manager for colorizing text in the console.
+    """A context manager for colorizing text in the console.
 
     This class can be used either as a context manager or called directly to wrap text in color codes.
 
@@ -168,8 +165,7 @@ class colorize:
 
 
 def tabulate(d: dict, color: typing.Callable | str | None = None, delim: str = ":") -> str:
-    """
-    Return an ASCII table for a dictionary with columns [key, value].
+    """Return an ASCII table for a dictionary with columns [key, value].
 
     Args:
         d (dict): The dictionary to tabulate.
@@ -194,8 +190,7 @@ def tabulate(d: dict, color: typing.Callable | str | None = None, delim: str = "
 
 
 def serialize_unittest_result(result: unittest.TestResult) -> dict[str, int]:
-    """
-    Serialize a unittest.TestResult object into a dictionary.
+    """Serialize a unittest.TestResult object into a dictionary.
 
     Args:
         result (unittest.TestResult): The TestResult object to serialize.
@@ -219,8 +214,7 @@ def serialize_unittest_result(result: unittest.TestResult) -> dict[str, int]:
 
 
 def pretty_test_name(test: unittest.TestCase) -> str:
-    """
-    Generate a pretty string representation of a unittest.TestCase.
+    """Generate a pretty string representation of a unittest.TestCase.
 
     Args:
         test (unittest.TestCase): The test case to generate a name for.
@@ -237,8 +231,7 @@ def pretty_test_name(test: unittest.TestCase) -> str:
 
 
 def django_setup(settings_module: str) -> None:
-    """
-    Set up the Django environment.
+    """Set up the Django environment.
 
     This function sets the DJANGO_SETTINGS_MODULE environment variable and calls django.setup().
 
@@ -257,8 +250,7 @@ def django_setup(settings_module: str) -> None:
 def overwrite_get_runner_kwargs(
     django_runner: DiscoverRunner, stream: typing.IO
 ) -> dict[str, typing.Any]:
-    """
-    Overwrite the get_runner_kwargs method of Django's DiscoverRunner.
+    """Overwrite the get_runner_kwargs method of Django's DiscoverRunner.
 
     This function is used to avoid printing Django test output by redirecting the stream.
 
@@ -280,12 +272,11 @@ def overwrite_get_runner_kwargs(
         # NOTE: this is the line below that changes compared to the original
         "stream": stream,
     }
-    # kwargs.update({"stream": stream})
     return kwargs
 
 
 class CustomDiscoverRunner(django.test.runner.DiscoverRunner):
-    """Custom test runner that allows for stream capture"""
+    """Custom test runner that allows for stream capture."""
 
     def __init__(self, stream: io.StringIO, *args: typing.Any, **kwargs: typing.Any) -> None:
         super().__init__(*args, **kwargs)

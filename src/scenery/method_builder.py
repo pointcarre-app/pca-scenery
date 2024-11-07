@@ -1,3 +1,5 @@
+"""Building test methods dynamically based on manifest data."""
+
 from typing import Callable
 
 import django.test
@@ -13,8 +15,7 @@ from scenery.set_up_handler import SetUpHandler
 
 
 class MethodBuilder:
-    """
-    A utility class for building test methods dynamically based on manifest data.
+    """A utility class for building test methods dynamically based on manifest data.
 
     This class provides static methods to create setup and test methods
     that can be added to Django test cases.
@@ -22,8 +23,7 @@ class MethodBuilder:
 
     @staticmethod
     def build_setUpTestData(instructions: list[scenery.manifest.SetUpInstruction]) -> classmethod:
-        """
-        Build a setUpTestData class method for a Django test case.
+        """Build a setUpTestData class method for a Django test case.
 
         This method creates a class method that executes a series of setup
         instructions before any test methods are run.
@@ -50,8 +50,7 @@ class MethodBuilder:
     def build_setUp(
         instructions: list[scenery.manifest.SetUpInstruction],
     ) -> Callable[[django.test.TestCase], None]:
-        """
-        Build a setUp instance method for a Django test case.
+        """Build a setUp instance method for a Django test case.
 
         This method creates an instance method that executes a series of setup
         instructions before each test method is run.
@@ -71,8 +70,7 @@ class MethodBuilder:
 
     @staticmethod
     def build_test_from_take(take: scenery.manifest.HttpTake) -> Callable:
-        """
-        Build a test method from an HttpTake object.
+        """Build a test method from an HttpTake object.
 
         This method creates a test function that sends an HTTP request
         based on the take's specifications and executes a series of checks
