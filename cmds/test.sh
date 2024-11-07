@@ -23,12 +23,12 @@ pip install .
 python -m rehearsal
 
 # Mypy
-mypy src
 mypy rehearsal
+mypy src
 
 # Ruff
-ruff check src/
 ruff check rehearsal/
+ruff check src/
 
 # Cleanup
 deactivate

@@ -139,7 +139,7 @@ class ManifestParser:
             raise ValueError
 
     @staticmethod
-    def parse_dict(d: scenery.manifest.RawManifestDict) -> scenery.manifest.Manifest:
+    def parse_dict(d: dict) -> scenery.manifest.Manifest:
         """
         Parse a manifest dictionary into a Manifest object.
 
@@ -152,7 +152,7 @@ class ManifestParser:
             scenery.manifest.Manifest: A Manifest object created from the input dictionary.
         """
         ManifestParser.validate_dict(d)
-        formatted_d = ManifestParser.format_dict(d)
+        formatted_d = ManifestParser.format_dict(typing.cast(scenery.manifest.RawManifestDict, d))
         return ManifestParser.parse_formatted_dict(formatted_d)
 
     ##########

@@ -547,10 +547,10 @@ class TestManifestParser(unittest.TestCase):
             "set_up_test_data": ["reset_db"],
             "set_up": ["create_testuser"],
         }
-        ManifestParser.parse_dict(typing.cast(scenery.manifest.RawManifestDict, d))
+        ManifestParser.parse_dict(d)
         d.pop("scene")
         with self.assertRaises(ValueError):
-            ManifestParser.parse_dict(typing.cast(scenery.manifest.RawManifestDict, d))
+            ManifestParser.parse_dict(d)
 
     def test_validate_yaml(self):
         # success

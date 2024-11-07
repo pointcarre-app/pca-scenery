@@ -36,8 +36,8 @@ from django.db.models.base import ModelBase
 
 
 class RawManifestDict(typing.TypedDict, total=False):
-    set_up_test_data: typing.List[dict]
-    set_up: typing.List[dict]
+    set_up_test_data: typing.Sequence[dict]
+    set_up: typing.Sequence[dict]
     case: dict
     cases: dict[str, dict]
     scene: dict
@@ -50,8 +50,8 @@ class ManifestDict(typing.TypedDict):
     scenes: typing.List[dict]
     cases: dict[str, dict]
     manifest_origin: str
-    set_up_test_data: typing.List[str | dict]
-    set_up: typing.List[str | dict]
+    set_up_test_data: typing.Sequence[str | dict]
+    set_up: typing.Sequence[str | dict]
 
 
 ########################

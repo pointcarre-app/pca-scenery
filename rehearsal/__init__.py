@@ -80,7 +80,8 @@ class TestCaseOfDjangoTestCase(CustomTestCase):
     """
 
     django_loader: typing.ClassVar[unittest.TestLoader]
-    django_runner: typing.ClassVar[django.test.runner.DiscoverRunner]
+    # django_runner: typing.ClassVar[django.test.runner.DiscoverRunner]
+    django_runner: typing.ClassVar[scenery.common.CustomDiscoverRunner]
     django_stream: typing.ClassVar[io.StringIO]
     django_logger: typing.ClassVar[logging.Logger]
 
@@ -91,7 +92,8 @@ class TestCaseOfDjangoTestCase(CustomTestCase):
         # We customize the django testrunner to avoid confusion in the output and django vs unittest
         cls.django_stream = io.StringIO()
         cls.django_runner = scenery.common.CustomDiscoverRunner(cls.django_stream)
-        cls.django_runner.test_runner.resultclass = CustomTestResult
+        # FIXME: this does not pass type checking
+        cls.django_runner.test_runner.resultclass = CustomTestResult  # type: ignore[assignment]
         cls.django_logger = logging.getLogger(__package__ + ".rehearsal.django")
 
     @classmethod
@@ -150,6 +152,10 @@ class TestCaseOfDjangoTestCase(CustomTestCase):
         with self.assertRaises(
             expected, msg=f"{django_test} did not raise expected exception {expected}"
         ):
+            # NOTE: type casting as I expect some error to be caught here
+            result.caught_exception = typing.cast(
+                tuple[type[BaseException], BaseException, TracebackType], result.caught_exception
+            )
             raise result.caught_exception[0](result.caught_exception[1])
 
 
