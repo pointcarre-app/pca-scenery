@@ -8,7 +8,7 @@ import scenery.manifest
 import django.test
 import django.http
 
-from bs4 import BeautifulSoup, ResultSet
+import bs4
 
 
 class HttpChecker:
@@ -50,7 +50,10 @@ class HttpChecker:
         else:
             raise NotImplementedError(take.method)
 
-        return response
+        # NOTE: this one is a bit puzzling to me
+        # runnning mypy I get:
+        # Incompatible return value type (got "_MonkeyPatchedWSGIResponse", expected "HttpResponse")
+        return response  # type: ignore[return-value]
 
     @staticmethod
     def exec_check(
@@ -173,32 +176,41 @@ class HttpChecker:
             ValueError: If neither 'find' nor 'find_all' arguments are provided in args.
         """
 
-        soup = BeautifulSoup(response.content, "html.parser")
+        soup = bs4.BeautifulSoup(response.content, "html.parser")
 
         # Apply the scope
         if scope := args.get(scenery.manifest.DomArgument.SCOPE):
-            soup = soup.find(**scope)
+            scope_result = soup.find(**scope)
+            django_testcase.assertIsNotNone(
+                scope,
+                f"Expected to find an element matching {args[scenery.manifest.DomArgument.SCOPE]}, but found none",
+            )
+        else:
+            scope_result = soup
+
+        # NOTE: we inforce type checking by regarding bs4 objects as Tag
+        scope_result = typing.cast(bs4.Tag, scope_result)
 
         # Locate the element(s)
-        # If find_all is provided, the checks are performed on ALL elements
-        # If find is provided we enforce the result to be la list
         if args.get(scenery.manifest.DomArgument.FIND_ALL):
-            dom_elements = soup.find_all(**args[scenery.manifest.DomArgument.FIND_ALL])
+            dom_elements = scope_result.find_all(**args[scenery.manifest.DomArgument.FIND_ALL])
             django_testcase.assertGreaterEqual(
                 len(dom_elements),
                 1,
                 f"Expected to find at least one element matching {args[scenery.manifest.DomArgument.FIND_ALL]}, but found none",
             )
         elif args.get(scenery.manifest.DomArgument.FIND):
-            dom_element = soup.find(**args[scenery.manifest.DomArgument.FIND])
+            dom_element = scope_result.find(**args[scenery.manifest.DomArgument.FIND])
             django_testcase.assertIsNotNone(
                 dom_element,
                 f"Expected to find an element matching {args[scenery.manifest.DomArgument.FIND]}, but found none",
             )
-            # dom_elements = [dom_element]
-            dom_elements = ResultSet(dom_element)
+            dom_elements = bs4.ResultSet(source=bs4.SoupStrainer(), result=[dom_element])
         else:
             raise ValueError("Neither find of find_all argument provided")
+
+        # NOTE: I enforce the results to be a bs4.ResultSet[bs4.Tag] above
+        dom_elements = typing.cast(bs4.ResultSet[bs4.Tag], dom_elements)
 
         # Perform the additional checks
         if count := args.get(scenery.manifest.DomArgument.COUNT):
@@ -208,6 +220,7 @@ class HttpChecker:
                 f"Expected to find {count} elements, but found {len(dom_elements)}",
             )
         for dom_element in dom_elements:
+            # NOTE: we are sure it is not
             if text := args.get(scenery.manifest.DomArgument.TEXT):
                 django_testcase.assertEqual(
                     dom_element.text,
