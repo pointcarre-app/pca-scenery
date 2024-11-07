@@ -91,6 +91,7 @@ class TestCaseOfDjangoTestCase(CustomTestCase):
         cls.django_stream = io.StringIO()
 
         # Bind the new method
+        # TODO: use custom discover/runner from metatest for typing safety
         def overwrite(runner):
             return scenery.common.overwrite_get_runner_kwargs(runner, cls.django_stream)
 
