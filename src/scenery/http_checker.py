@@ -8,7 +8,7 @@ import scenery.manifest
 import django.test
 import django.http
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, ResultSet
 
 
 class HttpChecker:
@@ -195,7 +195,8 @@ class HttpChecker:
                 dom_element,
                 f"Expected to find an element matching {args[scenery.manifest.DomArgument.FIND]}, but found none",
             )
-            dom_elements = [dom_element]
+            # dom_elements = [dom_element]
+            dom_elements = ResultSet(dom_element)
         else:
             raise ValueError("Neither find of find_all argument provided")
 
