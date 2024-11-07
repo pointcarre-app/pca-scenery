@@ -20,15 +20,18 @@ pip install --upgrade pip
 pip install .
 
 # Test
+printf "\n\nRehearsal"
 python -m rehearsal
 
-# Mypy
-mypy rehearsal
-mypy src
-
 # Ruff
+printf "\n\nRuff"
 ruff check rehearsal/
 ruff check src/
+
+# Mypy
+printf "\n\nMypy"
+mypy rehearsal
+mypy src
 
 # Cleanup
 deactivate
