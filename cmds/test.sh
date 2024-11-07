@@ -15,10 +15,20 @@ rm -rf ./build
 ~/.pyenv/versions/$PYTHON_VERSION/bin/python -m venv "env_test_$PYTHON_VERSION"
 source "env_test_$PYTHON_VERSION/bin/activate"
 
-# Install and test
+# Install (non editable)
 pip install --upgrade pip
 pip install .
+
+# Test
 python -m rehearsal
+
+# Mypy
+mypy src
+mypy rehearsal
+
+# Ruff
+ruff check src/
+ruff check rehearsal/
 
 # Cleanup
 deactivate

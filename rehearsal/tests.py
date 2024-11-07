@@ -2,6 +2,7 @@
 
 import http
 import unittest
+import typing
 
 import scenery.common
 from scenery.http_checker import HttpChecker
@@ -21,7 +22,9 @@ import django.http
 
 class TestSingleKeyDict(unittest.TestCase):
     def test(self):
-        d = scenery.manifest.SingleKeyDict({"key": "value"})
+        d: scenery.manifest.SingleKeyDict[str, typing.Any] = scenery.manifest.SingleKeyDict(
+            {"key": "value"}
+        )
         self.assertEqual(d.key, "key")
         self.assertEqual(d.value, "value")
         self.assertEqual(d.as_tuple(), ("key", "value"))
@@ -144,7 +147,7 @@ class TestHttpScene(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.scene_base_dict = {
-            "method": "GET",
+            "method": http.HTTPMethod.GET,
             "url": "https://www.example.com",
             "directives": [{"status_code": 200}],
         }
@@ -163,10 +166,10 @@ class TestHttpScene(unittest.TestCase):
 
     def test(self):
         scenery.manifest.HttpScene(
-            "GET",
+            http.HTTPMethod.GET,
             "https://www.example.com",
             [scenery.manifest.HttpDirective(scenery.manifest.DirectiveCommand("status_code"), 200)],
-            [],
+            {},
             {},
             {},
         )
@@ -234,8 +237,8 @@ class TestHttpScene(unittest.TestCase):
         self.assertEqual(
             take,
             scenery.manifest.HttpTake(
-                method=self.scene_base_dict["method"],
-                url=self.scene_base_dict["url"],
+                method=typing.cast(http.HTTPMethod, self.scene_base_dict["method"]),
+                url=typing.cast(str, self.scene_base_dict["url"]),
                 data={"a": self.case["item_id"]["a"]},
                 url_parameters={"key": self.case["item_id"]["a"]},
                 query_parameters={},
@@ -260,20 +263,21 @@ class TestHttpScene(unittest.TestCase):
 class TestManifest(unittest.TestCase):
     def test(self):
         scene = scenery.manifest.HttpScene(
-            "GET",
+            http.HTTPMethod.GET,
             "https://www.example.com",
             [scenery.manifest.HttpDirective(scenery.manifest.DirectiveCommand("status_code"), 200)],
-            [],
+            {},
             {},
             {},
         )
         scenes = [scene]
         set_up_test_data = [scenery.manifest.SetUpInstruction("reset_db")]
         set_up = [scenery.manifest.SetUpInstruction("login")]
-        cases = [
-            scenery.manifest.Case("a", [scenery.manifest.Item("item_id", {})]),
-            scenery.manifest.Case("b", [scenery.manifest.Item("item_id", {})]),
-        ]
+
+        cases = {
+            "a": scenery.manifest.Case("a", {"item_id": scenery.manifest.Item("item_id", {})}),
+            "b": scenery.manifest.Case("b", {"item_id": scenery.manifest.Item("item_id", {})}),
+        }
 
         scenery.manifest.Manifest(set_up_test_data, set_up, scenes, cases, "origin")
         scenery.manifest.Manifest.from_formatted_dict(
@@ -342,10 +346,10 @@ class TestHttpCheck(unittest.TestCase):
 class TestHttpTake(unittest.TestCase):
     def test(self):
         take = scenery.manifest.HttpTake(
-            "GET",
+            http.HTTPMethod.GET,
             "https://www.example.com",
-            [scenery.manifest.HttpDirective(scenery.manifest.DirectiveCommand("status_code"), 200)],
-            [],
+            [scenery.manifest.HttpCheck(scenery.manifest.DirectiveCommand("status_code"), 200)],
+            {},
             {},
             {},
         )
@@ -366,10 +370,11 @@ class TestManifestParser(unittest.TestCase):
             "scenes": [],
             "manifest_origin": "origin",
         }
-        ManifestParser.parse_formatted_dict(d)
+        # manifest_d = scenery.manifest.ManifestDict(**d)
+        ManifestParser.parse_formatted_dict(typing.cast(scenery.manifest.ManifestDict, d))
         d.pop("cases")
         with self.assertRaises(KeyError):
-            ManifestParser.parse_formatted_dict(d)
+            ManifestParser.parse_formatted_dict(typing.cast(scenery.manifest.ManifestDict, d))
 
     def test_validate_dict(self):
         manifest_base_dict = {
@@ -430,41 +435,42 @@ class TestManifestParser(unittest.TestCase):
         ManifestParser.validate_dict(manifest)
 
     def test_format_dict(self):
-        scene_1 = object()
-        scene_2 = object()
-        case_1 = object()
-        case_2 = object()
-        manifest = {
-            "cases": [case_1, case_2],
-            "scenes": [scene_1, scene_2],
+        scene_a = object()
+        scene_b = object()
+        case_a = object()
+        case_b = object()
+        d: dict[str, typing.Any] = {
+            "cases": [case_a, case_b],
+            "scenes": [scene_a, scene_b],
             "manifest_origin": "origin",
         }
-        ManifestParser.validate_dict(manifest)
-        manifest = ManifestParser.format_dict(manifest)
+        ManifestParser.validate_dict(d)
+        # TODO: is this the best solution for type checking? I do this several times in the file
+        manifest = ManifestParser.format_dict(typing.cast(scenery.manifest.RawManifestDict, d))
         self.assertDictEqual(
             manifest,
             {
-                "cases": [case_1, case_2],
-                "scenes": [scene_1, scene_2],
+                "cases": [case_a, case_b],
+                "scenes": [scene_a, scene_b],
                 "manifest_origin": "origin",
                 "set_up_test_data": [],
                 "set_up": [],
             },
         )
-        manifest = {
-            "case": case_1,
-            "scene": scene_1,
+        d = {
+            "case": case_a,
+            "scene": scene_a,
             "manifest_origin": "origin",
             "set_up_test_data": ["a", "b"],
             "set_up": ["c", "d"],
         }
-        ManifestParser.validate_dict(manifest)
-        manifest = ManifestParser.format_dict(manifest)
+        ManifestParser.validate_dict(d)
+        manifest = ManifestParser.format_dict(typing.cast(scenery.manifest.RawManifestDict, d))
         self.assertDictEqual(
             manifest,
             {
-                "cases": {"CASE": case_1},
-                "scenes": [scene_1],
+                "cases": {"CASE": case_a},
+                "scenes": [scene_a],
                 "manifest_origin": "origin",
                 "set_up_test_data": ["a", "b"],
                 "set_up": ["c", "d"],
@@ -474,52 +480,58 @@ class TestManifestParser(unittest.TestCase):
     def test__format_dict_scenes(self):
         scene_1 = object()
         scene_2 = object()
-        manifest_base_dict = {
+        base_dict = {
             "cases": object(),
             "manifest_origin": "origin",
         }
 
         # Single scene
-        manifest = manifest_base_dict | {"scene": scene_1}
-        ManifestParser.validate_dict(manifest)
+        d = base_dict | {"scene": scene_1}
+        ManifestParser.validate_dict(d)
+        manifest = typing.cast(scenery.manifest.RawManifestDict, d)
         scenes = ManifestParser._format_dict_scenes(manifest)
         self.assertListEqual(scenes, [scene_1])
 
         # Single scene in scenes
-        manifest = manifest_base_dict | {"scenes": [scene_1]}
-        ManifestParser.validate_dict(manifest)
+        d = base_dict | {"scenes": [scene_1]}
+        ManifestParser.validate_dict(d)
+        manifest = typing.cast(scenery.manifest.RawManifestDict, d)
         scenes = ManifestParser._format_dict_scenes(manifest)
         self.assertListEqual(scenes, [scene_1])
 
         # Scenes
-        manifest = manifest_base_dict | {"scenes": [scene_1, scene_2]}
-        ManifestParser.validate_dict(manifest)
+        d = base_dict | {"scenes": [scene_1, scene_2]}
+        ManifestParser.validate_dict(d)
+        manifest = typing.cast(scenery.manifest.RawManifestDict, d)
         scenes = ManifestParser._format_dict_scenes(manifest)
         self.assertListEqual(scenes, [scene_1, scene_2])
 
     def test__format_dict_cases(self):
         case_1 = object()
         case_2 = object()
-        manifest_base_dict = {
+        base_dict = {
             "scenes": object(),
             "manifest_origin": "origin",
         }
 
         # Single case
-        manifest = manifest_base_dict | {"case": case_1}
-        ManifestParser.validate_dict(manifest)
+        d = base_dict | {"case": case_1}
+        ManifestParser.validate_dict(d)
+        manifest = typing.cast(scenery.manifest.RawManifestDict, d)
         cases = ManifestParser._format_dict_cases(manifest)
         self.assertDictEqual(cases, {"CASE": case_1})
 
         # Single case in cases
-        manifest = manifest_base_dict | {"cases": {"case_id": case_1}}
-        ManifestParser.validate_yaml(manifest)
+        d = base_dict | {"cases": {"case_id": case_1}}
+        ManifestParser.validate_dict(d)
+        manifest = typing.cast(scenery.manifest.RawManifestDict, d)
         cases = ManifestParser._format_dict_cases(manifest)
         self.assertDictEqual(cases, {"case_id": case_1})
 
         # Cases
-        manifest = manifest_base_dict | {"cases": {"case_1": case_1, "case_2": case_2}}
-        ManifestParser.validate_dict(manifest)
+        d = base_dict | {"cases": {"case_1": case_1, "case_2": case_2}}
+        ManifestParser.validate_dict(d)
+        manifest = typing.cast(scenery.manifest.RawManifestDict, d)
         cases = ManifestParser._format_dict_cases(manifest)
         self.assertDictEqual(cases, {"case_1": case_1, "case_2": case_2})
 
@@ -535,27 +547,26 @@ class TestManifestParser(unittest.TestCase):
             "set_up_test_data": ["reset_db"],
             "set_up": ["create_testuser"],
         }
-        ManifestParser.parse_dict(d)
+        ManifestParser.parse_dict(typing.cast(scenery.manifest.RawManifestDict, d))
         d.pop("scene")
         with self.assertRaises(ValueError):
-            ManifestParser.parse_dict(d)
+            ManifestParser.parse_dict(typing.cast(scenery.manifest.RawManifestDict, d))
 
     def test_validate_yaml(self):
+        # success
+        ManifestParser.validate_yaml(
+            {
+                "cases": object(),
+                "scenes": object(),
+                "manifest_origin": "origin",
+            }
+        )
+
         # wrong type
-        manifest = []
         with self.assertRaisesRegex(
             TypeError, r"^Manifest need to be a dict not a '<class 'list'>'$"
         ):
-            ManifestParser.validate_yaml(manifest)
-
-        # success
-        manifest = {
-            # "variables": object(),
-            "cases": object(),
-            "scenes": object(),
-            "manifest_origin": "origin",
-        }
-        ManifestParser.validate_yaml(manifest)
+            ManifestParser.validate_yaml(list())
 
 
 #################
@@ -574,8 +585,8 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         def test_fail(django_testcase):
             HttpChecker.check_status_code(django_testcase, response, 400)
 
-        self.django_testcase.test_pass = test_pass
-        self.django_testcase.test_fail = test_fail
+        setattr(self.django_testcase, "test_pass", test_pass)
+        setattr(self.django_testcase, "test_fail", test_fail)
 
         self.assertTestPasses(self.django_testcase("test_pass"))
         self.assertTestFails(self.django_testcase("test_fail"))
@@ -589,8 +600,8 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         def test_fail(django_testcase):
             HttpChecker.check_redirect_url(django_testcase, response, "elsewhere")
 
-        self.django_testcase.test_pass = test_pass
-        self.django_testcase.test_fail = test_fail
+        setattr(self.django_testcase, "test_pass", test_pass)
+        setattr(self.django_testcase, "test_fail", test_fail)
 
         self.assertTestPasses(self.django_testcase("test_pass"))
         self.assertTestFails(self.django_testcase("test_fail"))
@@ -620,9 +631,9 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
                 django_testcase, response, {"model": UndefinedModel, "n": 1}
             )
 
-        self.django_testcase.test_pass = test_pass
-        self.django_testcase.test_fail = test_fail
-        self.django_testcase.test_error = test_error
+        setattr(self.django_testcase, "test_pass", test_pass)
+        setattr(self.django_testcase, "test_fail", test_fail)
+        setattr(self.django_testcase, "test_error", test_error)
 
         self.assertTestPasses(self.django_testcase("test_pass"))
         self.assertTestFails(self.django_testcase("test_fail"))
@@ -744,16 +755,16 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
                 {},
             )
 
-        self.django_testcase.test_pass_find_by_id = test_pass_find_by_id
-        self.django_testcase.test_pass_find_by_class = test_pass_find_by_class
-        self.django_testcase.test_pass_text = test_pass_text
-        self.django_testcase.test_pass_attribute = test_pass_attribute
-        self.django_testcase.test_pass_find_all = test_pass_find_all
-        self.django_testcase.test_pass_scope = test_pass_scope
-        self.django_testcase.test_fail_1 = test_fail_1
-        self.django_testcase.test_fail_2 = test_fail_2
-        self.django_testcase.test_fail_3 = test_fail_3
-        self.django_testcase.test_error_1 = test_error_1
+        setattr(self.django_testcase, "test_pass_find_by_id", test_pass_find_by_id)
+        setattr(self.django_testcase, "test_pass_find_by_class", test_pass_find_by_class)
+        setattr(self.django_testcase, "test_pass_text", test_pass_text)
+        setattr(self.django_testcase, "test_pass_attribute", test_pass_attribute)
+        setattr(self.django_testcase, "test_pass_find_all", test_pass_find_all)
+        setattr(self.django_testcase, "test_pass_scope", test_pass_scope)
+        setattr(self.django_testcase, "test_fail_1", test_fail_1)
+        setattr(self.django_testcase, "test_fail_2", test_fail_2)
+        setattr(self.django_testcase, "test_fail_3", test_fail_3)
+        setattr(self.django_testcase, "test_error_1", test_error_1)
 
         self.assertTestPasses(self.django_testcase("test_pass_find_by_id"))
         self.assertTestPasses(self.django_testcase("test_pass_find_by_class"))
@@ -773,7 +784,7 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
 
 
 class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
-    exec_order = []
+    exec_order: list[str] = []
 
     def test_execution_order(self):
         """
@@ -793,73 +804,58 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
             http.HTTPMethod.GET, "http://127.0.0.1:8000/hello/", [], {}, {}, {}
         )
 
-        def watch(func):
+        @typing.overload
+        def watch(func: classmethod) -> classmethod: ...
+
+        @typing.overload
+        def watch(func: typing.Callable) -> typing.Callable: ...
+
+        def watch(func: typing.Callable | classmethod) -> typing.Callable | classmethod:
             def wrapper(*args, **kwargs):
-                # print("beginning with exec_order")
-                # print(TestMethodBuilder.exec_order)
-                # print("trying this func.__name__")
-                # print(func.__name__)
-                # print(type(func))
-                if type(func) is classmethod:
-                    # print("is_class_method")
-                    # otherwise the call fails
+                if isinstance(func, classmethod):
                     method = func.__get__(self.django_testcase, type(self.django_testcase))
                     x = method(*args, **kwargs)
                 else:
-                    # print("is_not_class_method")
-                    # print("args")
-                    # print(args)
-                    # print("kwargs")
-                    # print(kwargs)
                     x = func(*args, **kwargs)
-                #     print("execution_succedded")
-
-                # print(x)
-                # print("exec order before append")
-                # print(TestMethodBuilder.exec_order)
                 TestMethodBuilder.exec_order.append(func.__name__)
-                # print("ending with exec_order")
-                # print(TestMethodBuilder.exec_order)
-
-                # print("\n\n")
                 return x
 
             return wrapper
 
-        self.django_testcase.setUpTestData = watch(MethodBuilder.build_setUpTestData([]))
-        self.django_testcase.setUp = watch(MethodBuilder.build_setUp([]))
+        setattr(self.django_testcase, "setUpTestData", watch(MethodBuilder.build_setUpTestData([])))
+        setattr(self.django_testcase, "setUp", watch(MethodBuilder.build_setUp([])))
 
         test_1 = MethodBuilder.build_test_from_take(take)
         test_1.__name__ = "test_1"
         test_2 = MethodBuilder.build_test_from_take(take)
         test_2.__name__ = "test_2"
 
-        self.django_testcase.test_1 = watch(test_1)
-        self.django_testcase.test_2 = watch(test_2)
+        setattr(self.django_testcase, "test_1", watch(test_1))
+        setattr(self.django_testcase, "test_2", watch(test_2))
 
         self.run_django_testcase()
 
-        # print("self.django_testcase.test_1", self.django_testcase.test_1)
-        # print("self.django_testcase.test_2", self.django_testcase.test_2)
-
         self.assertListEqual(
-            # self.django_testcase.execution_order,
             TestMethodBuilder.exec_order,
             ["setUpTestData", "setUp", "test_1", "setUp", "test_2"],
         )
 
     def test_persistency_test_data(self):
         # Check the persistency of data created during tests
-        self.django_testcase.setUpTestData = MethodBuilder.build_setUpTestData(
-            [
-                scenery.manifest.SetUpInstruction("reset_db"),
-                scenery.manifest.SetUpInstruction(
-                    "create_some_instance",
-                    {
-                        "some_field": "some_value",
-                    },
-                ),
-            ]
+        setattr(
+            self.django_testcase,
+            "setUpTestData",
+            MethodBuilder.build_setUpTestData(
+                [
+                    scenery.manifest.SetUpInstruction("reset_db"),
+                    scenery.manifest.SetUpInstruction(
+                        "create_some_instance",
+                        {
+                            "some_field": "some_value",
+                        },
+                    ),
+                ]
+            ),
         )
 
         def test_1(django_testcase):
@@ -878,8 +874,8 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
             instances = SomeModel.objects.all()
             self.assertEqual(len(instances), 2)
 
-        self.django_testcase.test_1 = test_1
-        self.django_testcase.test_2 = test_2
+        setattr(self.django_testcase, "test_1", test_1)
+        setattr(self.django_testcase, "test_2", test_2)
 
         self.assertTestPasses(self.django_testcase("test_1"))
         self.assertTestPasses(self.django_testcase("test_2"))

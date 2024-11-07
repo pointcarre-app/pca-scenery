@@ -192,17 +192,6 @@ class MetaTestDiscoverer:
         return out
 
 
-class CustomDiscoverRunner(django.test.runner.DiscoverRunner):
-    """Custom test runner that allows for stream capture"""
-
-    def __init__(self, stream: io.StringIO, *args: typing.Any, **kwargs: typing.Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.stream = stream
-
-    def get_test_runner_kwargs(self) -> dict[str, typing.Any]:
-        return scenery.common.overwrite_get_runner_kwargs(self, self.stream)
-
-
 class MetaTestRunner:
     """
     A class for running discovered tests and collecting results.
@@ -223,7 +212,7 @@ class MetaTestRunner:
         # self.runner = get_runner(settings, test_runner_class="django.test.runner.DiscoverRunner")()
         self.logger = logging.getLogger(__package__)
         self.stream = io.StringIO()
-        self.runner = CustomDiscoverRunner(stream=self.stream)
+        self.runner = scenery.common.CustomDiscoverRunner(stream=self.stream)
 
         # def overwrite(runner: DiscoverRunner) -> dict[str, typing.Any]:
         #     return scenery.common.overwrite_get_runner_kwargs(runner, self.stream)

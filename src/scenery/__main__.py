@@ -10,7 +10,7 @@ def main() -> int:
         exit_code (int): Exit code indicating success (0) or failure (1)
     """
 
-    out: dict[str, dict[str, typing.Any]] = {}
+    out: dict[str, dict[str, int | str | dict[str, typing.Any]]] = {}
 
     #################
     # PARSE ARGUMENTS
@@ -138,7 +138,17 @@ def main() -> int:
     tests_discovered = discoverer.discover(verbosity=2, restrict=args.restrict)
     runner = MetaTestRunner()
     result = runner.run(tests_discovered, args.verbosity)
-    out.update(result)
+    # NOTE: type casting is done because mypy is being strict here because
+    # dictionary types in Python are invariant by default
+    # (for good reasons related to mutability and type safety).
+    # This means even if type A is a subtype of type B, dict[str, A]
+    # not considered a subtype of dict[str, B].
+    out.update(
+        typing.cast(
+            dict[str, dict[str, int | str | dict[str, typing.Any]]],
+            result,
+        )
+    )
     for result_value in result.values():
         summary.update(result_value)
 

@@ -3,6 +3,7 @@
 import os
 import importlib
 import importlib.util
+import io
 import re
 import types
 import typing
@@ -281,3 +282,14 @@ def overwrite_get_runner_kwargs(
     }
     # kwargs.update({"stream": stream})
     return kwargs
+
+
+class CustomDiscoverRunner(django.test.runner.DiscoverRunner):
+    """Custom test runner that allows for stream capture"""
+
+    def __init__(self, stream: io.StringIO, *args: typing.Any, **kwargs: typing.Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.stream = stream
+
+    def get_test_runner_kwargs(self) -> dict[str, typing.Any]:
+        return overwrite_get_runner_kwargs(self, self.stream)

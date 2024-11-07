@@ -57,7 +57,7 @@ class ManifestParser:
     ##########
 
     @staticmethod
-    def validate_dict(d: scenery.manifest.RawManifestDict) -> None:
+    def validate_dict(d: dict) -> None:  # scenery.manifest.RawManifestDict
         """
         Validate the top-level keys of a manifest dictionary.
 

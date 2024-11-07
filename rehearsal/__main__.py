@@ -1,4 +1,4 @@
-def main():
+def main() -> int:
     """Test the package `scenery` itself."""
 
     ###################
@@ -30,37 +30,40 @@ def main():
     # RUN TESTS
     #############
 
+    # NOTE: I first run rehearsal per and
+    # then check that the main command works
+    # by running the test I created in the dummy
+    # django app
+
     import rehearsal
     import collections
 
-    out, summary = {}, collections.Counter()
-    discoverer = rehearsal.RehearsalDiscoverer()
-    runner = rehearsal.RehearsalRunner()
-    tests_discovered = discoverer.discover(verbosity=2)
-    result = runner.run(tests_discovered, verbosity=2)
-    out.update(result)
-    for val in result.values():
-        summary.update(val)
+    summary: collections.Counter[str] = collections.Counter()
+    rehearsal_discoverer = rehearsal.RehearsalDiscoverer()
+    rehearsal_runner = rehearsal.RehearsalRunner()
+    tests_discovered = rehearsal_discoverer.discover(verbosity=2)
+    result = rehearsal_runner.run(tests_discovered, verbosity=2)
+    for result_value in result.values():
+        summary.update(result_value)
 
     from scenery.metatest import MetaTestRunner, MetaTestDiscoverer
 
-    discoverer = MetaTestDiscoverer()
-    tests_discovered = discoverer.discover(verbosity=2)
-    runner = MetaTestRunner()
-    result = runner.run(tests_discovered, verbosity=2)
-    out.update(result)
-    for val in result.values():
-        summary.update(val)
+    metatest_discoverer = MetaTestDiscoverer()
+    tests_discovered = metatest_discoverer.discover(verbosity=2)
+    metatest_runner = MetaTestRunner()
+    result = metatest_runner.run(tests_discovered, verbosity=2)
+    for result_value in result.values():
+        summary.update(result_value)
 
     ########
     # OUTPUT
     ########
 
-    fail = False
     for key, val in summary.items():
         if key != "testsRun" and val > 0:
             fail = True
-            break
+        else:
+            fail = False
 
     if fail:
         msg, color, exit = "FAIL", "red", 1
