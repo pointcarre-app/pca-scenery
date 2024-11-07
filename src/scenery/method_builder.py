@@ -35,7 +35,7 @@ class MethodBuilder:
             classmethod: A class method that can be added to a Django test case.
         """
 
-        def setUpTestData(django_testcase: django.test.TestCase) -> None:
+        def setUpTestData(django_testcase: type[django.test.TestCase]) -> None:
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase, instruction)
 
