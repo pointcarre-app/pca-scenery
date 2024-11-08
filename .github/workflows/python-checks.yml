@@ -16,29 +16,29 @@ jobs:
           python-version: ['3.12']
   
     steps:
-        - uses: actions/checkout@v4
-        - uses: actions/setup-python@v5
-          with:
-            python-version: ${{ matrix.python-version }}
-        - name: Setup
-          run: |
-            python -m venv env_test
-            source env_test/bin/activate
-            python -m pip install --upgrade pip
-            pip install .
-            pip install -r dev-requirements.txt  
-        - name: Ruff
-          run: |
-            python -m ruff check rehearsal
-            python -m ruff check src 
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Setup
+      run: |
+        python -m venv env_test
+        source env_test/bin/activate
+        python -m pip install --upgrade pip
+        pip install .
+        pip install -r dev-requirements.txt  
+    - name: Ruff
+      run: |
+        python -m ruff check rehearsal
+        python -m ruff check src 
 
-        - name: Check docstring style
-          run: pydocstyle src
-            
-        - if: always()  # Run even if tests fail
-          run: |
-            rm -rf env_test
-            rm -rf build
+    - name: Check docstring style
+      run: pydocstyle src
+        
+    - if: always()  # Run even if tests fail
+      run: |
+        rm -rf env_test
+        rm -rf build
 
   mypy:
     name: Type checking
