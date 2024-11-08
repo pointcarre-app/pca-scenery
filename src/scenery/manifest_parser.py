@@ -1,3 +1,5 @@
+"""Parse manifest YAML files and build proper Manifests."""
+
 import os
 import typing
 
@@ -46,11 +48,8 @@ class ManifestParser:
         Returns:
             scenery.manifest.Manifest: A Manifest object created from the input dictionary.
         """
-
-        # d = {key: d[key.value] for key in scenery.manifest.ManifestFormattedDictKeys}
-        # enum_dict = {key: d[key.value] for key in scenery.manifest.ManifestFormattedDictKeys}
+        # TODO: this looks pretty useless as a function
         return scenery.manifest.Manifest.from_formatted_dict(d)
-        # return scenery.manifest.Manifest.from_formatted_dict(enum_dict)
 
     ##########
     # RAW DICT
@@ -70,11 +69,6 @@ class ManifestParser:
         Raises:
             ValueError: If invalid keys are present or if the case/scene keys are not correctly specified.
         """
-
-        # if not all(key in [x.value for x in scenery.manifest.ManifestDictKeys] for key in d.keys()):
-        #     raise ValueError(
-        #         f"Invalid key(s) in {d.keys()} ({d.get('manifest_origin', 'No origin found.')})."
-        #     )
         if not all(
             key in scenery.manifest.RawManifestDict.__annotations__.keys() for key in d.keys()
         ):
@@ -225,7 +219,6 @@ class ManifestParser:
         Returns:
             dict: The parsed content of the YAML file.
         """
-
         # NOTE: inspired by https://matthewpburruss.com/post/yaml/
 
         # Add constructor

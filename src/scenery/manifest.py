@@ -1,4 +1,4 @@
-"""Represent all data conveied by the manifest"""
+"""Represent all data conveied by the manifest."""
 
 from dataclasses import dataclass, field
 import enum
@@ -36,6 +36,8 @@ from django.db.models.base import ModelBase
 
 
 class RawManifestDict(typing.TypedDict, total=False):
+    """The type of dict which can appear in the yamls."""
+
     set_up_test_data: typing.Sequence[dict]
     set_up: typing.Sequence[dict]
     case: dict
@@ -47,6 +49,8 @@ class RawManifestDict(typing.TypedDict, total=False):
 
 
 class ManifestDict(typing.TypedDict):
+    """The clean version of the dict parsed, ready to be transformed into a proper manifest."""
+
     scenes: typing.List[dict]
     cases: dict[str, dict]
     manifest_origin: str
@@ -65,8 +69,7 @@ SingleKeyDictKeyValue = typing.TypeVar("SingleKeyDictKeyValue")
 
 @dataclass
 class SingleKeyDict(typing.Generic[SingleKeyDictKey, SingleKeyDictKeyValue]):
-    """
-    A dataclass representing a dictionary with a single key-value pair.
+    """A dataclass representing a dictionary with a single key-value pair.
 
     This class is useful for having a quick as_tuple representation of a dict {key:value}
     returned as (key, value).
@@ -93,60 +96,20 @@ class SingleKeyDict(typing.Generic[SingleKeyDictKey, SingleKeyDictKeyValue]):
         self.key, self.value = next(iter(self._dict.items()))
 
     def validate(self) -> None:
+        """Check the dictonary has indeed a single key."""
         if len(self._dict) != 1:
             raise ValueError(
                 f"SingleKeyDict should have length 1 not '{len(self._dict)}'\n{self._dict}"
             )
 
     def as_tuple(self) -> tuple:
-        """🔴 This should not be confused with built-in method datclasses.astuple"""
+        """🔴 This should not be confused with built-in method datclasses.astuple."""
         return self.key, self.value
 
 
 ####################################
 # ENUMS
 ####################################
-
-####################
-# MANIFEST TOP LEVEL
-####################
-
-
-# class ManifestFormattedDictKeys(enum.Enum):
-#     """Used in formated dict, they are exactly contained when passed in Manifest.from_formatted_dict"""
-
-#     set_up_test_data = "set_up_test_data"
-#     set_up = "set_up"
-#     cases = "cases"
-#     scenes = "scenes"
-#     manifest_origin = "manifest_origin"
-
-
-# class ManifestDictKeys(enum.Enum):
-#     """Keys allowed for Manifest.from_dict (and .from_yaml)"""
-
-#     set_up_test_data = "set_up_test_data"
-#     set_up = "set_up"
-#     cases = "cases"
-#     scenes = "scenes"
-#     manifest_origin = "manifest_origin"
-#     case = "case"
-#     scene = "scene"
-
-
-# class ManifestYAMLKeys(enum.Enum):
-#     """Keys allowed for Manifest.from_yaml compared to Manifest.from_dict"""
-
-#     set_up_test_data = "set_up_test_data"
-#     set_up = "set_up"
-#     cases = "cases"
-#     scenes = "scenes"
-#     manifest_origin = "manifest_origin"
-
-#     case = "case"
-#     scene = "scene"
-
-# VARIABLES = "variables"
 
 
 ########
@@ -155,7 +118,7 @@ class SingleKeyDict(typing.Generic[SingleKeyDictKey, SingleKeyDictKeyValue]):
 
 
 class DirectiveCommand(enum.Enum):
-    """Values allowed for Manifest["checks"]"""
+    """Values allowed for Manifest["checks"]."""
 
     STATUS_CODE = "status_code"
     REDIRECT_URL = "redirect_url"
@@ -164,7 +127,7 @@ class DirectiveCommand(enum.Enum):
 
 
 class DomArgument(enum.Enum):
-    """Values allowed for Manifest["checks]["dom_element"]"""
+    """Values allowed for Manifest["checks]["dom_element"]."""
 
     FIND = "find"
     FIND_ALL = "find_all"
@@ -181,13 +144,14 @@ class DomArgument(enum.Enum):
 
 @dataclass(frozen=True)
 class SetUpInstruction:
-    """Store the command and potential arguments for setUpTestData and setUp"""
+    """Store the command and potential arguments for setUpTestData and setUp."""
 
     command: str
     args: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_object(cls, x: str | dict) -> "SetUpInstruction":
+        """Return an instruction from a string or a dict."""
         match x:
             case str(s):
                 cmd_name, args = s, {}
@@ -211,7 +175,7 @@ class SetUpInstruction:
 
 @dataclass(frozen=True)
 class Item:
-    """Store potential information that will be used to build the HttpRequest"""
+    """Store potential information that will be used to build the HttpRequest."""
 
     _id: str
     _dict: dict[str, Any]
@@ -222,8 +186,7 @@ class Item:
 
 @dataclass(frozen=True)
 class Case:
-    """
-    Store a collection of items representing a test case.
+    """Store a collection of items representing a test case.
 
     Attributes:
         _id (str): The identifier for this case.
@@ -245,6 +208,7 @@ class Case:
 
     @classmethod
     def from_id_and_dict(cls, case_id: str, items_dict: dict[str, dict[str, Any]]) -> "Case":
+        """Return a case from an id and a dict."""
         items = {item_id: Item(item_id, item_dict) for item_id, item_dict in items_dict.items()}
         return cls(case_id, items)
 
@@ -256,6 +220,8 @@ class Case:
 
 @dataclass
 class Substituable:
+    """Represent the field which need to be replace by some value coming from a given case."""
+
     field_repr: str
     # field_repr: re.Match
     regex_field = re.compile(r"^(?P<item_id>[a-z_]+):?(?P<field_name>[a-z_]+)?$")
@@ -268,7 +234,7 @@ class Substituable:
             self.field_repr_match = re_match
 
     def shoot(self, case: Case) -> Any:
-        # match self.field_repr.groups():
+        """Return the corresponding case's value based on the field representation."""
         match self.field_repr_match.groups():
             case item_id, None:
                 # There is only a reference to the item
@@ -285,8 +251,7 @@ class Substituable:
 
 @dataclass
 class HttpDirective:
-    """
-    Store a given check to perform, before the substitution (this is part of a Scene, not a Take).
+    """Store a given check to perform, before the substitution (this is part of a Scene, not a Take).
 
     This class represents a directive (check) to be performed on an HTTP response,
     before case-specific substitutions have been made.
@@ -304,8 +269,7 @@ class HttpDirective:
     args: Any
 
     def __post_init__(self) -> None:
-        """Format self.args"""
-
+        """Format self.args."""
         match self.instruction, self.args:
             case DirectiveCommand.STATUS_CODE, int(n):
                 self.args = http.HTTPStatus(n)
@@ -345,14 +309,14 @@ class HttpDirective:
 
     @classmethod
     def from_dict(cls, directive_dict: dict) -> "HttpDirective":
+        """Return the Directive based on the provided dict."""
         instruction, args = SingleKeyDict(directive_dict).as_tuple()
         return cls(DirectiveCommand(instruction), args)
 
 
 @dataclass
 class HttpScene:
-    """
-    Store all actions to perform, before the substitution of information from the `Cases`.
+    """Store all actions to perform, before the substitution of information from the `Cases`.
 
     This class represents an HTTP scene, which includes the method, URL, and various
     parameters and checks to be performed.
@@ -390,13 +354,13 @@ class HttpScene:
 
     @classmethod
     def from_dict(cls, d: dict) -> "HttpScene":
+        """Return a scene from a dict."""
         d["directives"] = [HttpDirective.from_dict(directive) for directive in d["directives"]]
         return cls(**d)
 
     @classmethod
     def substitute_recursively(cls, x: typing.Any, case: Case) -> typing.Any:
-        """Perform the substitution"""
-
+        """Perform the substitution."""
         match x:
             case int(_) | str(_):
                 return x
@@ -414,6 +378,7 @@ class HttpScene:
                 raise NotImplementedError(f"Cannot substitute recursively '{x}' ('{type(x)}')")
 
     def shoot(self, case: Case) -> "HttpTake":
+        """Return the HttpTake resulting from the case applied to its scene."""
         return HttpTake(
             method=self.method,
             url=self.url,
@@ -431,8 +396,7 @@ class HttpScene:
 
 @dataclass(frozen=True)
 class Manifest:
-    """
-    Store all the information to build/shoot all different `Takes`.
+    """Store all the information to build/shoot all different `Takes`.
 
     This class represents a complete test manifest, including setup instructions,
     test cases, and scenes to be executed.
@@ -457,6 +421,7 @@ class Manifest:
 
     @classmethod
     def from_formatted_dict(cls, d: ManifestDict) -> "Manifest":
+        """Return a manifest from a dict with expected keys."""
         return cls(
             [
                 SetUpInstruction.from_object(instruction)
@@ -489,11 +454,10 @@ class Manifest:
 
 @dataclass
 class HttpCheck(HttpDirective):
-    """Store a given check to perform (after the subsitution)"""
+    """Store a given check to perform (after the subsitution)."""
 
     def __post_init__(self) -> None:
-        """Format self.args"""
-
+        """Format self.args."""
         match self.instruction, self.args:
             case DirectiveCommand.STATUS_CODE, int(n):
                 self.args = http.HTTPStatus(n)
@@ -528,8 +492,7 @@ class HttpCheck(HttpDirective):
 
 @dataclass
 class HttpTake:
-    """
-    Store all the information after the substitution from the `Cases` has been performed.
+    """Store all the information after the substitution from the `Cases` has been performed.
 
     This class represents a fully resolved HTTP request to be executed, including
     the method, URL, data, and checks to be performed.

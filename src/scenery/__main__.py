@@ -1,15 +1,19 @@
+"""Run the testing routing based on the `scenery` settings.
+
+See: `python -m scenery --help`
+"""
+
 import sys
 import typing
 
 
 def main() -> int:
     """
-    Executes the main functionality of the scenery test runner.
+    Execute the main functionality of the scenery test runner.
 
     Returns:
         exit_code (int): Exit code indicating success (0) or failure (1)
     """
-
     out: dict[str, dict[str, int | str | dict[str, typing.Any]]] = {}
 
     #################

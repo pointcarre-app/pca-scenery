@@ -1,3 +1,5 @@
+"""Execute instructions used in `TestCase.setUp` and `TestCase.setUpTestData` provided in the manifest."""
+
 import importlib
 import logging
 import os
@@ -8,9 +10,7 @@ import django.test
 
 
 class SetUpHandler:
-    """
-    Responsible for executing instructions used in `TestCase.setUp` and `TestCase.setUpTestData`
-    provided in the manifest.
+    """Responsible for executing instructions used in `TestCase.setUp` and `TestCase.setUpTestData` provided in the manifest.
 
     This class dynamically imports and executes setup instructions specified in the test manifest.
     It is typically used by the MethodBuilder to construct setup methods for test cases.
@@ -30,8 +30,7 @@ class SetUpHandler:
         django_testcase: django.test.TestCase | type[django.test.TestCase],
         instruction: scenery.manifest.SetUpInstruction,
     ) -> None:
-        """
-        Execute the method corresponding to the SetUpInstruction.
+        """Execute the method corresponding to the SetUpInstruction.
 
         This method dynamically retrieves and executes the setup function specified
         by the SetUpInstruction. It logs the execution for debugging purposes.
@@ -43,7 +42,6 @@ class SetUpHandler:
         Raises:
             AttributeError: If the specified setup function is not found in the imported module.
         """
-
         func = getattr(SetUpHandler.module, instruction.command)
         func(django_testcase, **instruction.args)
 

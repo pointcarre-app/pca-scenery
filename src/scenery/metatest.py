@@ -1,3 +1,5 @@
+"""Build the tests from the Manifest, discover & run tests."""
+
 import os
 import io
 import logging
@@ -50,6 +52,8 @@ class MetaTest(type):
         manifest: Manifest,
         restrict: typing.Optional[str] = None,
     ) -> type[django.test.TestCase]:
+        """Responsible for building the TestCase class."""
+        # Handle restriction
         if restrict is not None:
             restrict_args = restrict.split(".")
             if len(restrict_args) == 1:
@@ -125,7 +129,6 @@ class MetaTestDiscoverer:
         Raises:
             ValueError: If the restrict argument is not in the correct format.
         """
-
         # handle manifest/test restriction
         if restrict is not None:
             restrict_args = restrict.split(".")
@@ -208,7 +211,6 @@ class MetaTestRunner:
 
     def __init__(self) -> None:
         """Initialize the MetaTestRunner with a runner, logger, discoverer, and output stream."""
-
         # self.runner = get_runner(settings, test_runner_class="django.test.runner.DiscoverRunner")()
         self.logger = logging.getLogger(__package__)
         self.stream = io.StringIO()

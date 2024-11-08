@@ -283,4 +283,5 @@ class CustomDiscoverRunner(django.test.runner.DiscoverRunner):
         self.stream = stream
 
     def get_test_runner_kwargs(self) -> dict[str, typing.Any]:
+        """Overwrite the original from django.test.runner.DiscoverRunner."""
         return overwrite_get_runner_kwargs(self, self.stream)
