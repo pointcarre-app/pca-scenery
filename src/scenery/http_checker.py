@@ -226,7 +226,7 @@ class HttpChecker:
                     attribute["value"] = str(attribute["value"])
                 else:
                     raise TypeError(
-                        f"attribute value can only by `str` or `list[str]` not '{type(attribute["value"])}'"
+                        f"attribute value can only by `str` or `list[str]` not '{type(attribute['value'])}'"
                     )
                 django_testcase.assertEqual(
                     dom_element[attribute["name"]],
