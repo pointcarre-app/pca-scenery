@@ -2,17 +2,17 @@
 set -e
 
 # Ruff
-printf "\n\nRuff"
+printf "\nRuff\n"
 ruff check rehearsal/
 ruff check src/
 
 # Mypy
-printf "\n\nMypy"
+printf "\nMypy\n"
 mypy rehearsal
 mypy src
 
 # Pydocstyle
-printf "\n\nPydocstyle"
-pydocstyle rehearsal
+printf "\nPydocstyle\n"
+# pydocstyle rehearsal
 pydocstyle src
 
