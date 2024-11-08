@@ -8,7 +8,7 @@ on:
 
 jobs:
   ruff:
-    name: Ruff
+    name: Formatting
     runs-on: ubuntu-latest
     strategy:
         fail-fast: false  # Continue with other versions even if one fails
@@ -20,22 +20,28 @@ jobs:
         - uses: actions/setup-python@v5
           with:
             python-version: ${{ matrix.python-version }}
-        - run: |
+        - name: Setup
+          run: |
             python -m venv env_test
             source env_test/bin/activate
             python -m pip install --upgrade pip
             pip install .
             pip install -r dev-requirements.txt  
-        - run: |
+        - name: Ruff
+          run: |
             ruff check rehearsal
             ruff check src 
+
+        - name: Check docstring style
+          run: pydocstyle src
+            
         - if: always()  # Run even if tests fail
           run: |
             rm -rf env_test
             rm -rf build
 
   mypy:
-    name: Mypy
+    name: Type checking
     runs-on: ubuntu-latest
     strategy:
         fail-fast: false  # Continue with other versions even if one fails
@@ -47,13 +53,15 @@ jobs:
         - uses: actions/setup-python@v5
           with:
             python-version: ${{ matrix.python-version }}
-        - run: |
+        - name: Setup
+          run: |
             python -m venv env_test
             source env_test/bin/activate
             python -m pip install --upgrade pip
             pip install .
             pip install -r dev-requirements.txt  
-        - run: |
+        - name: Mypy
+          run: |
             mypy rehearsal
             mypy src
         - if: always()  # Run even if tests fail
