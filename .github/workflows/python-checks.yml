@@ -29,8 +29,8 @@ jobs:
             pip install -r dev-requirements.txt  
         - name: Ruff
           run: |
-            ruff check rehearsal
-            ruff check src 
+            python -m ruff check rehearsal
+            python -m ruff check src 
 
         - name: Check docstring style
           run: pydocstyle src
@@ -62,8 +62,8 @@ jobs:
             pip install -r dev-requirements.txt  
         - name: Mypy
           run: |
-            mypy rehearsal
-            mypy src
+            python -m mypy rehearsal
+            python -m mypy src
         - if: always()  # Run even if tests fail
           run: |
             rm -rf env_test
