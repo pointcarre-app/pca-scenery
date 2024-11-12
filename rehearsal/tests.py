@@ -277,22 +277,6 @@ class TestManifest(unittest.TestCase):
 
         scenery.manifest.Manifest(set_up_test_data, set_up, scenes, cases, "origin")
         scenery.manifest.Manifest.from_formatted_dict(
-            # {
-            #     scenery.manifest.ManifestFormattedDictKeys.set_up_test_data: ["reset_db"],
-            #     scenery.manifest.ManifestFormattedDictKeys.set_up: ["login"],
-            #     scenery.manifest.ManifestFormattedDictKeys.cases: {"case_id": {"item_id": {}}},
-            #     scenery.manifest.ManifestFormattedDictKeys.scenes: [
-            #         {
-            #             "method": "GET",
-            #             "url": "https://www.example.com",
-            #             "data": [],
-            #             "url_parameters": {},
-            #             "query_parameters": {},
-            #             "directives": [{"status_code": 200}],
-            #         }
-            #     ],
-            #     scenery.manifest.ManifestFormattedDictKeys.manifest_origin: "origin",
-            # }
             {
                 "set_up_test_data": ["reset_db"],
                 "set_up": ["login"],
@@ -358,19 +342,6 @@ class TestHttpTake(unittest.TestCase):
 
 
 class TestManifestParser(unittest.TestCase):
-    def test_parse_formatted_dict(self):
-        d = {
-            "set_up_test_data": [],
-            "set_up": [],
-            "cases": {},
-            "scenes": [],
-            "manifest_origin": "origin",
-        }
-        ManifestParser.parse_formatted_dict(d)
-        d.pop("cases")
-        with self.assertRaises(KeyError):
-            ManifestParser.parse_formatted_dict(d)
-
     def test_validate_dict(self):
         manifest_base_dict = {
             "set_up_test_data": object(),
@@ -392,15 +363,6 @@ class TestManifestParser(unittest.TestCase):
             r"Both `case` and `cases` keys are present at top level\.$",
         ):
             ManifestParser.validate_dict(manifest)
-
-        # Neither case or cases, this now allowed
-        # manifest = manifest_base_dict.copy()
-        # manifest.pop("cases")
-        # with self.assertRaisesRegex(
-        #     ValueError,
-        #     r"Neither `case` and `cases` keys are present at top level\.$",
-        # ):
-        #     ManifestParser.validate_dict(manifest)
 
         # Both scene and scenes
         manifest = manifest_base_dict | {"scene": object()}
@@ -550,7 +512,6 @@ class TestManifestParser(unittest.TestCase):
 
         # success
         manifest = {
-            # "variables": object(),
             "cases": object(),
             "scenes": object(),
             "manifest_origin": "origin",
@@ -786,42 +747,21 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
         # Reset class attribute
         TestMethodBuilder.exec_order = []
 
-        # take = scenery.manifest.HttpTake(
-        #     http.HTTPMethod.GET, "https://www.example.com", [], {}, {}, {}
-        # )
         take = scenery.manifest.HttpTake(
             http.HTTPMethod.GET, "http://127.0.0.1:8000/hello/", [], {}, {}, {}
         )
 
         def watch(func):
             def wrapper(*args, **kwargs):
-                # print("beginning with exec_order")
-                # print(TestMethodBuilder.exec_order)
-                # print("trying this func.__name__")
-                # print(func.__name__)
-                # print(type(func))
                 if type(func) is classmethod:
-                    # print("is_class_method")
-                    # otherwise the call fails
+                    # NOTE: otherwise the call fails
                     method = func.__get__(self.django_testcase, type(self.django_testcase))
                     x = method(*args, **kwargs)
                 else:
-                    # print("is_not_class_method")
-                    # print("args")
-                    # print(args)
-                    # print("kwargs")
-                    # print(kwargs)
                     x = func(*args, **kwargs)
-                #     print("execution_succedded")
 
-                # print(x)
-                # print("exec order before append")
-                # print(TestMethodBuilder.exec_order)
                 TestMethodBuilder.exec_order.append(func.__name__)
-                # print("ending with exec_order")
-                # print(TestMethodBuilder.exec_order)
 
-                # print("\n\n")
                 return x
 
             return wrapper
@@ -839,11 +779,7 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
 
         self.run_django_testcase()
 
-        # print("self.django_testcase.test_1", self.django_testcase.test_1)
-        # print("self.django_testcase.test_2", self.django_testcase.test_2)
-
         self.assertListEqual(
-            # self.django_testcase.execution_order,
             TestMethodBuilder.exec_order,
             ["setUpTestData", "setUp", "test_1", "setUp", "test_2"],
         )

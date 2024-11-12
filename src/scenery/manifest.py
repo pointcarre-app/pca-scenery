@@ -43,7 +43,6 @@ class RawManifestDict(typing.TypedDict, total=False):
     scene: dict
     scenes: typing.List[dict]
     manifest_origin: str
-    # variables: dict[str, typing.Any]
 
 
 class ManifestDict(typing.TypedDict):
@@ -106,47 +105,6 @@ class SingleKeyDict(typing.Generic[SingleKeyDictKey, SingleKeyDictKeyValue]):
 ####################################
 # ENUMS
 ####################################
-
-####################
-# MANIFEST TOP LEVEL
-####################
-
-
-# class ManifestFormattedDictKeys(enum.Enum):
-#     """Used in formated dict, they are exactly contained when passed in Manifest.from_formatted_dict"""
-
-#     set_up_test_data = "set_up_test_data"
-#     set_up = "set_up"
-#     cases = "cases"
-#     scenes = "scenes"
-#     manifest_origin = "manifest_origin"
-
-
-# class ManifestDictKeys(enum.Enum):
-#     """Keys allowed for Manifest.from_dict (and .from_yaml)"""
-
-#     set_up_test_data = "set_up_test_data"
-#     set_up = "set_up"
-#     cases = "cases"
-#     scenes = "scenes"
-#     manifest_origin = "manifest_origin"
-#     case = "case"
-#     scene = "scene"
-
-
-# class ManifestYAMLKeys(enum.Enum):
-#     """Keys allowed for Manifest.from_yaml compared to Manifest.from_dict"""
-
-#     set_up_test_data = "set_up_test_data"
-#     set_up = "set_up"
-#     cases = "cases"
-#     scenes = "scenes"
-#     manifest_origin = "manifest_origin"
-
-#     case = "case"
-#     scene = "scene"
-
-# VARIABLES = "variables"
 
 
 ########
