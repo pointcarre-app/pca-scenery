@@ -4,11 +4,10 @@ on:
   push:
     tags:
       - 'v*'  # Triggers on any tag starting with 'v'
-    branches:
-      - test  # Only on test branch
-
+      
 jobs:
   publish:
+    if: github.ref_name == 'test'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
