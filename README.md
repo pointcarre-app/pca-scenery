@@ -1,8 +1,8 @@
 [![License](https://img.shields.io/pypi/l/YOUR-PACKAGE-NAME.svg)](https://github.com/pointcarre-app/pca-scenery/blob/master/LICENSE)
 [![TestPyPI version](https://img.shields.io/testpypi/v/pca-scenery.svg)](https://test.pypi.org/project/pca-scenery/)
 [![Test](https://github.com/pointcarre-app/pca-scenery/actions/workflows/test.yml/badge.svg)](https://github.com/pointcarre-app/pca-scenery/actions/workflows/test.yml)
-[![Mypy](https://github.com/pointcarre-app/pca-scenery/workflows/Mypy/badge.svg)](https://github.com/{owner}/{repo}/actions?query=workflow%3A%22Mypy%22)
-[![Ruff](https://github.com/pointcarre-app/pca-scenery/workflows/Ruff/badge.svg)](https://github.com/{owner}/{repo}/actions?query=workflow%3A%22Ruff%22)
+[![Mypy](https://github.com/pointcarre-app/pca-scenery/workflows/Mypy/badge.svg)](https://github.com/pointcarre-app/pca-scenery/actions?query=workflow%3A%22Mypy%22)
+[![Ruff](https://github.com/pointcarre-app/pca-scenery/workflows/Ruff/badge.svg)](https://github.com/pointcarre-app/pca-scenery/actions?query=workflow%3A%22Ruff%22)
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://pointcarre-app.github.io/pca-scenery)
 
 
