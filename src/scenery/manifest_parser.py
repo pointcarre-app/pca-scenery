@@ -46,7 +46,6 @@ class ManifestParser:
         Raises:
             ValueError: If invalid keys are present or if the case/scene keys are not correctly specified.
         """
-
         if not all(
             key in scenery.manifest.RawManifestDict.__annotations__.keys() for key in d.keys()
         ):
@@ -123,7 +122,7 @@ class ManifestParser:
             scenery.manifest.Manifest: A Manifest object created from the input dictionary.
         """
         ManifestParser.validate_dict(d)
-        formatted_d = ManifestParser.format_dict(d)
+        formatted_d = ManifestParser.format_dict(typing.cast(scenery.manifest.RawManifestDict, d))
         return scenery.manifest.Manifest.from_formatted_dict(formatted_d)
 
     ##########
@@ -144,7 +143,6 @@ class ManifestParser:
             TypeError: If the YAML content is not a dictionary.
             ValueError: If the YAML content contains unexpected keys.
         """
-
         if not isinstance(obj, dict):
             raise TypeError(f"Manifest need to be a dict not a '{type(obj)}'")
 

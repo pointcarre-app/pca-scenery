@@ -3,13 +3,13 @@ set -e
 
 # Ruff
 printf "\nRuff\n"
-ruff check rehearsal/
-ruff check src/
+python -m ruff check rehearsal/
+python -m ruff check src/
 
 # Mypy
 printf "\nMypy\n"
-mypy rehearsal
-mypy src
+python -m mypy rehearsal
+python -m mypy src
 
 # Pydocstyle
 printf "\nPydocstyle\n"
