@@ -45,7 +45,6 @@ class RawManifestDict(typing.TypedDict, total=False):
     scene: dict
     scenes: typing.List[dict]
     manifest_origin: str
-    # variables: dict[str, typing.Any]
 
 
 class ManifestDict(typing.TypedDict):

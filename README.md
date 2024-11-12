@@ -82,7 +82,7 @@ The full syntax of `scenery` allows you to:
 - Test a given scene with different data sets
 - Shared data for use across multiple tests
 - Have full control over set-up and tear-down methods
-- Use variables and templating in your YAML files
+- Leverage YAML syntax to parsimonly define your tests
 <!-- - Define custom directives for specialized checks -->
 
 
