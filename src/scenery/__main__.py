@@ -71,36 +71,6 @@ def main() -> int:
     out["metadata"] = {"args": args.__dict__}
 
     ####################
-    # LOGGERS
-    ####################
-
-    # level = logging.DEBUG
-
-    # # Format
-    # format_log = "[%(asctime)s.%(msecs)03d] [%(name)s] [%(levelname)s] %(message)s"
-    # datefmt_ = "%Y-%m-%d %H:%M:%S"
-    # formatter = logging.Formatter(fmt=format_log, datefmt=datefmt_)
-
-    # # Handlers
-    # if args.output:
-    #     handler_full = logging.FileHandler(args.output, mode="w")
-    #     handler_full.setFormatter(formatter)
-    #     handler_full.setLevel(level)
-    # else:
-    #     handler_full = logging.NullHandler()
-
-    # # Scenery
-    # logger = logging.getLogger(__package__)
-    # logger.addHandler(handler_full)
-    # logger.setLevel(level)
-
-    # NOTE: should be in settings
-    # logger_app = logging.getLogger("logger_app")
-    # logger_app.handlers = []
-    # logger_app.addHandler(handler_full)
-    # logger_app.setLevel(level)
-
-    ####################
     # SYSTEM CONFIG
     ####################
 

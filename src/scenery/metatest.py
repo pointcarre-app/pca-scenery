@@ -211,24 +211,9 @@ class MetaTestRunner:
 
     def __init__(self) -> None:
         """Initialize the MetaTestRunner with a runner, logger, discoverer, and output stream."""
-        # self.runner = get_runner(settings, test_runner_class="django.test.runner.DiscoverRunner")()
         self.logger = logging.getLogger(__package__)
         self.stream = io.StringIO()
         self.runner = scenery.common.CustomDiscoverRunner(stream=self.stream)
-
-        # def overwrite(runner: DiscoverRunner) -> dict[str, typing.Any]:
-        #     return scenery.common.overwrite_get_runner_kwargs(runner, self.stream)
-
-        # self.runner.get_test_runner_kwargs = overwrite.__get__(self.runner)
-
-        # Create a method that will be bound to the runner instance
-        # def custom_get_runner_kwargs(self_runner: DiscoverRunner) -> dict[str, typing.Any]:
-        #     return scenery.common.overwrite_get_runner_kwargs(self_runner, self.stream)
-
-        # # Properly bind the method to the runner instance
-        # self.runner.get_test_runner_kwargs = custom_get_runner_kwargs.__get__(  # type: ignore[method-assign]
-        #     self.runner, type(self.runner)
-        # )
 
         app_logger = logging.getLogger("app.close_watch")
         app_logger.propagate = False
