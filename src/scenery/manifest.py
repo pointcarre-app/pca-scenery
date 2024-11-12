@@ -21,20 +21,6 @@ from django.db.models.base import ModelBase
 #############################
 
 
-# class SceneDict(typing.TypedDict):
-#     name: str
-#     steps: typing.List[dict]
-#     # description: typing.NotRequired[str]
-#     # timeout: typing.NotRequired[int]
-
-
-# class CaseDict(typing.TypedDict):
-#     steps: typing.List[dict]
-#     expected: dict
-#     description: typing.NotRequired[str]
-#     timeout: typing.NotRequired[int]
-
-
 class RawManifestDict(typing.TypedDict, total=False):
     """The type of dict which can appear in the yamls."""
 
@@ -163,7 +149,6 @@ class SetUpInstruction:
             case _:
                 raise TypeError(f"`SetUpInstruction` cannot be instantiated from {type(x)}")
 
-        # return cls(SetUpCommand(cmd_name), args)
         return cls(cmd_name, args)
 
 
@@ -222,14 +207,12 @@ class Substituable:
     """Represent the field which need to be replace by some value coming from a given case."""
 
     field_repr: str
-    # field_repr: re.Match
     regex_field = re.compile(r"^(?P<item_id>[a-z_]+):?(?P<field_name>[a-z_]+)?$")
 
     def __post_init__(self) -> None:
         if not (re_match := re.match(self.regex_field, self.field_repr)):
             raise ValueError(f"Invalid field representation '{self.field_repr}'")
         else:
-            # self.field_repr = re_match
             self.field_repr_match = re_match
 
     def shoot(self, case: Case) -> Any:

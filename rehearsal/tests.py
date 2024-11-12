@@ -761,38 +761,10 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
         @typing.overload
         def watch(func: typing.Callable) -> typing.Callable: ...
 
-        # def watch(func: typing.Callable | classmethod) -> typing.Callable | classmethod:
-        #     def wrapper(*args, **kwargs):
-        #         if type(func) is classmethod:
-        #             # NOTE: otherwise the call fails
-        #             method = func.__get__(self.django_testcase, type(self.django_testcase))
-        #             x = method(*args, **kwargs)
-        #         else:
-        #             x = func(*args, **kwargs)
-
-        #         TestMethodBuilder.exec_order.append(func.__name__)
-
-        #         return x
-
-        #     return wrapper
-        # def watch(func: typing.Callable | classmethod) -> typing.Callable | classmethod:
-        #     def wrapper(*args, **kwargs):
-        #         if isinstance(func, classmethod):
-        #             # Get the underlying function from the classmethod
-        #             method = func.__get__(None, self.django_testcase).__func__
-        #             x = method(*args, **kwargs)
-        #         else:
-        #             x = func(*args, **kwargs)
-
-        #         TestMethodBuilder.exec_order.append(func.__name__)
-        #         return x
-
-        #     return wrapper if not isinstance(func, classmethod) else classmethod(wrapper)
-
         def watch(func: typing.Callable | classmethod) -> typing.Callable | classmethod:
             def wrapper(*args, **kwargs):
                 if isinstance(func, classmethod):
-                    # Get the bound method through __get__
+                    # NOTE: otherwise the call fails
                     method = func.__get__(None, self.django_testcase)
                     x = method(*args, **kwargs)
                 else:

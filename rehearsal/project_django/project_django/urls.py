@@ -30,20 +30,3 @@ urlpatterns = [
     path("admin/", admin.site.urls, name="admin"),
     path("hello/", views.hello_world, name="hello"),
 ]
-
-
-# from django.urls import get_resolver, reverse
-
-
-# def print_url_patterns():
-#     resolver = get_resolver()
-#     url_patterns = resolver.url_patterns
-#     for pattern in url_patterns:
-#         print("###############")
-#         print(pattern)
-#         print(dir(pattern))
-#         # reverse(pattern)
-#         print("OK")
-
-
-# print_url_patterns()
