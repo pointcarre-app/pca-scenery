@@ -35,10 +35,10 @@ maintainers = [
   {name = "Etienne Madinier"}
 ]
 
-[project.scripts]
+
 
 [project.urls]
-# Homepage = "https://pointcarre.app"
+Homepage = "https://pointcarre.app"
 Documentation = "https://pointcarre-app.github.io/pca-scenery/"
 Repository = "https://github.com/pointcarre-app/pca-scenery.git"
 "Bug Tracker" = "https://github.com/pointcarre-app/pca-scenery/issues"
