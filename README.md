@@ -1,10 +1,9 @@
+[![License](https://img.shields.io/pypi/l/YOUR-PACKAGE-NAME.svg)](https://github.com/pointcarre-app/pca-scenery/blob/master/LICENSE)
+
 [![Test](https://github.com/pointcarre-app/pca-scenery/actions/workflows/test.yml/badge.svg)](https://github.com/pointcarre-app/pca-scenery/actions/workflows/test.yml)
-<!-- [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/pointcarre-app/pca-scenery/actions/workflows/python-checks.yml?job=ruff) -->
-<!-- [![Mypy](https://github.com/pointcarre-app/pca-scenery/actions/workflows/python-checks.yml/badge.svg?job=mypy)](https://github.com/pointcarre-app/pca-scenery/actions/workflows/python-checks.yml) -->
 [![Ruff](https://img.shields.io/github/actions/workflow/status/pointcarre-app/pca-scenery/python-checks.yml?label=Ruff&logo=ruff&job=ruff)](https://github.com/pointcarre-app/pca-scenery/actions/workflows/python-checks.yml?job=ruff)
 [![Mypy](https://img.shields.io/github/actions/workflow/status/pointcarre-app/pca-scenery/python-checks.yml?label=Mypy&logo=python&job=mypy)](https://github.com/pointcarre-app/pca-scenery/actions/workflows/python-checks.yml?job=mypy)
 
-[![License](https://img.shields.io/pypi/l/YOUR-PACKAGE-NAME.svg)](https://github.com/pointcarre-app/pca-scenery/blob/master/LICENSE)
 
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://pointcarre-app.github.io/pca-scenery)
 
@@ -124,7 +123,7 @@ We welcome contributions to `scenery`! Here are some ways you can contribute:
 2. Improve documentation
 3. Submit pull requests with bug fixes or new features
 
-Please read our [Contributing Guide](CONTRIBUTING.md) for more details.
+Please read our [Contributing Guide]([CONTRIBUTING.md](https://pointcarre-app.github.io/pca-scenery/contributing)) for more details.
 
 ## License
 
