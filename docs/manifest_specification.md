@@ -158,7 +158,7 @@ set_up_test_data:
 ```
 ### YAML aliases
 
->[!danger] Aliases do not work as expected, especially when interacting with `!case` and `!common-items` tages, so don't use them. It's because YAML aliases are resolved before tags which are not "transported" in the alias.
+>[!WARNING] Aliases do not work as expected, especially when interacting with `!case` and `!common-items` tags, so don't use them. It's because YAML aliases are resolved before tags which are not "transported" in the alias.
 
 
 ## Last thoughts

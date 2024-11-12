@@ -1,10 +1,15 @@
 [![License](https://img.shields.io/pypi/l/YOUR-PACKAGE-NAME.svg)](https://github.com/pointcarre-app/pca-scenery/blob/master/LICENSE)
 [![TestPyPI version](https://img.shields.io/testpypi/v/pca-scenery.svg)](https://test.pypi.org/project/pca-scenery/)
-[![Test](https://github.com/pointcarre-app/pca-scenery/actions/workflows/test.yml/badge.svg)](https://github.com/selimPCA/pca-scenery/actions/workflows/test.yml)
+[![Test](https://github.com/pointcarre-app/pca-scenery/actions/workflows/test.yml/badge.svg)](https://github.com/pointcarre-app/pca-scenery/actions/workflows/test.yml)
+[![Mypy](https://github.com/pointcarre-app/pca-scenery/workflows/Mypy/badge.svg)](https://github.com/{owner}/{repo}/actions?query=workflow%3A%22Mypy%22)
+[![Ruff](https://github.com/pointcarre-app/pca-scenery/workflows/Ruff/badge.svg)](https://github.com/{owner}/{repo}/actions?query=workflow%3A%22Ruff%22)
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://pointcarre-app.github.io/pca-scenery)
+
+
 <!-- [![Python](https://img.shields.io/testpypi/pyversions/pca-scenery)](https://img.shields.io/testpypi/pyversions/pca-scenery) -->
 <!-- [![Python Versions](https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13--dev-blue?logo=python&logoColor=white)](https://test.pypi.org/project/pca-scenery/) -->
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://pointcarre-app.github.io/pca-scenery)
+<!-- [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) -->
+
 
 # scenery
 

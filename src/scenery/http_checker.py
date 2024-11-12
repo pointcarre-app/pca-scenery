@@ -1,4 +1,4 @@
-"""Perform assertions on HTTP response"""
+"""Perform assertions on HTTP response from the test client."""
 
 import http
 import typing
@@ -8,12 +8,11 @@ import scenery.manifest
 import django.test
 import django.http
 
-from bs4 import BeautifulSoup
+import bs4
 
 
 class HttpChecker:
-    """
-    A utility class for performing HTTP requests and assertions on responses.
+    """A utility class for performing HTTP requests and assertions on responses.
 
     This class provides static methods to execute HTTP requests and perform
     various checks on the responses, as specified in the test manifests.
@@ -23,8 +22,7 @@ class HttpChecker:
     def get_http_client_response(
         client: django.test.Client, take: scenery.manifest.HttpTake
     ) -> django.http.HttpResponse:
-        """
-        Execute an HTTP request based on the given HttpTake object.
+        """Execute an HTTP request based on the given HttpTake object.
 
         Args:
             client: The Django test client to use for the request.
@@ -36,7 +34,6 @@ class HttpChecker:
         Raises:
             NotImplementedError: If the HTTP method specified in the take is not implemented.
         """
-
         if take.method == http.HTTPMethod.GET:
             response = client.get(
                 take.url,
@@ -50,7 +47,10 @@ class HttpChecker:
         else:
             raise NotImplementedError(take.method)
 
-        return response
+        # NOTE: this one is a bit puzzling to me
+        # runnning mypy I get:
+        # Incompatible return value type (got "_MonkeyPatchedWSGIResponse", expected "HttpResponse")
+        return response  # type: ignore[return-value]
 
     @staticmethod
     def exec_check(
@@ -58,8 +58,7 @@ class HttpChecker:
         response: django.http.HttpResponse,
         check: scenery.manifest.HttpCheck,
     ) -> None:
-        """
-        Execute a specific check on an HTTP response.
+        """Execute a specific check on an HTTP response.
 
         This method delegates to the appropriate check method based on the instruction
         specified in the HttpCheck object.
@@ -89,8 +88,7 @@ class HttpChecker:
         response: django.http.HttpResponse,
         args: int,
     ) -> None:
-        """
-        Check if the response status code matches the expected code.
+        """Check if the response status code matches the expected code.
 
         Args:
             django_testcase (django.test.TestCase): The Django test case instance.
@@ -109,8 +107,7 @@ class HttpChecker:
         response: django.http.HttpResponse,
         args: str,
     ) -> None:
-        """
-        Check if the response redirect URL matches the expected URL.
+        """Check if the response redirect URL matches the expected URL.
 
         Args:
             django_testcase (django.test.TestCase): The Django test case instance.
@@ -136,8 +133,7 @@ class HttpChecker:
         response: django.http.HttpResponse,
         args: dict,
     ) -> None:
-        """
-        Check if the count of model instances matches the expected count.
+        """Check if the count of model instances matches the expected count.
 
         Args:
             django_testcase (django.test.TestCase): The Django test case instance.
@@ -157,8 +153,7 @@ class HttpChecker:
         response: django.http.HttpResponse,
         args: dict[scenery.manifest.DomArgument, typing.Any],
     ) -> None:
-        """
-        Check for the presence and properties of DOM elements in the response content.
+        """Check for the presence and properties of DOM elements in the response content.
 
         This method uses BeautifulSoup to parse the response content and perform various
         checks on DOM elements as specified in the args dictionary.
@@ -172,32 +167,41 @@ class HttpChecker:
         Raises:
             ValueError: If neither 'find' nor 'find_all' arguments are provided in args.
         """
-
-        soup = BeautifulSoup(response.content, "html.parser")
+        soup = bs4.BeautifulSoup(response.content, "html.parser")
 
         # Apply the scope
         if scope := args.get(scenery.manifest.DomArgument.SCOPE):
-            soup = soup.find(**scope)
+            scope_result = soup.find(**scope)
+            django_testcase.assertIsNotNone(
+                scope,
+                f"Expected to find an element matching {args[scenery.manifest.DomArgument.SCOPE]}, but found none",
+            )
+        else:
+            scope_result = soup
+
+        # NOTE: we inforce type checking by regarding bs4 objects as Tag
+        scope_result = typing.cast(bs4.Tag, scope_result)
 
         # Locate the element(s)
-        # If find_all is provided, the checks are performed on ALL elements
-        # If find is provided we enforce the result to be la list
         if args.get(scenery.manifest.DomArgument.FIND_ALL):
-            dom_elements = soup.find_all(**args[scenery.manifest.DomArgument.FIND_ALL])
+            dom_elements = scope_result.find_all(**args[scenery.manifest.DomArgument.FIND_ALL])
             django_testcase.assertGreaterEqual(
                 len(dom_elements),
                 1,
                 f"Expected to find at least one element matching {args[scenery.manifest.DomArgument.FIND_ALL]}, but found none",
             )
         elif args.get(scenery.manifest.DomArgument.FIND):
-            dom_element = soup.find(**args[scenery.manifest.DomArgument.FIND])
+            dom_element = scope_result.find(**args[scenery.manifest.DomArgument.FIND])
             django_testcase.assertIsNotNone(
                 dom_element,
                 f"Expected to find an element matching {args[scenery.manifest.DomArgument.FIND]}, but found none",
             )
-            dom_elements = [dom_element]
+            dom_elements = bs4.ResultSet(source=bs4.SoupStrainer(), result=[dom_element])
         else:
             raise ValueError("Neither find of find_all argument provided")
+
+        # NOTE: I enforce the results to be a bs4.ResultSet[bs4.Tag] above
+        dom_elements = typing.cast(bs4.ResultSet[bs4.Tag], dom_elements)
 
         # Perform the additional checks
         if count := args.get(scenery.manifest.DomArgument.COUNT):
@@ -207,6 +211,7 @@ class HttpChecker:
                 f"Expected to find {count} elements, but found {len(dom_elements)}",
             )
         for dom_element in dom_elements:
+            # NOTE: we are sure it is not
             if text := args.get(scenery.manifest.DomArgument.TEXT):
                 django_testcase.assertEqual(
                     dom_element.text,

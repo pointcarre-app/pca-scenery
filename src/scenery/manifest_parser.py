@@ -1,3 +1,5 @@
+"""Parse manifest YAML files and build proper Manifests."""
+
 import os
 import typing
 
@@ -31,7 +33,7 @@ class ManifestParser:
     ##########
 
     @staticmethod
-    def validate_dict(d: scenery.manifest.RawManifestDict) -> None:
+    def validate_dict(d: dict) -> None:  # scenery.manifest.RawManifestDict
         """
         Validate the top-level keys of a manifest dictionary.
 
@@ -108,7 +110,7 @@ class ManifestParser:
             raise ValueError
 
     @staticmethod
-    def parse_dict(d: scenery.manifest.RawManifestDict) -> scenery.manifest.Manifest:
+    def parse_dict(d: dict) -> scenery.manifest.Manifest:
         """
         Parse a manifest dictionary into a Manifest object.
 
@@ -188,7 +190,6 @@ class ManifestParser:
         Returns:
             dict: The parsed content of the YAML file.
         """
-
         # NOTE: inspired by https://matthewpburruss.com/post/yaml/
 
         # Add constructor

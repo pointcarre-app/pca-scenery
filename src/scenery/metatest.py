@@ -1,9 +1,13 @@
+"""Build the tests from the Manifest, discover & run tests."""
+
 import os
 import io
 import logging
 import itertools
 import unittest
 import typing
+
+import django.test.runner
 
 from scenery.manifest import Manifest
 from scenery.method_builder import MethodBuilder
@@ -12,7 +16,6 @@ import scenery.common
 
 import django.test
 from django.test.utils import get_runner
-from django.test.runner import DiscoverRunner
 
 from django.conf import settings
 
@@ -49,6 +52,8 @@ class MetaTest(type):
         manifest: Manifest,
         restrict: typing.Optional[str] = None,
     ) -> type[django.test.TestCase]:
+        """Responsible for building the TestCase class."""
+        # Handle restriction
         if restrict is not None:
             restrict_args = restrict.split(".")
             if len(restrict_args) == 1:
@@ -105,7 +110,7 @@ class MetaTestDiscoverer:
     def __init__(self) -> None:
         self.logger = logging.getLogger(__package__)
         self.runner = get_runner(settings, test_runner_class="django.test.runner.DiscoverRunner")()
-        self.loader = self.runner.test_loader
+        self.loader: unittest.loader.TestLoader = self.runner.test_loader
 
     def discover(
         self, restrict: typing.Optional[str] = None, verbosity: int = 2
@@ -124,7 +129,6 @@ class MetaTestDiscoverer:
         Raises:
             ValueError: If the restrict argument is not in the correct format.
         """
-
         # handle manifest/test restriction
         if restrict is not None:
             restrict_args = restrict.split(".")
@@ -145,7 +149,7 @@ class MetaTestDiscoverer:
 
         out = []
 
-        suite_cls = self.runner.test_suite
+        suite_cls: type[unittest.TestSuite] = self.runner.test_suite
 
         folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
 
@@ -172,10 +176,14 @@ class MetaTestDiscoverer:
                 print(f"> {test_cls.__qualname__}")
 
             # Load
+            # NOTE: the first cast is because of the metaclass
+            # the second because suite can contain theoretically
+            # test suites, but not in our case.
             tests = self.loader.loadTestsFromTestCase(
                 typing.cast(type[django.test.TestCase], test_cls)
             )
             for test in tests:
+                test = typing.cast(unittest.TestCase, test)
                 test_name = scenery.common.pretty_test_name(test)
                 suite = suite_cls()
                 suite.addTest(test)
@@ -203,16 +211,25 @@ class MetaTestRunner:
 
     def __init__(self) -> None:
         """Initialize the MetaTestRunner with a runner, logger, discoverer, and output stream."""
-
-        self.runner = get_runner(settings, test_runner_class="django.test.runner.DiscoverRunner")()
+        # self.runner = get_runner(settings, test_runner_class="django.test.runner.DiscoverRunner")()
         self.logger = logging.getLogger(__package__)
-
         self.stream = io.StringIO()
+        self.runner = scenery.common.CustomDiscoverRunner(stream=self.stream)
 
-        def overwrite(runner: DiscoverRunner) -> dict[str, typing.Any]:
-            return scenery.common.overwrite_get_runner_kwargs(runner, self.stream)
+        # def overwrite(runner: DiscoverRunner) -> dict[str, typing.Any]:
+        #     return scenery.common.overwrite_get_runner_kwargs(runner, self.stream)
 
-        self.runner.get_test_runner_kwargs = overwrite.__get__(self.runner)
+        # self.runner.get_test_runner_kwargs = overwrite.__get__(self.runner)
+
+        # Create a method that will be bound to the runner instance
+        # def custom_get_runner_kwargs(self_runner: DiscoverRunner) -> dict[str, typing.Any]:
+        #     return scenery.common.overwrite_get_runner_kwargs(self_runner, self.stream)
+
+        # # Properly bind the method to the runner instance
+        # self.runner.get_test_runner_kwargs = custom_get_runner_kwargs.__get__(  # type: ignore[method-assign]
+        #     self.runner, type(self.runner)
+        # )
+
         app_logger = logging.getLogger("app.close_watch")
         app_logger.propagate = False
 

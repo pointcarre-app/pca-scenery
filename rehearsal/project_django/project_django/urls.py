@@ -21,7 +21,9 @@ from django.urls import path
 try:
     from rehearsal.project_django.some_app import views
 except ModuleNotFoundError:
-    from some_app import views
+    # NOTE: mypy should run from the root directory
+    # and therefore it make sense that ths module is not found
+    from some_app import views  # type: ignore[import-not-found, no-redef]
 
 # app_name = "some_app"
 urlpatterns = [

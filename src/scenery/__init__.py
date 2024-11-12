@@ -1,1 +1,1 @@
-"""A versatile integration testing framework for django apps"""
+"""A versatile integration testing framework for django apps."""
