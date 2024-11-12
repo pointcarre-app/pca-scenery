@@ -1,0 +1,26 @@
+name: Publish to TestPyPI
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on any tag starting with 'v'
+    branches:
+      - test  # Only on test branch
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Build package
+        run: |
+          pip install build
+          python -m build
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/
