@@ -131,7 +131,7 @@ Please read our [Contributing Guide]([CONTRIBUTING.md](https://pointcarre-app.gi
 
 `scenery` was created by Etienne Madinier.
 
-It relies on other great open-source projects:
+It relies on great open-source projects:
 - [Beautifulsoup4](https://pypi.org/project/beautifulsoup4/)
 - [Django](https://www.djangoproject.com/)
 - [PyYAML](https://pypi.org/project/PyYAML/)

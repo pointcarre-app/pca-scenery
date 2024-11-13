@@ -76,7 +76,7 @@ def read_yaml(filename: str) -> typing.Any:
 def snake_to_camel_case(s: str) -> str:
     """Transform a string from snake_case to CamelCase.
 
-    This function assumes the input string is in snake_case format and converts it to CamelCase.
+    If the input string respect snake_case format, transform into camelCase format, else raises an error.
     It also handles strings containing '/' and '-' characters.
 
     Args:
