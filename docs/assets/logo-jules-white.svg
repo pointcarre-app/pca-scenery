@@ -1,0 +1,27 @@
+<svg 
+stroke="white"
+ height="{{ height }}" 
+ width="{{ width }}" 
+ xmlns="http://www.w3.org/2000/svg" 
+ viewBox="0 0 108 108"
+ >
+    <!-- Added padding for Android safe zone -->
+    <g transform="translate(4,4)">
+        <!-- Outer rounded square -->
+        <rect x="5" 
+              y="5" 
+              width="90" 
+              height="90" 
+              fill="transparent" 
+              stroke-width="10" 
+              rx="20" 
+              ry="20" 
+              stroke-linejoin="round" />
+        
+        <!-- Inner circle -->
+        <circle cx="50" 
+                cy="50" 
+                fill="white" 
+                r="15" />
+    </g>
+</svg>

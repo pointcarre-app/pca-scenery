@@ -1,25 +1,29 @@
-site_name: Scenery
+site_name: "PCA: Scenery"
 site_url: https://pointcarre-app.github.io/pca-scenery/
 repo_url: https://github.com/pointcarre-app/pca-scenery
 repo_name: pointcarre-app/pca-scenery
 
 theme:
   name: material
-  palette:
-    - scheme: default
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - scheme: slate
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+  logo: assets/logo-jules-white.svg
+  custom_dir: docs/stylesheets
 
+extra_css:
+  - stylesheets/extra.css
 
+palette:
+  - scheme: default
+    primary: "#6032bc"  
+    accent: "#6032bc"  
+    toggle:
+      icon: material/brightness-7
+      name: Switch to dark mode
+  - scheme: slate
+    primary: "#6032bc"  
+    accent: "#6032bc"  
+    toggle:
+      icon: material/brightness-4
+      name: Switch to light mode
 
 nav:
   - Home: index.md
