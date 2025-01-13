@@ -1,7 +1,8 @@
 """Perform assertions on HTTP response from the test client."""
-
+import os
 import http
 import typing
+import importlib
 
 import scenery.manifest
 
@@ -9,6 +10,21 @@ import django.test
 import django.http
 
 import bs4
+import requests
+
+from selenium.webdriver.common.by import By
+
+from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+
+
+
+# def find_element(driver, **kwargs):
+#     for by, value in kwargs.items():
+#         if by == "id":
+#             selector = By.ID
+#         else:
+#             raise ValueError(f"{by=}")
+#         return driver.find_element(selector, value)
 
 
 class HttpChecker:
@@ -18,9 +34,11 @@ class HttpChecker:
     various checks on the responses, as specified in the test manifests.
     """
 
+    # TODO: mad, the get_response methods should be somwhere else
+
     @staticmethod
     def get_http_client_response(
-        client: django.test.Client, take: scenery.manifest.HttpTake
+        django_testcase: django.test.TestCase, take: scenery.manifest.HttpTake
     ) -> django.http.HttpResponse:
         """Execute an HTTP request based on the given HttpTake object.
 
@@ -35,12 +53,12 @@ class HttpChecker:
             NotImplementedError: If the HTTP method specified in the take is not implemented.
         """
         if take.method == http.HTTPMethod.GET:
-            response = client.get(
+            response = django_testcase.client.get(
                 take.url,
                 take.data,
             )
         elif take.method == http.HTTPMethod.POST:
-            response = client.post(
+            response = django_testcase.post(
                 take.url,
                 take.data,
             )
@@ -51,6 +69,46 @@ class HttpChecker:
         # runnning mypy I get:
         # Incompatible return value type (got "_MonkeyPatchedWSGIResponse", expected "HttpResponse")
         return response  # type: ignore[return-value]
+    
+    @staticmethod
+    def get_selenium_response(
+        django_testcase: StaticLiveServerTestCase, take: scenery.manifest.HttpTake
+    ) -> django.http.HttpResponse:
+        
+        # TODO mad: bad idea, I rather want a protocol here, to which the django hhtp reponse would be recognized as such
+        response = django.http.HttpResponse("")
+        
+        # Get the correct url form the StaticLiveServerTestCase
+        url = django_testcase.live_server_url + take.url
+
+        # NOTE mad: I am sad we can't use Selenium for the status code
+        if take.method == http.HTTPMethod.GET:
+            http_response = requests.get(
+                url,
+                data = take.data,
+            )
+        elif take.method == http.HTTPMethod.POST:
+            http_response = requests.post(
+                url,
+                data = take.data,
+            )
+        else:
+            raise NotImplementedError(take.method)
+        response.status_code = http_response.status_code
+
+
+        selenium_module = importlib.import_module(os.environ["SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM"])
+
+        
+        if take.method == http.HTTPMethod.GET:
+            django_testcase.driver.get(url)
+        if take.method == http.HTTPMethod.POST:
+            post_method = getattr(selenium_module, f"post_{take.url_name}")
+            post_method(django_testcase, take.data)
+
+
+        return response 
+      
 
     @staticmethod
     def exec_check(
@@ -149,7 +207,7 @@ class HttpChecker:
 
     @staticmethod
     def check_dom_element(
-        django_testcase: django.test.TestCase,
+        django_testcase: django.test.TestCase | StaticLiveServerTestCase,
         response: django.http.HttpResponse,
         args: dict[scenery.manifest.DomArgument, typing.Any],
     ) -> None:
@@ -167,7 +225,14 @@ class HttpChecker:
         Raises:
             ValueError: If neither 'find' nor 'find_all' arguments are provided in args.
         """
-        soup = bs4.BeautifulSoup(response.content, "html.parser")
+
+        # NOTE mad: allows to check the content in its current state for selenium
+        if isinstance(django_testcase, StaticLiveServerTestCase):
+            content = django_testcase.driver.page_source
+        else:
+            content = response.content
+
+        soup = bs4.BeautifulSoup(content, "html.parser")
 
         # Apply the scope
         if scope := args.get(scenery.manifest.DomArgument.SCOPE):

@@ -3,10 +3,10 @@
 Assume you work on the following Django application.
 
 ```plaintext
-└── project_django
+└── django_project
     ├── db.sqlite3
     ├── manage.py
-    ├── project_django
+    ├── django_project
     │   ├── asgi.py
     │   ├── __init__.py
     │   ├── settings.py
@@ -29,7 +29,7 @@ Assume you work on the following Django application.
 In order to use scenery, you could update your repo structure as below:
 
 ```plaintext
-├── project_django
+├── django_project
 │   ├── ...
 │   └── some_app
 │       ├── tests
@@ -49,7 +49,7 @@ The files gives you full control on any other folder structure you would prefer.
 ```python
 # scenery_settings.py
 SCENERY_COMMON_ITEMS = "projet_django/some_app/tests/common_items.yml"
-SCENERY_SET_UP_INSTRUCTIONS = "project_django.some_app.tests.set_up_instructions"
+SCENERY_SET_UP_INSTRUCTIONS = "django_project.some_app.tests.set_up_instructions"
 SCENERY_MANIFESTS_FOLDER = "projet_django/some_app/tests/manifests"
 SCENERY_TESTED_APP_NAME = "some_app"
 ```
@@ -59,7 +59,7 @@ SCENERY_TESTED_APP_NAME = "some_app"
 This file contains all actions you may want to execute in the `setUpTestData` or `setUp` testcase function. All functions shoul take `django_testcase: django.test.TestCase` as their first argument.
 
 ```python
-# project_django/some_app/tests/set_up_instructions.py
+# django_project/some_app/tests/set_up_instructions.py
 
 def reset_db(django_testcase):
     """Reset your database."""
@@ -82,7 +82,7 @@ def create_test_user(
 This file allows you to store data you want to use accross many tests. In this file, you can take full adavantage of the yaml syntax.
 
 ```yaml
-# project_django/some_app/tests/common_items.yml
+# django_project/some_app/tests/common_items.yml
 
 EMAIL: &email some@mail.com
 PASSWORD: &password somepassword
@@ -108,7 +108,7 @@ TESTUSER:
 Assume you want to test your login view
 
 ```python
-# project_django/some_app/views.py
+# django_project/some_app/views.py
 def login(request):
     ...
 
@@ -118,12 +118,12 @@ You can now write a basic manifest that will check your view accepts an existing
 
 
 ```yaml
-# project_django/some_app/tests/manifests/login.yml
+# django_project/some_app/tests/manifests/login.yml
 set_up:
   # Reset the database
   - reset_db
   # Create a test user based on credentials defined in 
-  # project_django/some_app/tests/common_items.yml
+  # django_project/some_app/tests/common_items.yml
   - create_testuser: 
       !common-item TESTUSER
 
@@ -158,7 +158,7 @@ scene:
 You are now all set up to launch scenery!
 
 ```bash
-python -m scenery --django_settings=project_dango.project_django.settings
+python -m scenery --django_settings=project_dango.django_project.settings
 ```
 
 Or add it in your CI workflow.

@@ -1,0 +1,54 @@
+<!-- {% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rehearsal Frontend Test Page</title>
+    <link rel="stylesheet" href="{% static 'your_app/css/style.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>Django Frontend Test Page</h1>
+        <p>{{msg}}</p>
+        <input type="text" class="test-input" id="testInput" placeholder="Test Input Field" id="testInput">
+        <button class="test-button" id="testButton">Test Button</button>
+    </div>
+</body>
+</html> -->
+
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rehearsal Frontend Test Page</title>
+    <link rel="stylesheet" href="{% static 'your_app/css/style.css' %}">
+    <!-- Load HTMX from CDN -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Django Frontend Test Page</h1>
+        <div id="message-container">
+            <p id="messageDisplay">{{msg}}</p>
+        </div>
+        
+        <div hx-target="#message-container" hx-swap="innerHTML">
+            <input type="text" 
+                   class="test-input" 
+                   id="testInput" 
+                   name="message" 
+                   placeholder="Test Input Field">
+            <button class="test-button" 
+                    id = "testButton"
+                    hx-post="{% url 'frontend' %}"
+                    hx-include="#testInput">
+                Test Button
+            </button>
+        </div>
+    </div>
+</body>
+</html>

@@ -31,6 +31,7 @@ class RawManifestDict(typing.TypedDict, total=False):
     scene: dict
     scenes: typing.List[dict]
     manifest_origin: str
+    testtype: str
 
 
 class ManifestDict(typing.TypedDict):
@@ -41,6 +42,7 @@ class ManifestDict(typing.TypedDict):
     manifest_origin: str
     set_up_test_data: typing.Sequence[str | dict]
     set_up: typing.Sequence[str | dict]
+    testtype: typing.Optional[str]
 
 
 ########################
@@ -328,6 +330,8 @@ class HttpScene:
     data: dict[str, Any] = field(default_factory=dict)
     query_parameters: dict = field(default_factory=dict)
     url_parameters: dict = field(default_factory=dict)
+    actions: typing.Optional[list[SetUpInstruction]] = field(default_factory=list)
+
 
     def __post_init__(self) -> None:
         self.method = http.HTTPMethod(self.method)
@@ -400,6 +404,7 @@ class Manifest:
     scenes: list[HttpScene]
     cases: dict[str, Case]
     manifest_origin: str
+    testtype: str
 
     @classmethod
     def from_formatted_dict(cls, d: ManifestDict) -> "Manifest":
@@ -426,6 +431,7 @@ class Manifest:
             },
             # d[ManifestFormattedDictKeys.manifest_origin],
             d["manifest_origin"],
+            d.get("testtype")
         )
 
 
@@ -504,7 +510,9 @@ class HttpTake:
 
         try:
             # First we try if the url is a django viewname
+            url_name = self.url
             self.url = reverse(self.url, kwargs=self.url_parameters)
+            self.url_name = url_name
         except NoReverseMatch:
             # Otherwise we check it is a valid url
             parsed = urlparse(self.url)

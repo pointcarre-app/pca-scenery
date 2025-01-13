@@ -8,6 +8,7 @@ import re
 import types
 import typing
 import unittest
+import logging
 
 import django
 from django.test.runner import DiscoverRunner
@@ -224,6 +225,40 @@ def pretty_test_name(test: unittest.TestCase) -> str:
     """
     return f"{test.__module__}.{test.__class__.__qualname__}.{test._testMethodName}"
 
+def summarize_test_result(result, verbosity=1) -> bool:
+    """Returns true if the tests all succeded, false otherwise"""
+
+    for failed_test, traceback in result.failures:
+        test_name = failed_test.id()  
+        log_lvl, color = logging.ERROR, "red"
+        if verbosity > 0:
+            print(f"{colorize(color, test_name)}\n{traceback}")
+            # TODO: log
+            
+    for failed_test, traceback in result.errors:
+        test_name = failed_test.id()  
+        log_lvl, color = logging.ERROR, "red"
+        if verbosity > 0:
+            print(f"{colorize(color, test_name)}\n{traceback}")
+            # TODO: log
+
+    summary = serialize_unittest_result(result)
+    success = True
+    for key, val in summary.items():
+        if key != "testsRun" and val > 0:
+            success = False
+
+    if success:
+        msg, color = "🟢 OK", "green"
+    else:
+        msg, color = "❌ FAIL", "red"
+
+    if verbosity > 0:
+        print(f"\n\nSummary:\n{tabulate(summary)}")
+        print(f"{colorize(color, msg)}\n\n")
+
+    return success
+
 
 ###################
 # DJANGO CONFIG
@@ -274,6 +309,8 @@ def overwrite_get_runner_kwargs(
     }
     return kwargs
 
+
+# from django.test.runner import DiscoverRunner
 
 class CustomDiscoverRunner(django.test.runner.DiscoverRunner):
     """Custom test runner that allows for stream capture."""

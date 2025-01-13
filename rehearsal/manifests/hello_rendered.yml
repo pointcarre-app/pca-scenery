@@ -1,0 +1,37 @@
+testtype: selenium
+
+set_up:
+  - reset_db
+
+
+scenes: 
+  - method: GET
+    url: "frontend"
+    directives:
+      - status_code: 200
+      - dom_element:
+          find:
+            id : testInput
+      - dom_element:
+          find:
+            id : testButton
+      - dom_element:
+          find:
+            id : messageDisplay
+          text: Hello world!
+  - method: POST
+    url: "frontend"
+    data: 
+      message : "some text"
+    directives:
+      - status_code: 200
+      - dom_element:
+          find:
+            id : testInput
+      - dom_element:
+          find:
+            id : testButton
+      - dom_element:
+          find:
+            id : messageDisplay
+          text: some text

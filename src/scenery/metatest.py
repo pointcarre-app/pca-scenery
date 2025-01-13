@@ -1,31 +1,88 @@
 """Build the tests from the Manifest, discover & run tests."""
 
 import os
-import io
+# import io
 import logging
 import itertools
 import unittest
 import typing
+import sys
 
+
+from django.conf import settings
+from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+import django.test
 import django.test.runner
+from django.test.utils import get_runner
+
+
 
 from scenery.manifest import Manifest
 from scenery.method_builder import MethodBuilder
 from scenery.manifest_parser import ManifestParser
 import scenery.common
 
-import django.test
-from django.test.utils import get_runner
 
-from django.conf import settings
 
 
 ##############################
 # META TESTING
 ##############################
 
+class MetaSeleniumTest(type):
+    def __new__(
+        cls,
+        clsname: str,
+        bases: tuple[type],
+        manifest: Manifest,
+        restrict: typing.Optional[str] = None,
+    ) -> type[django.test.TestCase]:
+        """Responsible for building the TestCase class."""
+        # Handle restriction
+        if restrict is not None:
+            restrict_args = restrict.split(".")
+            if len(restrict_args) == 1:
+                restrict_case_id, restrict_scene_pos = restrict_args[0], None
+            elif len(restrict_args) == 2:
+                restrict_case_id, restrict_scene_pos = restrict_args[0], restrict_args[1]
+            else:
+                raise ValueError(f"Wrong restrict argmuent {restrict}")
 
-class MetaTest(type):
+        # Build setUpTestData and SetUp
+        setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_test_data)
+        setUp = MethodBuilder.build_setUp(manifest.set_up)
+        tearDownClass = MethodBuilder.build_tearDownClass()
+
+        # Add SetupData and SetUp as methods of the Test class
+        cls_attrs = {
+            "setUpClass": setUpClass,
+            "setUp": setUp,
+            "tearDownClass": tearDownClass,
+        }
+
+        # Handle restriction
+        for (case_id, case), (scene_pos, scene) in itertools.product(
+            manifest.cases.items(), enumerate(manifest.scenes)
+        ):
+            if restrict is not None:
+                if case_id != restrict_case_id:
+                    continue
+                elif restrict_scene_pos is not None and str(scene_pos) != restrict_scene_pos:
+                    continue
+
+            take = scene.shoot(case)
+            test = MethodBuilder.build_selenium_test_from_take(take)
+            cls_attrs.update({f"test_selenium_case_{case_id}_scene_{scene_pos}": test})
+
+        test_cls = super().__new__(cls, clsname, bases, cls_attrs)
+
+
+        # NOTE mad: mypy is struggling with the metaclass,
+        # I just ignore here instead of casting which does not do the trick
+        return test_cls  # type: ignore[return-value]
+    
+
+class MetaHttpTest(type):
     """
     A metaclass for creating test classes dynamically based on a Manifest.
 
@@ -53,6 +110,8 @@ class MetaTest(type):
         restrict: typing.Optional[str] = None,
     ) -> type[django.test.TestCase]:
         """Responsible for building the TestCase class."""
+
+
         # Handle restriction
         if restrict is not None:
             restrict_args = restrict.split(".")
@@ -68,6 +127,7 @@ class MetaTest(type):
         setUp = MethodBuilder.build_setUp(manifest.set_up)
 
         # Add SetupData and SetUp as methods of the Test class
+        # TODO mad: do I want setUpTestData or setUpClass?
         cls_attrs = {
             "setUpTestData": setUpTestData,
             "setUp": setUp,
@@ -84,8 +144,8 @@ class MetaTest(type):
                     continue
 
             take = scene.shoot(case)
-            test = MethodBuilder.build_test_from_take(take)
-            cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
+            test = MethodBuilder.build_http_test_from_take(take)
+            cls_attrs.update({f"test_http_case_{case_id}_scene_{scene_pos}": test})
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
 
@@ -147,9 +207,10 @@ class MetaTestDiscoverer:
         else:
             restrict_manifest, restrict_test = None, None
 
-        out = []
 
         suite_cls: type[unittest.TestSuite] = self.runner.test_suite
+        http_suite = suite_cls()
+        selenium_suite = suite_cls()
 
         folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
 
@@ -158,41 +219,45 @@ class MetaTestDiscoverer:
 
         for filename in os.listdir(folder):
             manifest_name = filename.replace(".yml", "")
-
+            
+            # Handle manifest restriction
             if restrict is not None and restrict_manifest != manifest_name:
                 continue
 
             self.logger.debug(f"Discovered manifest '{folder}/{filename}'")
 
+            # Parse manifest
             manifest = ManifestParser.parse_yaml(os.path.join(folder, filename))
 
-            # Create class
-            test_cls = MetaTest(
-                manifest_name, (django.test.TestCase,), manifest, restrict=restrict_test
-            )
+            
 
-            # Log / verbosity
-            if verbosity >= 2:
-                print(f"> {test_cls.__qualname__}")
+            # Create Http class
+            if manifest.testtype is None or manifest.testtype == "http": 
+                http_test_cls = MetaHttpTest(
+                    f"{manifest_name}.http", (django.test.TestCase,), manifest, restrict=restrict_test
+                )
 
-            # Load
-            # NOTE: the first cast is because of the metaclass
-            # the second because suite can contain theoretically
-            # test suites, but not in our case.
-            tests = self.loader.loadTestsFromTestCase(
-                typing.cast(type[django.test.TestCase], test_cls)
-            )
-            for test in tests:
-                test = typing.cast(unittest.TestCase, test)
-                test_name = scenery.common.pretty_test_name(test)
-                suite = suite_cls()
-                suite.addTest(test)
-                out.append((test_name, suite))
+                tests = self.loader.loadTestsFromTestCase(
+                    http_test_cls
+                )
+                http_suite.addTests(tests)
 
-        msg = f"Resulting in {len(out)} tests."
+            # Create Selenium class
+            if manifest.testtype is None or manifest.testtype == "selenium": 
+                selenium_test_cls = MetaSeleniumTest(
+                    f"{manifest_name}.selenium", (StaticLiveServerTestCase,), manifest, restrict=restrict_test
+                )
+
+                tests = self.loader.loadTestsFromTestCase(
+                    selenium_test_cls
+                )
+                selenium_suite.addTests(tests)
+
+
+        msg = f"Resulting in {len(http_suite._tests)} http tests, and {len(selenium_suite._tests)} selenium tests."
         if verbosity >= 1:
             print(f"{msg}\n")
-        return out
+        return http_suite, selenium_suite
 
 
 class MetaTestRunner:
@@ -212,7 +277,8 @@ class MetaTestRunner:
     def __init__(self) -> None:
         """Initialize the MetaTestRunner with a runner, logger, discoverer, and output stream."""
         self.logger = logging.getLogger(__package__)
-        self.stream = io.StringIO()
+        # self.stream = io.StringIO()
+        self.stream = sys.stdout
         self.runner = scenery.common.CustomDiscoverRunner(stream=self.stream)
 
         app_logger = logging.getLogger("app.close_watch")
@@ -242,32 +308,79 @@ class MetaTestRunner:
         if verbosity > 0:
             print("Tests runs:")
 
-        results = {}
-        for test_name, suite in tests_discovered:
-            result = self.runner.run_suite(suite)
+        # results = {}
+        # for test_name, suite in tests_discovered:
+        #     result = self.runner.run_suite(suite)
 
-            result_serialized = scenery.common.serialize_unittest_result(result)
+        #     result_serialized = scenery.common.serialize_unittest_result(result)
 
-            test_name = test_name.replace("test_case_", "")
-            test_name = test_name.replace("_scene_", ".")
+        #     test_name = test_name.replace("test_case_", "")
+        #     test_name = test_name.replace("_scene_", ".")
 
-            results[test_name] = result_serialized
+        #     results[test_name] = result_serialized
 
-            if result.errors or result.failures:
-                log_lvl, color = logging.ERROR, "red"
-            else:
-                log_lvl, color = logging.INFO, "green"
-            self.logger.log(log_lvl, f"{test_name}\n{scenery.common.tabulate(result_serialized)}")
-            if verbosity > 0:
-                print(
-                    f">> {scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
-                )
+        #     if result.errors or result.failures:
+        #         log_lvl, color = logging.ERROR, "red"
+        #     else:
+        #         log_lvl, color = logging.INFO, "green"
+        #     self.logger.log(log_lvl, f"{test_name}\n{scenery.common.tabulate(result_serialized)}")
+        #     if verbosity > 0:
+        #         print(
+        #             f">> {scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
+        #         )
 
-            # Log / verbosity
-            for head, traceback in result.failures + result.errors:
-                msg = f"{test_name}\n{head}\n{traceback}"
-                self.logger.error(msg)
-                if verbosity > 0:
-                    print(msg)
+        #     # Log / verbosity
+        #     for head, traceback in result.failures + result.errors:
+        #         msg = f"{test_name}\n{head}\n{traceback}"
+        #         self.logger.error(msg)
+        #         if verbosity > 0:
+        #             print(msg)
+
+        # if verbosity > 0:
+        #     print("Tests runs:")
+        # print(
+        #     f">> {scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
+        # )
+        results = self.runner.run_suite(tests_discovered)
+
+        # print("########################", results)
+
+
+        # print("**********************")
+        # self.runner.stream.seek(0)
+        # print(self.runner.stream.read())
+
+        # from pprint import pprint
+        # results_serialized = scenery.common.serialize_unittest_result(results)
+        # pprint(results_serialized)
+
+        # results = {}
+        # for test_name, suite in tests_discovered:
+        #     result = self.runner.run_suite(suite)
+
+        #     result_serialized = scenery.common.serialize_unittest_result(result)
+
+        #     test_name = test_name.replace("test_case_", "")
+        #     test_name = test_name.replace("_scene_", ".")
+
+        #     results[test_name] = result_serialized
+
+        #     if result.errors or result.failures:
+        #         log_lvl, color = logging.ERROR, "red"
+        #     else:
+        #         log_lvl, color = logging.INFO, "green"
+        #     self.logger.log(log_lvl, f"{test_name}\n{scenery.common.tabulate(result_serialized)}")
+        #     if verbosity > 0:
+        #         print(
+        #             f">> {scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
+        #         )
+
+        #     # Log / verbosity
+        #     for head, traceback in result.failures + result.errors:
+        #         msg = f"{test_name}\n{head}\n{traceback}"
+        #         self.logger.error(msg)
+        #         if verbosity > 0:
+        #             print(msg)
 
         return results
+        # return results_serialized

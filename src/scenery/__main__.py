@@ -105,36 +105,42 @@ def main() -> int:
     # NOTE: the imports will fail if loaded before SCENERY_ENV configuration
     from scenery.metatest import MetaTestRunner, MetaTestDiscoverer
 
-    import collections
+    # import collections
 
-    summary: collections.Counter[str] = collections.Counter()
+    # summary: collections.Counter[str] = collections.Counter()
     discoverer = MetaTestDiscoverer()
     tests_discovered = discoverer.discover(verbosity=2, restrict=args.restrict)
     runner = MetaTestRunner()
-    result = runner.run(tests_discovered, args.verbosity)
+    results = runner.run(tests_discovered, args.verbosity)
+
     # NOTE: type casting is done because mypy is being strict here because
     # dictionary types in Python are invariant by default
     # (for good reasons related to mutability and type safety).
     # This means even if type A is a subtype of type B, dict[str, A]
     # not considered a subtype of dict[str, B].
-    out.update(
-        typing.cast(
-            dict[str, dict[str, int | str | dict[str, typing.Any]]],
-            result,
-        )
-    )
-    for result_value in result.values():
-        summary.update(result_value)
+    # out.update(
+    #     typing.cast(
+    #         dict[str, dict[str, int | str | dict[str, typing.Any]]],
+    #         result,
+    #     )
+    # )
+    # result = 
+    # from pprint import pprint
+    # pprint(result)
+    # for result_value in result.values():
+    #     summary.update(result_value)
+
+    summary = scenery.common.serialize_unittest_result(results)
 
     ###############
     # OUTPUT RESULT
     ###############
 
-    if args.output is not None:
-        import json
+    # if args.output is not None:
+    #     import json
 
-        with open(args.output, "w") as f:
-            json.dump(out, f)
+    #     with open(args.output, "w") as f:
+    #         json.dump(out, f)
 
     for key, val in summary.items():
         if key != "testsRun" and val > 0:

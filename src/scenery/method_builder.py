@@ -3,10 +3,12 @@
 from typing import Callable
 
 import django.test
-
+from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 import scenery.manifest
 from scenery.http_checker import HttpChecker
 from scenery.set_up_handler import SetUpHandler
+
+from selenium import webdriver
 
 
 ################
@@ -20,6 +22,8 @@ class MethodBuilder:
     This class provides static methods to create setup and test methods
     that can be added to Django test cases.
     """
+
+    # TODO mad: I should build the get_response methode of the testcase here
 
     @staticmethod
     def build_setUpTestData(instructions: list[scenery.manifest.SetUpInstruction]) -> classmethod:
@@ -35,11 +39,49 @@ class MethodBuilder:
             classmethod: A class method that can be added to a Django test case.
         """
 
-        def setUpTestData(django_testcase: type[django.test.TestCase]) -> None:
+
+        def setUpTestData(django_testcase_cls: type[django.test.TestCase]) -> None:
+            super(django_testcase_cls, django_testcase_cls).setUpTestData()
+
             for instruction in instructions:
-                SetUpHandler.exec_set_up_instruction(django_testcase, instruction)
+                SetUpHandler.exec_set_up_instruction(django_testcase_cls, instruction)
 
         return classmethod(setUpTestData)
+    
+    @staticmethod
+    def build_setUpClass(instructions: list[scenery.manifest.SetUpInstruction]):
+
+        def setUpClass(django_testcase_cls: type[django.test.TestCase] | type[StaticLiveServerTestCase]) -> None:
+            super(django_testcase_cls, django_testcase_cls).setUpClass()
+
+            if issubclass(django_testcase_cls, StaticLiveServerTestCase):
+                django_testcase_cls.driver = webdriver.Chrome()
+                django_testcase_cls.driver.implicitly_wait(10)
+
+            for instruction in instructions:
+                SetUpHandler.exec_set_up_instruction(django_testcase_cls, instruction)
+
+            # import time
+
+            # time.sleep(5)
+
+
+        return classmethod(setUpClass)
+    
+    @staticmethod
+    def build_tearDownClass() -> classmethod:
+        """Build a tearDownClass class method for a Django test case.
+        """
+
+        def tearDownClass(django_testcase_cls: type[django.test.TestCase] | type[StaticLiveServerTestCase]) -> None:
+            # if issubclass(django_testcase_cls, StaticLiveServerTestCase):
+            #     django_testcase_cls.driver.quit()
+
+
+            super(django_testcase_cls, django_testcase_cls).tearDownClass()
+
+
+        return classmethod(tearDownClass)
 
     @staticmethod
     def build_setUp(
@@ -64,7 +106,7 @@ class MethodBuilder:
         return setUp
 
     @staticmethod
-    def build_test_from_take(take: scenery.manifest.HttpTake) -> Callable:
+    def build_http_test_from_take(take: scenery.manifest.HttpTake) -> Callable:
         """Build a test method from an HttpTake object.
 
         This method creates a test function that sends an HTTP request
@@ -80,7 +122,22 @@ class MethodBuilder:
         """
 
         def test(django_testcase: django.test.TestCase) -> None:
-            response = HttpChecker.get_http_client_response(django_testcase.client, take)
+            response = HttpChecker.get_http_client_response(django_testcase, take)
+            for i, check in enumerate(take.checks):
+                with django_testcase.subTest(i=i):
+                    HttpChecker.exec_check(django_testcase, response, check)
+
+        return test
+    
+
+    @staticmethod
+    def build_selenium_test_from_take(take: scenery.manifest.HttpTake) -> Callable:
+
+        def test(django_testcase: StaticLiveServerTestCase) -> None:
+            response = HttpChecker.get_selenium_response(django_testcase, take)
+
+
+
             for i, check in enumerate(take.checks):
                 with django_testcase.subTest(i=i):
                     HttpChecker.exec_check(django_testcase, response, check)

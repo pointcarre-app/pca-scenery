@@ -1,5 +1,5 @@
 """
-URL configuration for project_django project.
+URL configuration for django_project project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/4.2/topics/http/urls/
@@ -16,17 +16,20 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 
 try:
-    from rehearsal.project_django.some_app import views
+    from rehearsal.django_project.some_app import views
 except ModuleNotFoundError:
     # NOTE: mypy should run from the root directory
-    # and therefore it make sense that ths module is not found
+    # and therefore it make sense that this module is not found
     from some_app import views  # type: ignore[import-not-found, no-redef]
 
 # app_name = "some_app"
 urlpatterns = [
     path("admin/", admin.site.urls, name="admin"),
-    path("hello/", views.hello_world, name="hello"),
+    path('http', views.hello_http, name='http'),
+    path('', views.hello_rendered, name='frontend'),
 ]
+
+

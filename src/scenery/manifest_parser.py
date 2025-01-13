@@ -84,6 +84,7 @@ class ManifestParser:
             "scenes": ManifestParser._format_dict_scenes(d),
             "cases": ManifestParser._format_dict_cases(d),
             "manifest_origin": d["manifest_origin"],
+            "testtype": d.get("testtype")
         }
 
     @staticmethod

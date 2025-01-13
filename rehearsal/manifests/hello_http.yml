@@ -3,6 +3,6 @@ set_up:
 
 scene: 
   method: GET
-  url: "hello"
+  url: "http"
   directives:
     - status_code: 200

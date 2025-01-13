@@ -3,7 +3,7 @@ import os
 from django.apps import apps as django_apps
 from django.db.models.deletion import ProtectedError
 
-from rehearsal.project_django.some_app.models import SomeModel
+from rehearsal.django_project.some_app.models import SomeModel
 
 
 def reset_db(django_testcase):

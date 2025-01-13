@@ -10,7 +10,7 @@ import scenery.manifest
 from scenery.manifest_parser import ManifestParser
 from scenery.method_builder import MethodBuilder
 import rehearsal
-from rehearsal.project_django.some_app.models import SomeModel
+from rehearsal.django_project.some_app.models import SomeModel
 from scenery.set_up_handler import SetUpHandler
 
 import django.http
@@ -279,7 +279,7 @@ class TestManifest(unittest.TestCase):
             "b": scenery.manifest.Case("b", {"item_id": scenery.manifest.Item("item_id", {})}),
         }
 
-        scenery.manifest.Manifest(set_up_test_data, set_up, scenes, cases, "origin")
+        scenery.manifest.Manifest(set_up_test_data, set_up, scenes, cases, "origin", None)
         scenery.manifest.Manifest.from_formatted_dict(
             {
                 "set_up_test_data": ["reset_db"],
@@ -353,6 +353,7 @@ class TestManifestParser(unittest.TestCase):
             "cases": object(),
             "scenes": object(),
             "manifest_origin": "origin",
+            # "testtype": None,
         }
 
         # Unknown key
@@ -416,6 +417,7 @@ class TestManifestParser(unittest.TestCase):
                 "manifest_origin": "origin",
                 "set_up_test_data": [],
                 "set_up": [],
+                "testtype": None
             },
         )
         d = {
@@ -435,6 +437,7 @@ class TestManifestParser(unittest.TestCase):
                 "manifest_origin": "origin",
                 "set_up_test_data": ["a", "b"],
                 "set_up": ["c", "d"],
+                "testtype": None
             },
         )
 
@@ -778,9 +781,9 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
         setattr(self.django_testcase, "setUpTestData", watch(MethodBuilder.build_setUpTestData([])))
         setattr(self.django_testcase, "setUp", watch(MethodBuilder.build_setUp([])))
 
-        test_1 = MethodBuilder.build_test_from_take(take)
+        test_1 = MethodBuilder.build_http_test_from_take(take)
         test_1.__name__ = "test_1"
-        test_2 = MethodBuilder.build_test_from_take(take)
+        test_2 = MethodBuilder.build_http_test_from_take(take)
         test_2.__name__ = "test_2"
 
         setattr(self.django_testcase, "test_1", watch(test_1))

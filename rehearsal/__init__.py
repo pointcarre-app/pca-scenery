@@ -1,4 +1,5 @@
 import io
+# import sys
 import os
 import logging
 from types import TracebackType
@@ -176,27 +177,33 @@ class RehearsalDiscoverer:
 
         tests_discovered = []
 
-        if verbosity >= 1:
-            print("Tests discovered:")
+        # if verbosity >= 1:
+        #     print("Tests discovered:")
 
         testsuites = self.loader.loadTestsFromModule(rehearsal.tests)
+        tests_discovered = unittest.TestSuite()
+
+        # testsuites = self.loader.loadTestsFromModule(rehearsal.tests)
 
         for testsuite in testsuites:
-            testsuite = typing.cast(unittest.TestSuite, testsuite)
-            for test in testsuite:
-                test = typing.cast(unittest.TestCase, test)
-                test_name = scenery.common.pretty_test_name(test)
+        #     testsuite = typing.cast(unittest.TestSuite, testsuite)
+        #     for test in testsuite:
+        #         test = typing.cast(unittest.TestCase, test)
+        #         test_name = scenery.common.pretty_test_name(test)
 
-                # Log / verbosity
-                msg = f"Discovered {test_name}"
-                self.logger.debug(msg)
-                if verbosity >= 2:
-                    print(f"> {test_name}")
+        #         # Log / verbosity
+        #         msg = f"Discovered {test_name}"
+        #         self.logger.debug(msg)
+        #         if verbosity >= 2:
+        #             print(f"> {test_name}")
 
-                suite = unittest.TestSuite(tests=(test,))
-                tests_discovered.append((test_name, suite))
+        #         suite = unittest.TestSuite(tests=(test,))
+        #         tests_discovered.append((test_name, suite))
 
-        msg = f"{len(tests_discovered)} tests."
+            tests_discovered.addTests(testsuite)
+
+        # msg = f"{len(tests_discovered)} tests."
+        msg = f"Discovered {len(tests_discovered._tests)} tests."
         if verbosity >= 1:
             print(f"{msg}\n")
 
@@ -206,34 +213,110 @@ class RehearsalDiscoverer:
 class RehearsalRunner:
     def __init__(self) -> None:
         self.runner = unittest.TextTestRunner(stream=io.StringIO())
+        # self.runner = unittest.TextTestRunner(stream=sys.stdout)
         self.logger = logging.getLogger(__package__ + ".rehearsal")
 
     def run(
-        self, tests_discovered: list[tuple[str, unittest.TestSuite]], verbosity: int
+        self, tests_discovered: unittest.TestSuite, verbosity: int,
     ) -> dict[str, dict[str, int]]:
-        results = {}
-        for test_name, suite in tests_discovered:
-            # with redirect_stdout():
-            result = self.runner.run(suite)
+        results = self.runner.run(tests_discovered)
 
-            result_serialized = scenery.common.serialize_unittest_result(result)
-            results[test_name] = result_serialized
+        # for failed_test, traceback in results.failures:
+        #     test_name = failed_test.id()  
+        #     log_lvl, color = logging.ERROR, "red"
+        #     if verbosity > 0:
+        #         print(f"{scenery.common.colorize(color, test_name)}\n{traceback}")
+        #         # TODO: log
+                
+        # for failed_test, traceback in results.errors:
+        #     test_name = failed_test.id()  
+        #     log_lvl, color = logging.ERROR, "red"
+        #     if verbosity > 0:
+        #         print(f"{scenery.common.colorize(color, test_name)}\n{traceback}")
+        #         # TODO: log
 
-            if result.errors or result.failures:
-                log_lvl, color = logging.ERROR, "red"
-            else:
-                log_lvl, color = logging.INFO, "green"
-            self.logger.log(log_lvl, f"{test_name}\n{scenery.common.tabulate(result_serialized)}")
-            if verbosity > 0:
-                print(
-                    f"{scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
-                )
+        # result_serialized = scenery.common.serialize_unittest_result(result)
 
-            # Log / verbosity
-            for head, traceback in result.failures + result.errors:
-                msg = f"{test_name}\n{head}\n{traceback}"
-                self.logger.error(msg)
-                if verbosity > 0:
-                    print(msg)
+        # for test_name, suite in tests_discovered:
+        #     # with redirect_stdout():
+        #     result = self.runner.run(suite)
+
+        #     result_serialized = scenery.common.serialize_unittest_result(result)
+        #     results[test_name] = result_serialized
+
+        #     if result.errors or result.failures:
+        #         log_lvl, color = logging.ERROR, "red"
+        #     else:
+        #         log_lvl, color = logging.INFO, "green"
+        #     self.logger.log(log_lvl, f"{test_name}\n{scenery.common.tabulate(result_serialized)}")
+        #     if verbosity > 0:
+        #         print(
+        #             f"{scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
+        #         )
+
+        #     # Log / verbosity
+        #     for head, traceback in result.failures + result.errors:
+        #         msg = f"{test_name}\n{head}\n{traceback}"
+        #         self.logger.error(msg)
+        #         if verbosity > 0:
+        #             print(msg)
+
+
+        # result_serialized = scenery.common.serialize_unittest_result(result)
+
+        # for test_name, suite in tests_discovered:
+        #     # with redirect_stdout():
+        #     result = self.runner.run(suite)
+
+        #     result_serialized = scenery.common.serialize_unittest_result(result)
+        #     results[test_name] = result_serialized
+
+        #     if result.errors or result.failures:
+        #         log_lvl, color = logging.ERROR, "red"
+        #     else:
+        #         log_lvl, color = logging.INFO, "green"
+        #     self.logger.log(log_lvl, f"{test_name}\n{scenery.common.tabulate(result_serialized)}")
+        #     if verbosity > 0:
+        #         print(
+        #             f"{scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
+        #         )
+
+        #     # Log / verbosity
+        #     for head, traceback in result.failures + result.errors:
+        #         msg = f"{test_name}\n{head}\n{traceback}"
+        #         self.logger.error(msg)
+        #         if verbosity > 0:
+        #             print(msg)
 
         return results
+
+    # def run(
+    #     self, tests_discovered: list[tuple[str, unittest.TestSuite]], verbosity: int
+    # ) -> dict[str, dict[str, int]]:
+    #     results = {}
+    #     for test_name, suite in tests_discovered:
+    #         # with redirect_stdout():
+    #         result = self.runner.run(suite)
+
+    #         result_serialized = scenery.common.serialize_unittest_result(result)
+    #         results[test_name] = result_serialized
+
+    #         if result.errors or result.failures:
+    #             log_lvl, color = logging.ERROR, "red"
+    #         else:
+    #             log_lvl, color = logging.INFO, "green"
+    #         self.logger.log(log_lvl, f"{test_name}\n{scenery.common.tabulate(result_serialized)}")
+    #         if verbosity > 0:
+    #             print(
+    #                 f"{scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
+    #             )
+
+    #         # Log / verbosity
+    #         for head, traceback in result.failures + result.errors:
+    #             msg = f"{test_name}\n{head}\n{traceback}"
+    #             self.logger.error(msg)
+    #             if verbosity > 0:
+    #                 print(msg)
+
+        # return results
+        # return result_serialized
