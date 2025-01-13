@@ -22,7 +22,7 @@ scenes:
   - method: POST
     url: "frontend"
     data: 
-      message : "some text"
+      message : some text
     directives:
       - status_code: 200
       - dom_element:

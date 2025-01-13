@@ -54,30 +54,27 @@ class MethodBuilder:
         def setUpClass(django_testcase_cls: type[django.test.TestCase] | type[StaticLiveServerTestCase]) -> None:
             super(django_testcase_cls, django_testcase_cls).setUpClass()
 
+
+
             if issubclass(django_testcase_cls, StaticLiveServerTestCase):
                 django_testcase_cls.driver = webdriver.Chrome()
                 django_testcase_cls.driver.implicitly_wait(10)
 
+            # Get CSRF token
+            csrf_token = django_testcase_cls.driver.get_cookie('csrftoken')
+            print("HERE", csrf_token)
+
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase_cls, instruction)
-
-            # import time
-
-            # time.sleep(5)
-
 
         return classmethod(setUpClass)
     
     @staticmethod
     def build_tearDownClass() -> classmethod:
-        """Build a tearDownClass class method for a Django test case.
-        """
 
         def tearDownClass(django_testcase_cls: type[django.test.TestCase] | type[StaticLiveServerTestCase]) -> None:
-            # if issubclass(django_testcase_cls, StaticLiveServerTestCase):
-            #     django_testcase_cls.driver.quit()
-
-
+            if issubclass(django_testcase_cls, StaticLiveServerTestCase):
+                django_testcase_cls.driver.quit()
             super(django_testcase_cls, django_testcase_cls).tearDownClass()
 
 

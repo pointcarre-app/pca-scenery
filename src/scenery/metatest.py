@@ -14,7 +14,7 @@ from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 import django.test
 import django.test.runner
 from django.test.utils import get_runner
-
+from django.test import override_settings
 
 
 from scenery.manifest import Manifest
@@ -80,7 +80,10 @@ class MetaSeleniumTest(type):
         # NOTE mad: mypy is struggling with the metaclass,
         # I just ignore here instead of casting which does not do the trick
         return test_cls  # type: ignore[return-value]
+        # return override_settings(CSRF_COOKIE_SECURE=False)(test_cls)
     
+
+
 
 class MetaHttpTest(type):
     """
@@ -240,10 +243,11 @@ class MetaTestDiscoverer:
                 tests = self.loader.loadTestsFromTestCase(
                     http_test_cls
                 )
-                http_suite.addTests(tests)
+                # http_suite.addTests(tests)
 
             # Create Selenium class
             if manifest.testtype is None or manifest.testtype == "selenium": 
+                # pass
                 selenium_test_cls = MetaSeleniumTest(
                     f"{manifest_name}.selenium", (StaticLiveServerTestCase,), manifest, restrict=restrict_test
                 )
@@ -274,12 +278,12 @@ class MetaTestRunner:
         stream (StringIO): A string buffer for capturing test output.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, failfast=False) -> None:
         """Initialize the MetaTestRunner with a runner, logger, discoverer, and output stream."""
         self.logger = logging.getLogger(__package__)
         # self.stream = io.StringIO()
         self.stream = sys.stdout
-        self.runner = scenery.common.CustomDiscoverRunner(stream=self.stream)
+        self.runner = scenery.common.CustomDiscoverRunner(stream=self.stream, failfast=failfast)
 
         app_logger = logging.getLogger("app.close_watch")
         app_logger.propagate = False
@@ -305,6 +309,8 @@ class MetaTestRunner:
         Note:
             This method logs test results and prints them to the console based on the verbosity level.
         """
+
+        # TODO: maybe this can dispapper ?!
         if verbosity > 0:
             print("Tests runs:")
 

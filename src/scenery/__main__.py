@@ -3,6 +3,8 @@
 See: `python -m scenery --help`
 """
 
+# TODO mad: this function is never executed during testing
+
 import sys
 import typing
 
@@ -58,6 +60,8 @@ def main() -> int:
         help="Location of django settings module",
     )
 
+    parser.add_argument('--failfast', action='store_true')
+
     parser.add_argument(
         "--output",
         default=None,
@@ -102,18 +106,25 @@ def main() -> int:
     # METATESTING
     #############
 
-    # NOTE: the imports will fail if loaded before SCENERY_ENV configuration
+    # NOTE mad: the imports will fail if loaded before SCENERY_ENV configuration
     from scenery.metatest import MetaTestRunner, MetaTestDiscoverer
 
-    # import collections
-
-    # summary: collections.Counter[str] = collections.Counter()
     discoverer = MetaTestDiscoverer()
-    tests_discovered = discoverer.discover(verbosity=2, restrict=args.restrict)
-    runner = MetaTestRunner()
-    results = runner.run(tests_discovered, args.verbosity)
+    http_suite, selenium_suite =  discoverer.discover(verbosity=2, restrict=args.restrict)
+    runner = MetaTestRunner(failfast=args.failfast)
 
-    # NOTE: type casting is done because mypy is being strict here because
+    print("HTTP")
+    
+    http_result = runner.run(http_suite, args.verbosity)
+    http_success = scenery.common.summarize_test_result(http_result)
+
+    print("SELENIUM")
+
+    selenium_result = runner.run(selenium_suite, args.verbosity)
+    selenium_success = scenery.common.summarize_test_result(selenium_result)
+    
+
+    # NOTE mad: type casting is done because mypy is being strict here because
     # dictionary types in Python are invariant by default
     # (for good reasons related to mutability and type safety).
     # This means even if type A is a subtype of type B, dict[str, A]
@@ -130,11 +141,11 @@ def main() -> int:
     # for result_value in result.values():
     #     summary.update(result_value)
 
-    summary = scenery.common.serialize_unittest_result(results)
+    # summary = scenery.common.serialize_unittest_result(results)
 
-    ###############
-    # OUTPUT RESULT
-    ###############
+    # ###############
+    # # OUTPUT RESULT
+    # ###############
 
     # if args.output is not None:
     #     import json
@@ -142,18 +153,18 @@ def main() -> int:
     #     with open(args.output, "w") as f:
     #         json.dump(out, f)
 
-    for key, val in summary.items():
-        if key != "testsRun" and val > 0:
-            fail = True
-        else:
-            fail = False
+    ###################
+    # Exit code
+    ###################
+    
+    success = min(int(http_success), int(selenium_success),)
+    exit_code = 1 - success
 
-    if fail:
-        msg, color, exit_code = "FAIL", "red", 1
+    if success:
+        msg, color = "🟢 SCENERY WENT FINE", "green"
     else:
-        msg, color, exit_code = "OK", "green", 0
+        msg, color = "❌ SCENERY FAILED", "red"
 
-    print(f"Summary:\n{scenery.common.tabulate(summary)}")
     print(f"{scenery.common.colorize(color, msg)}\n\n")
 
     return exit_code

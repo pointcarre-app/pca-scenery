@@ -69,11 +69,6 @@ def main() -> int:
 
 
     print(f"{scenery.common.colorize("cyan", "## Selenium")}\n")
-
-
-    for test in selenium_suite:
-        print(test)
-
     selenium_result = metatest_runner.run(selenium_suite, verbosity=2)
     selenium_success = scenery.common.summarize_test_result(selenium_result)
 

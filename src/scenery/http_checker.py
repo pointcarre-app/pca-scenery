@@ -58,7 +58,7 @@ class HttpChecker:
                 take.data,
             )
         elif take.method == http.HTTPMethod.POST:
-            response = django_testcase.post(
+            response = django_testcase.client.post(
                 take.url,
                 take.data,
             )
@@ -97,13 +97,17 @@ class HttpChecker:
         response.status_code = http_response.status_code
 
 
+        # TODO: should be a class attribute or somethin
         selenium_module = importlib.import_module(os.environ["SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM"])
 
-        
+        django_testcase.driver.get(url)
         if take.method == http.HTTPMethod.GET:
-            django_testcase.driver.get(url)
+            pass
         if take.method == http.HTTPMethod.POST:
-            post_method = getattr(selenium_module, f"post_{take.url_name}")
+            # TODO mad: improve and or document
+            method_name = take.url_name.replace(":", "_")
+            method_name =  f"post_{method_name}"
+            post_method = getattr(selenium_module, method_name)
             post_method(django_testcase, take.data)
 
 
@@ -227,6 +231,7 @@ class HttpChecker:
         """
 
         # NOTE mad: allows to check the content in its current state for selenium
+        # TODO: should move in get response
         if isinstance(django_testcase, StaticLiveServerTestCase):
             content = django_testcase.driver.page_source
         else:

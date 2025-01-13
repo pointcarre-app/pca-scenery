@@ -43,6 +43,7 @@ def scenery_setup(settings_location: str) -> None:
     # Env variables
     os.environ["SCENERY_COMMON_ITEMS"] = settings.SCENERY_COMMON_ITEMS
     os.environ["SCENERY_SET_UP_INSTRUCTIONS"] = settings.SCENERY_SET_UP_INSTRUCTIONS
+    os.environ["SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM"] = settings.SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM
     os.environ["SCENERY_TESTED_APP_NAME"] = settings.SCENERY_TESTED_APP_NAME
     os.environ["SCENERY_MANIFESTS_FOLDER"] = settings.SCENERY_MANIFESTS_FOLDER
 
@@ -225,18 +226,19 @@ def pretty_test_name(test: unittest.TestCase) -> str:
     """
     return f"{test.__module__}.{test.__class__.__qualname__}.{test._testMethodName}"
 
+
 def summarize_test_result(result, verbosity=1) -> bool:
     """Returns true if the tests all succeded, false otherwise"""
 
     for failed_test, traceback in result.failures:
-        test_name = failed_test.id()  
+        test_name = failed_test.id()
         log_lvl, color = logging.ERROR, "red"
         if verbosity > 0:
             print(f"{colorize(color, test_name)}\n{traceback}")
             # TODO: log
-            
+
     for failed_test, traceback in result.errors:
-        test_name = failed_test.id()  
+        test_name = failed_test.id()
         log_lvl, color = logging.ERROR, "red"
         if verbosity > 0:
             print(f"{colorize(color, test_name)}\n{traceback}")
@@ -255,7 +257,7 @@ def summarize_test_result(result, verbosity=1) -> bool:
 
     if verbosity > 0:
         print(f"\n\nSummary:\n{tabulate(summary)}")
-        print(f"{colorize(color, msg)}\n\n")
+    print(f"{colorize(color, msg)}\n\n")
 
     return success
 
@@ -311,6 +313,7 @@ def overwrite_get_runner_kwargs(
 
 
 # from django.test.runner import DiscoverRunner
+
 
 class CustomDiscoverRunner(django.test.runner.DiscoverRunner):
     """Custom test runner that allows for stream capture."""

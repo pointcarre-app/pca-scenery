@@ -1,7 +1,7 @@
 
 from selenium.webdriver.common.by import By
 
-from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+# from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 
 
 
