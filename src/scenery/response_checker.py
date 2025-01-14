@@ -8,26 +8,57 @@ import scenery.manifest
 
 import django.test
 import django.http
-
-import bs4
-import requests
-
-from selenium.webdriver.common.by import By
-
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 
+import bs4
+
+# TODO mad: change type hints using ResponseProtocol
+from scenery.common import ResponseProtocol
+
+class SeleniumResponse(ResponseProtocol):
+
+    def __init__(
+        self, 
+        driver,
+        url
+        ):
+
+        self.driver = driver
 
 
-# def find_element(driver, **kwargs):
-#     for by, value in kwargs.items():
-#         if by == "id":
-#             selector = By.ID
-#         else:
-#             raise ValueError(f"{by=}")
-#         return driver.find_element(selector, value)
+    @property
+    def status_code(self) -> int:
+        # TODO mad, sel: should be returned in the html
+        # NOTE mad: this is probably much harder to solve in general
+        # Wwe can't use Selenium for the status code
+        # one solution could be to use request
+        return -1
+    
+    @property
+    def headers(self) -> typing.Mapping[str, str]:
+        return None
+    
+    @property
+    def content(self) -> bytes:
+        return self.driver.page_source
+    
+    @property
+    def charset(self) -> str:
+        return None
+    
+    def has_header(self, header_name: str) -> bool:
+        return header_name in self._headers
+    
+    def __getitem__(self, header_name: str) -> str:
+        return self._headers[header_name]
+    
+    def __setitem__(self, header_name: str, value: str) -> None:
+        self._headers[header_name] = value
 
 
-class HttpChecker:
+
+
+class Checker:
     """A utility class for performing HTTP requests and assertions on responses.
 
     This class provides static methods to execute HTTP requests and perform
@@ -75,32 +106,19 @@ class HttpChecker:
         django_testcase: StaticLiveServerTestCase, take: scenery.manifest.HttpTake
     ) -> django.http.HttpResponse:
         
-        # TODO mad: bad idea, I rather want a protocol here, to which the django hhtp reponse would be recognized as such
-        response = django.http.HttpResponse("")
-        
         # Get the correct url form the StaticLiveServerTestCase
         url = django_testcase.live_server_url + take.url
 
-        # NOTE mad: I am sad we can't use Selenium for the status code
-        if take.method == http.HTTPMethod.GET:
-            http_response = requests.get(
-                url,
-                data = take.data,
-            )
-        elif take.method == http.HTTPMethod.POST:
-            http_response = requests.post(
-                url,
-                data = take.data,
-            )
-        else:
-            raise NotImplementedError(take.method)
-        response.status_code = http_response.status_code
+        response = SeleniumResponse(django_testcase.driver, url)
 
 
-        # TODO: should be a class attribute or somethin
+
+        # TODO: should be a class attribute or something, maybe module could be loaded at the beggining
         selenium_module = importlib.import_module(os.environ["SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM"])
 
         django_testcase.driver.get(url)
+
+
         if take.method == http.HTTPMethod.GET:
             pass
         if take.method == http.HTTPMethod.POST:
@@ -134,13 +152,13 @@ class HttpChecker:
             NotImplementedError: If the check instruction is not implemented.
         """
         if check.instruction == scenery.manifest.DirectiveCommand.STATUS_CODE:
-            HttpChecker.check_status_code(django_testcase, response, check.args)
+            Checker.check_status_code(django_testcase, response, check.args)
         elif check.instruction == scenery.manifest.DirectiveCommand.REDIRECT_URL:
-            HttpChecker.check_redirect_url(django_testcase, response, check.args)
+            Checker.check_redirect_url(django_testcase, response, check.args)
         elif check.instruction == scenery.manifest.DirectiveCommand.COUNT_INSTANCES:
-            HttpChecker.check_count_instances(django_testcase, response, check.args)
+            Checker.check_count_instances(django_testcase, response, check.args)
         elif check.instruction == scenery.manifest.DirectiveCommand.DOM_ELEMENT:
-            HttpChecker.check_dom_element(django_testcase, response, check.args)
+            Checker.check_dom(django_testcase, response, check.args)
         else:
             raise NotImplementedError(check)
 
@@ -157,6 +175,9 @@ class HttpChecker:
             response (django.http.HttpResponse): The HTTP response to check.
             args (int): The expected status code.
         """
+        # print("HERE", response.status_code)
+        # print(response.content)
+        print(django_testcase.__class__.__name__)
         django_testcase.assertEqual(
             response.status_code,
             args,
@@ -181,7 +202,8 @@ class HttpChecker:
             django.http.HttpResponseRedirect,
             f"Expected HttpResponseRedirect but got {type(response)}",
         )
-        # NOTE: this is done for static type checking
+        # NOTE mad: this is done for static type checking
+        # TODO mad: I don't like it
         redirect = typing.cast(django.http.HttpResponseRedirect, response)
         django_testcase.assertEqual(
             redirect.url,
@@ -210,7 +232,7 @@ class HttpChecker:
         )
 
     @staticmethod
-    def check_dom_element(
+    def check_dom(
         django_testcase: django.test.TestCase | StaticLiveServerTestCase,
         response: django.http.HttpResponse,
         args: dict[scenery.manifest.DomArgument, typing.Any],
@@ -230,14 +252,8 @@ class HttpChecker:
             ValueError: If neither 'find' nor 'find_all' arguments are provided in args.
         """
 
-        # NOTE mad: allows to check the content in its current state for selenium
-        # TODO: should move in get response
-        if isinstance(django_testcase, StaticLiveServerTestCase):
-            content = django_testcase.driver.page_source
-        else:
-            content = response.content
 
-        soup = bs4.BeautifulSoup(content, "html.parser")
+        soup = bs4.BeautifulSoup(response.content, "html.parser")
 
         # Apply the scope
         if scope := args.get(scenery.manifest.DomArgument.SCOPE):

@@ -19,6 +19,10 @@
 
 
 {% load static %}
+
+{% csrf_token %}
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,7 +33,11 @@
     <!-- Load HTMX from CDN -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
-<body>
+<!-- <body> -->
+
+    <!-- HX HEADERS : SO HTMX GIVES THE CSRF TOKEN HIMSELF -->
+
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <div class="container">
         <h1>Django Frontend Test Page</h1>
         <div id="message-container">

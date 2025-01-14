@@ -15,6 +15,33 @@ from django.test.runner import DiscoverRunner
 
 import yaml
 
+
+class ResponseProtocol(typing.Protocol):
+    @property
+    def status_code(self) -> int:
+        ...
+    
+    @property
+    def headers(self) -> typing.Mapping[str, str]:
+        ...
+    
+    @property
+    def content(self) -> bytes:
+        ...
+    
+    @property
+    def charset(self) -> str:
+        ...
+    
+    def has_header(self, header_name: str) -> bool:
+        ...
+    
+    def __getitem__(self, header_name: str) -> str:
+        ...
+    
+    def __setitem__(self, header_name: str, value: str) -> None:
+        ...
+
 ########################
 # SETTINGS
 ########################
@@ -230,6 +257,8 @@ def pretty_test_name(test: unittest.TestCase) -> str:
 def summarize_test_result(result, verbosity=1) -> bool:
     """Returns true if the tests all succeded, false otherwise"""
 
+    # logger = logging.getLogger("scenery")
+
     for failed_test, traceback in result.failures:
         test_name = failed_test.id()
         log_lvl, color = logging.ERROR, "red"
@@ -251,12 +280,16 @@ def summarize_test_result(result, verbosity=1) -> bool:
             success = False
 
     if success:
-        msg, color = "🟢 OK", "green"
+        log_lvl, msg, color = logging.INFO,  "🟢 OK", "green"
     else:
-        msg, color = "❌ FAIL", "red"
+        log_lvl, msg, color = logging.ERROR, "❌ FAIL", "red"
+
+    # logger.debug(f"\nSummary:\n{tabulate(summary)}\n")
+    # logger.log(log_lvl, colorize(color, msg))
 
     if verbosity > 0:
-        print(f"\n\nSummary:\n{tabulate(summary)}")
+        print(f"\nSummary:\n{tabulate(summary)}\n")
+
     print(f"{colorize(color, msg)}\n\n")
 
     return success

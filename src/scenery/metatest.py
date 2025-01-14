@@ -14,7 +14,6 @@ from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 import django.test
 import django.test.runner
 from django.test.utils import get_runner
-from django.test import override_settings
 
 
 from scenery.manifest import Manifest
@@ -59,6 +58,7 @@ class MetaSeleniumTest(type):
             "setUp": setUp,
             "tearDownClass": tearDownClass,
         }
+    
 
         # Handle restriction
         for (case_id, case), (scene_pos, scene) in itertools.product(
@@ -80,7 +80,6 @@ class MetaSeleniumTest(type):
         # NOTE mad: mypy is struggling with the metaclass,
         # I just ignore here instead of casting which does not do the trick
         return test_cls  # type: ignore[return-value]
-        # return override_settings(CSRF_COOKIE_SECURE=False)(test_cls)
     
 
 
@@ -243,7 +242,7 @@ class MetaTestDiscoverer:
                 tests = self.loader.loadTestsFromTestCase(
                     http_test_cls
                 )
-                # http_suite.addTests(tests)
+                http_suite.addTests(tests)
 
             # Create Selenium class
             if manifest.testtype is None or manifest.testtype == "selenium": 

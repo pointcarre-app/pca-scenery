@@ -5,7 +5,7 @@ import unittest
 import typing
 
 import scenery.common
-from scenery.http_checker import HttpChecker
+from scenery.response_checker import Checker
 import scenery.manifest
 from scenery.manifest_parser import ManifestParser
 from scenery.method_builder import MethodBuilder
@@ -537,10 +537,10 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         response.status_code = 200
 
         def test_pass(django_testcase):
-            HttpChecker.check_status_code(django_testcase, response, 200)
+            Checker.check_status_code(django_testcase, response, 200)
 
         def test_fail(django_testcase):
-            HttpChecker.check_status_code(django_testcase, response, 400)
+            Checker.check_status_code(django_testcase, response, 400)
 
         setattr(self.django_testcase, "test_pass", test_pass)
         setattr(self.django_testcase, "test_fail", test_fail)
@@ -552,10 +552,10 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         response = django.http.HttpResponseRedirect(redirect_to="somewhere")
 
         def test_pass(django_testcase):
-            HttpChecker.check_redirect_url(django_testcase, response, "somewhere")
+            Checker.check_redirect_url(django_testcase, response, "somewhere")
 
         def test_fail(django_testcase):
-            HttpChecker.check_redirect_url(django_testcase, response, "elsewhere")
+            Checker.check_redirect_url(django_testcase, response, "elsewhere")
 
         setattr(self.django_testcase, "test_pass", test_pass)
         setattr(self.django_testcase, "test_fail", test_fail)
@@ -571,12 +571,12 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         response = django.http.HttpResponse()
 
         def test_pass(django_testcase):
-            HttpChecker.check_count_instances(
+            Checker.check_count_instances(
                 django_testcase, response, {"model": SomeModel, "n": 0}
             )
 
         def test_fail(django_testcase):
-            HttpChecker.check_count_instances(
+            Checker.check_count_instances(
                 django_testcase, response, {"model": SomeModel, "n": 1}
             )
 
@@ -584,7 +584,7 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
             class UndefinedModel:
                 pass
 
-            HttpChecker.check_count_instances(
+            Checker.check_count_instances(
                 django_testcase, response, {"model": UndefinedModel, "n": 1}
             )
 
@@ -600,7 +600,7 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         def test_pass_find_by_id(django_testcase):
             response = django.http.HttpResponse()
             response.content = '<div id="target">Pass</div>'
-            HttpChecker.check_dom_element(
+            Checker.check_dom(
                 django_testcase,
                 response,
                 {scenery.manifest.DomArgument.FIND: {"id": "target"}},
@@ -609,7 +609,7 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         def test_pass_find_by_class(django_testcase):
             response = django.http.HttpResponse()
             response.content = '<div class="target">Pass</div>'
-            HttpChecker.check_dom_element(
+            Checker.check_dom(
                 django_testcase,
                 response,
                 {scenery.manifest.DomArgument.FIND: {"class": "target"}},
@@ -618,7 +618,7 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         def test_pass_text(django_testcase):
             response = django.http.HttpResponse()
             response.content = '<div id="target">Pass</div>'
-            HttpChecker.check_dom_element(
+            Checker.check_dom(
                 django_testcase,
                 response,
                 {
@@ -630,7 +630,7 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         def test_pass_attribute(django_testcase):
             response = django.http.HttpResponse()
             response.content = '<div id="target" class="something">Pass</div>'
-            HttpChecker.check_dom_element(
+            Checker.check_dom(
                 django_testcase,
                 response,
                 {
@@ -645,7 +645,7 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         def test_pass_find_all(django_testcase):
             response = django.http.HttpResponse()
             response.content = '<div class="something">Pass</div> <div class="something">Pass</div>'
-            HttpChecker.check_dom_element(
+            Checker.check_dom(
                 django_testcase,
                 response,
                 {
@@ -657,7 +657,7 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         def test_pass_scope(django_testcase):
             response = django.http.HttpResponse()
             response.content = '<div id="scope"> <div class="something">In</div> <div class="something">In</div> </div> <div class="something">'
-            HttpChecker.check_dom_element(
+            Checker.check_dom(
                 django_testcase,
                 response,
                 {
@@ -670,7 +670,7 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         def test_fail_1(django_testcase):
             response = django.http.HttpResponse()
             response.content = '<div id="target">Pass</div>'
-            HttpChecker.check_dom_element(
+            Checker.check_dom(
                 django_testcase,
                 response,
                 {scenery.manifest.DomArgument.FIND: {"id": "another_target"}},
@@ -679,7 +679,7 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         def test_fail_2(django_testcase):
             response = django.http.HttpResponse()
             response.content = '<div id="target">Pass</div>'
-            HttpChecker.check_dom_element(
+            Checker.check_dom(
                 django_testcase,
                 response,
                 {
@@ -691,7 +691,7 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         def test_fail_3(django_testcase):
             response = django.http.HttpResponse()
             response.content = '<div id="target" class="something">Pass</div>'
-            HttpChecker.check_dom_element(
+            Checker.check_dom(
                 django_testcase,
                 response,
                 {
@@ -706,7 +706,7 @@ class TestHttpChecker(rehearsal.TestCaseOfDjangoTestCase):
         def test_error_1(django_testcase):
             response = django.http.HttpResponse()
             response.content = '<div id="target" class="something">Pass</div>'
-            HttpChecker.check_dom_element(
+            Checker.check_dom(
                 django_testcase,
                 response,
                 {},

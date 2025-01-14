@@ -4,12 +4,18 @@ from typing import Callable
 
 import django.test
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
-import scenery.manifest
-from scenery.http_checker import HttpChecker
-from scenery.set_up_handler import SetUpHandler
-
+from django.middleware.csrf import get_token
+# from django.test import Client
 from selenium import webdriver
 
+import django.http
+
+import scenery.manifest
+from scenery.response_checker import Checker
+from scenery.set_up_handler import SetUpHandler
+
+
+            
 
 ################
 # METHOD BUILDER
@@ -60,9 +66,47 @@ class MethodBuilder:
                 django_testcase_cls.driver = webdriver.Chrome()
                 django_testcase_cls.driver.implicitly_wait(10)
 
-            # Get CSRF token
-            csrf_token = django_testcase_cls.driver.get_cookie('csrftoken')
-            print("HERE", csrf_token)
+                # First, get the CSRF token using the test client
+                request = django.http.HttpRequest()
+                request.META = {}
+                csrf_token = get_token(request)
+
+
+            #     print("CSRF TOKEN", csrf_token)
+
+
+            #     # Get domain from live_server_url
+            #     # from urllib.parse import urlparse
+            #     # domain = urlparse(django_testcase_cls.live_server_url).netloc.split(':')[0]
+            #     domain = "localhost"
+            #     print("DOMAIN", domain)
+                
+            #     # Set the CSRF cookie with domain
+            #     # django_testcase_cls.driver.add_cookie({
+            #     #     'name': 'csrftoken',
+            #     #     'value': csrf_token,
+            #     #     'path': '/',
+            #     #     'domain': domain,  # This is important!
+            #     #     'secure': False,
+            #     #     'httpOnly': False
+            #     # })
+
+            #     # django_testcase_cls.driver.execute_script(
+            #     #     'document.cookie = "csrftoken={}; path=/; domain=localhost";'.format(csrf_token)
+            #     # )
+
+            #     # Set the CSRF cookie first
+            #     # selenium.get(django_testcase.live_server_url + take.request.path)
+            #     # django_testcase_cls.driver.add_cookie({
+            #     #     'name': 'csrftoken',
+            #     #     'value': csrf_token,
+            #     #     'path': '/',
+            #     # })
+
+            # # Get CSRF token
+            # # csrf_token = django_testcase_cls.driver.get_cookie('csrftoken')
+
+            django_testcase_cls.csrf_token = csrf_token
 
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase_cls, instruction)
@@ -119,10 +163,10 @@ class MethodBuilder:
         """
 
         def test(django_testcase: django.test.TestCase) -> None:
-            response = HttpChecker.get_http_client_response(django_testcase, take)
+            response = Checker.get_http_client_response(django_testcase, take)
             for i, check in enumerate(take.checks):
                 with django_testcase.subTest(i=i):
-                    HttpChecker.exec_check(django_testcase, response, check)
+                    Checker.exec_check(django_testcase, response, check)
 
         return test
     
@@ -131,12 +175,13 @@ class MethodBuilder:
     def build_selenium_test_from_take(take: scenery.manifest.HttpTake) -> Callable:
 
         def test(django_testcase: StaticLiveServerTestCase) -> None:
-            response = HttpChecker.get_selenium_response(django_testcase, take)
-
-
+            response = Checker.get_selenium_response(django_testcase, take)
 
             for i, check in enumerate(take.checks):
+                if check.instruction == scenery.manifest.DirectiveCommand.STATUS_CODE:
+                    continue 
+                    print("*****************", check)
                 with django_testcase.subTest(i=i):
-                    HttpChecker.exec_check(django_testcase, response, check)
+                    Checker.exec_check(django_testcase, response, check)
 
         return test
