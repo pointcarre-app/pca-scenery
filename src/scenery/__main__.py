@@ -27,7 +27,16 @@ def main() -> int:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "restrict",
+        "--restrict-test",
+        nargs="?",
+        default=None,
+        help="Optional test restriction <manifest>.<case>.<scene>",
+        dest="restrict_manifest_test"
+    )
+
+
+    parser.add_argument(
+        "--restrict-view",
         nargs="?",
         default=None,
         help="Optional test restriction <manifest>.<case>.<scene>",
@@ -61,6 +70,8 @@ def main() -> int:
     )
 
     parser.add_argument('--failfast', action='store_true')
+    parser.add_argument('--skip-back', action='store_true')
+    parser.add_argument('--skip-front', action='store_true')
 
     parser.add_argument(
         "--output",
@@ -110,16 +121,16 @@ def main() -> int:
     from scenery.metatest import MetaTestRunner, MetaTestDiscoverer
 
     discoverer = MetaTestDiscoverer()
-    http_suite, selenium_suite =  discoverer.discover(verbosity=2, restrict=args.restrict)
+    http_suite, selenium_suite =  discoverer.discover(verbosity=2, restrict_manifest_test=args.restrict_manifest_test, skip_back=args.skip_back, skip_front=args.skip_front, restrict_view=args.restrict_view,
+                                                      
+                                                      )
     runner = MetaTestRunner(failfast=args.failfast)
 
     print("HTTP")
-    
     http_result = runner.run(http_suite, args.verbosity)
     http_success = scenery.common.summarize_test_result(http_result)
 
     print("SELENIUM")
-
     selenium_result = runner.run(selenium_suite, args.verbosity)
     selenium_success = scenery.common.summarize_test_result(selenium_result)
     

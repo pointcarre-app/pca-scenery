@@ -1,13 +1,11 @@
 """Build the tests from the Manifest, discover & run tests."""
 
 import os
-# import io
+import io
 import logging
 import itertools
 import unittest
 import typing
-import sys
-
 
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
@@ -15,6 +13,7 @@ import django.test
 import django.test.runner
 from django.test.utils import get_runner
 
+from selenium.common.exceptions import TimeoutException, WebDriverException
 
 from scenery.manifest import Manifest
 from scenery.method_builder import MethodBuilder
@@ -22,11 +21,97 @@ from scenery.manifest_parser import ManifestParser
 import scenery.common
 
 
+# WIP DECORATORS
+################
+
+from functools import wraps
+import time
+import datetime
+
+def log_exec_bar(func):
+    def wrapper(*args, **kwargs):
+        out = func(*args, **kwargs)
+        print(".", end="")
+        return out
+    #     try:
+    #         out = func(*args, **kwargs)
+    #         print(".", end="")
+    #         return out
+    #     except AssertionError:
+    #         print("F", end="")
+    #         raise
+    #     except Exception:
+    #         print("E", end="")
+    #         raise
+    return wrapper
 
 
-##############################
-# META TESTING
-##############################
+
+def screenshot_on_error(driver):
+    screenshot_dir = "scenery-screenshots"
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+
+            # Create screenshots directory if it doesn't exist
+            os.makedirs(screenshot_dir, exist_ok=True)
+            
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                # Create more detailed filename
+                timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                error_type = e.__class__.__name__
+                function_name = func.__name__
+                
+                screenshot_name = os.path.join(
+                    screenshot_dir,
+                    f"{error_type}-{function_name}-{timestamp}.png"
+                )
+            
+                driver.save_screenshot(screenshot_name)
+                    
+                    # Get current URL and page source for debugging
+                    # current_url = driver.current_url
+                    
+    #                 # Log error context
+    #                 print(f"""
+    # Error occurred during test execution:
+    # - Function: {function_name}
+    # - Error Type: {error_type}
+    # - Error Message: {str(e)}
+    # - URL: {current_url}
+    # - Screenshot: {screenshot_name}
+    #                 """)
+                    
+                # except WebDriverException as screenshot_error:
+                #     print(f"Failed to capture error context: {screenshot_error}")
+                
+                # Re-raise the original exception
+                raise e
+                
+        return wrapper
+    
+    return decorator
+
+def retry_on_timeout(retries=3, delay=1):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(retries):
+                try:
+                    return func(*args, **kwargs)
+                except TimeoutException:
+                    if attempt == retries - 1:
+                        raise
+                    time.sleep(delay)
+            return None
+        return wrapper
+    return decorator
+
+
+# METACLASSES
+#############
 
 class MetaSeleniumTest(type):
     def __new__(
@@ -34,18 +119,21 @@ class MetaSeleniumTest(type):
         clsname: str,
         bases: tuple[type],
         manifest: Manifest,
-        restrict: typing.Optional[str] = None,
+        restrict_test: typing.Optional[str] = None,
+        restrict_view: typing.Optional[str] = None,
     ) -> type[django.test.TestCase]:
         """Responsible for building the TestCase class."""
+
+        # TODO mad: could this be in the discoverer please?
         # Handle restriction
-        if restrict is not None:
-            restrict_args = restrict.split(".")
+        if restrict_test is not None:
+            restrict_args = restrict_test.split(".")
             if len(restrict_args) == 1:
                 restrict_case_id, restrict_scene_pos = restrict_args[0], None
             elif len(restrict_args) == 2:
                 restrict_case_id, restrict_scene_pos = restrict_args[0], restrict_args[1]
             else:
-                raise ValueError(f"Wrong restrict argmuent {restrict}")
+                raise ValueError(f"Wrong restrict argmuent {restrict_test}")
 
         # Build setUpTestData and SetUp
         setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_test_data)
@@ -64,15 +152,26 @@ class MetaSeleniumTest(type):
         for (case_id, case), (scene_pos, scene) in itertools.product(
             manifest.cases.items(), enumerate(manifest.scenes)
         ):
-            if restrict is not None:
+            if restrict_test is not None:
                 if case_id != restrict_case_id:
                     continue
                 elif restrict_scene_pos is not None and str(scene_pos) != restrict_scene_pos:
                     continue
 
+
+            if restrict_view is not None:
+                if restrict_view != scene.url:
+                    # print("SKIPPED ################", scene.url, restrict_view)
+                    
+                    continue
+
             take = scene.shoot(case)
             test = MethodBuilder.build_selenium_test_from_take(take)
-            cls_attrs.update({f"test_selenium_case_{case_id}_scene_{scene_pos}": test})
+            # TODO mad: fix those decorators
+            # test = retry_on_timeout()(test)
+            # test = screenshot_on_error(test)
+            test = log_exec_bar(test)
+            cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
 
@@ -109,20 +208,21 @@ class MetaHttpTest(type):
         clsname: str,
         bases: tuple[type],
         manifest: Manifest,
-        restrict: typing.Optional[str] = None,
+        restrict_test: typing.Optional[str] = None,
+        restrict_view: typing.Optional[str] = None,
     ) -> type[django.test.TestCase]:
         """Responsible for building the TestCase class."""
 
 
         # Handle restriction
-        if restrict is not None:
-            restrict_args = restrict.split(".")
+        if restrict_test is not None:
+            restrict_args = restrict_test.split(".")
             if len(restrict_args) == 1:
                 restrict_case_id, restrict_scene_pos = restrict_args[0], None
             elif len(restrict_args) == 2:
                 restrict_case_id, restrict_scene_pos = restrict_args[0], restrict_args[1]
             else:
-                raise ValueError(f"Wrong restrict argmuent {restrict}")
+                raise ValueError(f"Wrong restrict argmuent {restrict_test}")
 
         # Build setUpTestData and SetUp
         setUpTestData = MethodBuilder.build_setUpTestData(manifest.set_up_test_data)
@@ -139,15 +239,21 @@ class MetaHttpTest(type):
         for (case_id, case), (scene_pos, scene) in itertools.product(
             manifest.cases.items(), enumerate(manifest.scenes)
         ):
-            if restrict is not None:
+            if restrict_test is not None:
                 if case_id != restrict_case_id:
                     continue
                 elif restrict_scene_pos is not None and str(scene_pos) != restrict_scene_pos:
                     continue
 
+            if restrict_view is not None:
+                if restrict_view == scene.url:
+                    # print("SKIPPED")
+                    continue
+
             take = scene.shoot(case)
             test = MethodBuilder.build_http_test_from_take(take)
-            cls_attrs.update({f"test_http_case_{case_id}_scene_{scene_pos}": test})
+            test = log_exec_bar(test)
+            cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
 
@@ -155,6 +261,9 @@ class MetaHttpTest(type):
         # I just ignore here instead of casting which does not do the trick
         return test_cls  # type: ignore[return-value]
 
+
+# DISCOVERER AND RUNNER
+#######################
 
 class MetaTestDiscoverer:
     """
@@ -175,7 +284,7 @@ class MetaTestDiscoverer:
         self.loader: unittest.loader.TestLoader = self.runner.test_loader
 
     def discover(
-        self, restrict: typing.Optional[str] = None, verbosity: int = 2
+        self, restrict_manifest_test: typing.Optional[str] = None, verbosity: int = 2, skip_back=False, skip_front=False, restrict_view=None
     ) -> list[tuple[str, unittest.TestSuite]]:
         """
         Discover and load tests from manifest files.
@@ -192,8 +301,8 @@ class MetaTestDiscoverer:
             ValueError: If the restrict argument is not in the correct format.
         """
         # handle manifest/test restriction
-        if restrict is not None:
-            restrict_args = restrict.split(".")
+        if restrict_manifest_test is not None:
+            restrict_args = restrict_manifest_test.split(".")
             if len(restrict_args) == 1:
                 restrict_manifest, restrict_test = (
                     restrict_args[0],
@@ -223,38 +332,38 @@ class MetaTestDiscoverer:
             manifest_name = filename.replace(".yml", "")
             
             # Handle manifest restriction
-            if restrict is not None and restrict_manifest != manifest_name:
+            if restrict_manifest_test is not None and restrict_manifest != manifest_name:
                 continue
 
             self.logger.debug(f"Discovered manifest '{folder}/{filename}'")
 
             # Parse manifest
             manifest = ManifestParser.parse_yaml(os.path.join(folder, filename))
-
             
 
             # Create Http class
             if manifest.testtype is None or manifest.testtype == "http": 
-                http_test_cls = MetaHttpTest(
-                    f"{manifest_name}.http", (django.test.TestCase,), manifest, restrict=restrict_test
-                )
+                if not skip_back:
+                    http_test_cls = MetaHttpTest(
+                        f"{manifest_name}.http", (django.test.TestCase,), manifest, restrict_test=restrict_test, restrict_view=restrict_view
+                    )
 
-                tests = self.loader.loadTestsFromTestCase(
-                    http_test_cls
-                )
-                http_suite.addTests(tests)
+                    tests = self.loader.loadTestsFromTestCase(
+                        http_test_cls
+                    )
+                    http_suite.addTests(tests)
 
             # Create Selenium class
             if manifest.testtype is None or manifest.testtype == "selenium": 
-                # pass
-                selenium_test_cls = MetaSeleniumTest(
-                    f"{manifest_name}.selenium", (StaticLiveServerTestCase,), manifest, restrict=restrict_test
-                )
+                if not skip_front:
+                    selenium_test_cls = MetaSeleniumTest(
+                        f"{manifest_name}.selenium", (StaticLiveServerTestCase,), manifest, restrict_test=restrict_test, restrict_view=restrict_view
+                    )
 
-                tests = self.loader.loadTestsFromTestCase(
-                    selenium_test_cls
-                )
-                selenium_suite.addTests(tests)
+                    tests = self.loader.loadTestsFromTestCase(
+                        selenium_test_cls
+                    )
+                    selenium_suite.addTests(tests)
 
 
         msg = f"Resulting in {len(http_suite._tests)} http tests, and {len(selenium_suite._tests)} selenium tests."
@@ -280,8 +389,8 @@ class MetaTestRunner:
     def __init__(self, failfast=False) -> None:
         """Initialize the MetaTestRunner with a runner, logger, discoverer, and output stream."""
         self.logger = logging.getLogger(__package__)
-        # self.stream = io.StringIO()
-        self.stream = sys.stdout
+        self.stream = io.StringIO()
+        # self.stream = sys.stdout
         self.runner = scenery.common.CustomDiscoverRunner(stream=self.stream, failfast=failfast)
 
         app_logger = logging.getLogger("app.close_watch")
@@ -289,7 +398,7 @@ class MetaTestRunner:
 
     def __del__(self) -> None:
         """Clean up resources when the MetaTestRunner is deleted."""
-        # TODO: a context manager would be ideal, let's wait v2
+        # TODO mad: a context manager would be ideal, let's wait v2
         self.stream.close()
         app_logger = logging.getLogger("app.close_watch")
         app_logger.propagate = True
@@ -310,8 +419,8 @@ class MetaTestRunner:
         """
 
         # TODO: maybe this can dispapper ?!
-        if verbosity > 0:
-            print("Tests runs:")
+        # if verbosity > 0:
+        #     print("Tests runs:")
 
         # results = {}
         # for test_name, suite in tests_discovered:

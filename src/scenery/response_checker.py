@@ -20,7 +20,6 @@ class SeleniumResponse(ResponseProtocol):
     def __init__(
         self, 
         driver,
-        url
         ):
 
         self.driver = driver
@@ -83,6 +82,9 @@ class Checker:
         Raises:
             NotImplementedError: If the HTTP method specified in the take is not implemented.
         """
+
+        # print("HTTP access", take.url)
+
         if take.method == http.HTTPMethod.GET:
             response = django_testcase.client.get(
                 take.url,
@@ -109,24 +111,25 @@ class Checker:
         # Get the correct url form the StaticLiveServerTestCase
         url = django_testcase.live_server_url + take.url
 
-        response = SeleniumResponse(django_testcase.driver, url)
+        # print("Selenium access", take.url)
+
+        response = SeleniumResponse(django_testcase.driver)
 
 
 
         # TODO: should be a class attribute or something, maybe module could be loaded at the beggining
         selenium_module = importlib.import_module(os.environ["SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM"])
 
-        django_testcase.driver.get(url)
 
 
         if take.method == http.HTTPMethod.GET:
-            pass
+            django_testcase.driver.get(url)
         if take.method == http.HTTPMethod.POST:
             # TODO mad: improve and or document
             method_name = take.url_name.replace(":", "_")
             method_name =  f"post_{method_name}"
             post_method = getattr(selenium_module, method_name)
-            post_method(django_testcase, take.data)
+            post_method(django_testcase, url, take.data)
 
 
         return response 
@@ -177,7 +180,7 @@ class Checker:
         """
         # print("HERE", response.status_code)
         # print(response.content)
-        print(django_testcase.__class__.__name__)
+        # print(django_testcase.__class__.__name__)
         django_testcase.assertEqual(
             response.status_code,
             args,

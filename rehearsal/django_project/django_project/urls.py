@@ -18,6 +18,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from django.views.generic.base import RedirectView
+from django.contrib.staticfiles.storage import staticfiles_storage
+
 try:
     from rehearsal.django_project.some_app import views
 except ModuleNotFoundError:
@@ -28,6 +31,7 @@ except ModuleNotFoundError:
 # app_name = "some_app"
 urlpatterns = [
     path("admin/", admin.site.urls, name="admin"),
+    path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('favicon.ico'))),
     path('http', views.hello_http, name='http'),
     path('', views.hello_rendered, name='frontend'),
 ]

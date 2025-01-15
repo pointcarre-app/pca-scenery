@@ -7,6 +7,7 @@ from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.middleware.csrf import get_token
 # from django.test import Client
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 import django.http
 
@@ -63,50 +64,17 @@ class MethodBuilder:
 
 
             if issubclass(django_testcase_cls, StaticLiveServerTestCase):
-                django_testcase_cls.driver = webdriver.Chrome()
+                chrome_options = Options()
+                # chrome_options.add_argument("--headless=new")     # NOTE mad: For newer Chrome versions
+                chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions
+                django_testcase_cls.driver = webdriver.Chrome(options=chrome_options)
                 django_testcase_cls.driver.implicitly_wait(10)
 
-                # First, get the CSRF token using the test client
-                request = django.http.HttpRequest()
-                request.META = {}
-                csrf_token = get_token(request)
-
-
-            #     print("CSRF TOKEN", csrf_token)
-
-
-            #     # Get domain from live_server_url
-            #     # from urllib.parse import urlparse
-            #     # domain = urlparse(django_testcase_cls.live_server_url).netloc.split(':')[0]
-            #     domain = "localhost"
-            #     print("DOMAIN", domain)
-                
-            #     # Set the CSRF cookie with domain
-            #     # django_testcase_cls.driver.add_cookie({
-            #     #     'name': 'csrftoken',
-            #     #     'value': csrf_token,
-            #     #     'path': '/',
-            #     #     'domain': domain,  # This is important!
-            #     #     'secure': False,
-            #     #     'httpOnly': False
-            #     # })
-
-            #     # django_testcase_cls.driver.execute_script(
-            #     #     'document.cookie = "csrftoken={}; path=/; domain=localhost";'.format(csrf_token)
-            #     # )
-
-            #     # Set the CSRF cookie first
-            #     # selenium.get(django_testcase.live_server_url + take.request.path)
-            #     # django_testcase_cls.driver.add_cookie({
-            #     #     'name': 'csrftoken',
-            #     #     'value': csrf_token,
-            #     #     'path': '/',
-            #     # })
-
-            # # Get CSRF token
-            # # csrf_token = django_testcase_cls.driver.get_cookie('csrftoken')
-
-            django_testcase_cls.csrf_token = csrf_token
+            #     # First, get the CSRF token using the test client
+            #     request = django.http.HttpRequest()
+            #     request.META = {}
+            #     csrf_token = get_token(request)
+            # django_testcase_cls.csrf_token = csrf_token
 
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase_cls, instruction)
@@ -165,7 +133,7 @@ class MethodBuilder:
         def test(django_testcase: django.test.TestCase) -> None:
             response = Checker.get_http_client_response(django_testcase, take)
             for i, check in enumerate(take.checks):
-                with django_testcase.subTest(i=i):
+                with django_testcase.subTest(f"directive {i}"):
                     Checker.exec_check(django_testcase, response, check)
 
         return test
@@ -180,8 +148,7 @@ class MethodBuilder:
             for i, check in enumerate(take.checks):
                 if check.instruction == scenery.manifest.DirectiveCommand.STATUS_CODE:
                     continue 
-                    print("*****************", check)
-                with django_testcase.subTest(i=i):
+                with django_testcase.subTest(f"directive {i}"):
                     Checker.exec_check(django_testcase, response, check)
 
         return test
