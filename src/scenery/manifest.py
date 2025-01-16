@@ -161,7 +161,7 @@ class SetUpInstruction:
 
 @dataclass(frozen=True)
 class Item:
-    """Store potential information that will be used to build the HttpRequest."""
+    """Store potential information that will be used to build the HTTP Request."""
 
     _id: str
     _dict: dict[str, Any]
@@ -234,7 +234,7 @@ class Substituable:
 
 
 @dataclass
-class HttpDirective:
+class Directive:
     """Store a given check to perform, before the substitution (this is part of a Scene, not a Take).
 
     This class represents a directive (check) to be performed on an HTTP response,
@@ -245,8 +245,8 @@ class HttpDirective:
         args (Any): The arguments for the check.
 
     Class Methods:
-        from_dict(directive_dict: dict) -> HttpDirective:
-            Create an HttpDirective instance from a dictionary.
+        from_dict(directive_dict: dict) -> Directive:
+            Create an Directive instance from a dictionary.
     """
 
     instruction: DirectiveCommand
@@ -292,41 +292,41 @@ class HttpDirective:
                 )
 
     @classmethod
-    def from_dict(cls, directive_dict: dict) -> "HttpDirective":
+    def from_dict(cls, directive_dict: dict) -> "Directive":
         """Return the Directive based on the provided dict."""
         instruction, args = SingleKeyDict(directive_dict).as_tuple()
         return cls(DirectiveCommand(instruction), args)
 
 
 @dataclass
-class HttpScene:
+class Scene:
     """Store all actions to perform, before the substitution of information from the `Cases`.
 
-    This class represents an HTTP scene, which includes the method, URL, and various
+    This class represents an Scene, which includes the method, URL, and various
     parameters and checks to be performed.
 
     Attributes:
         method (http.HTTPMethod): The HTTP method for this scene.
         url (str): The URL or URL pattern for this scene.
-        directives (list[HttpDirective]): The list of directives (checks) to perform.
+        directives (list[Directive]): The list of directives (checks) to perform.
         data (dict[str, Any]): The data to be sent with the request.
         query_parameters (dict): Query parameters for the URL.
         url_parameters (dict): URL parameters for reverse URL lookup.
 
     Methods:
-        shoot(case: Case) -> HttpTake:
-            Create an HttpTake instance by substituting case values into the scene.
+        shoot(case: Case) -> Take:
+            Create an Take instance by substituting case values into the scene.
 
     Class Methods:
-        from_dict(d: dict) -> HttpScene:
-            Create an HttpScene instance from a dictionary.
+        from_dict(d: dict) -> Scene:
+            Create an Scene instance from a dictionary.
         substitute_recursively(x, case: Case):
             Recursively substitute values from a case into a data structure.
     """
 
     method: http.HTTPMethod
     url: str
-    directives: list[HttpDirective]
+    directives: list[Directive]
     data: dict[str, Any] = field(default_factory=dict)
     query_parameters: dict = field(default_factory=dict)
     url_parameters: dict = field(default_factory=dict)
@@ -339,9 +339,9 @@ class HttpScene:
         # potentially occuring through data/query_parameters/url_parameters
 
     @classmethod
-    def from_dict(cls, d: dict) -> "HttpScene":
+    def from_dict(cls, d: dict) -> "Scene":
         """Return a scene from a dict."""
-        d["directives"] = [HttpDirective.from_dict(directive) for directive in d["directives"]]
+        d["directives"] = [Directive.from_dict(directive) for directive in d["directives"]]
         return cls(**d)
 
     @classmethod
@@ -354,8 +354,8 @@ class HttpScene:
                 return x
             case Substituable(_):
                 return x.shoot(case)
-            case HttpDirective(instruction, args):
-                return HttpCheck(instruction, cls.substitute_recursively(args, case))
+            case Directive(instruction, args):
+                return Check(instruction, cls.substitute_recursively(args, case))
             case dict(_):
                 return {key: cls.substitute_recursively(value, case) for key, value in x.items()}
             case list(_):
@@ -363,9 +363,9 @@ class HttpScene:
             case _:
                 raise NotImplementedError(f"Cannot substitute recursively '{x}' ('{type(x)}')")
 
-    def shoot(self, case: Case) -> "HttpTake":
-        """Return the HttpTake resulting from the case applied to its scene."""
-        return HttpTake(
+    def shoot(self, case: Case) -> "Take":
+        """Return the Take resulting from the case applied to its scene."""
+        return Take(
             method=self.method,
             url=self.url,
             query_parameters=self.query_parameters,
@@ -390,7 +390,7 @@ class Manifest:
     Attributes:
         set_up_test_data (list[SetUpInstruction]): Instructions for setting up test data.
         set_up (list[SetUpInstruction]): Instructions for general test setup.
-        scenes (list[HttpScene]): The HTTP scenes to be executed.
+        scenes (list[Scene]): The scenes to be executed.
         cases (dict[str, Case]): The test cases, indexed by case ID.
         manifest_origin (str): The origin of the manifest file.
 
@@ -401,7 +401,7 @@ class Manifest:
 
     set_up_test_data: list[SetUpInstruction]
     set_up: list[SetUpInstruction]
-    scenes: list[HttpScene]
+    scenes: list[Scene]
     cases: dict[str, Case]
     manifest_origin: str
     testtype: str
@@ -421,7 +421,7 @@ class Manifest:
                 for instruction in d["set_up"]  # d[ManifestFormattedDictKeys.set_up]
             ],
             [
-                HttpScene.from_dict(scene) for scene in d["scenes"]
+                Scene.from_dict(scene) for scene in d["scenes"]
             ],  # d[ManifestFormattedDictKeys.scenes]],
             {
                 case_id: Case.from_id_and_dict(case_id, case_dict)
@@ -441,7 +441,7 @@ class Manifest:
 
 
 @dataclass
-class HttpCheck(HttpDirective):
+class Check(Directive):
     """Store a given check to perform (after the subsitution)."""
 
     def __post_init__(self) -> None:
@@ -458,7 +458,7 @@ class HttpCheck(HttpDirective):
             case DirectiveCommand.REDIRECT_URL, str(_):
                 pass
             case DirectiveCommand.COUNT_INSTANCES, {"model": ModelBase(), "n": int(n)}:
-                # Validate model is registered
+                # NOTE mad: Validate model is registered
                 app_config = django_apps.get_app_config(os.environ["SCENERY_TESTED_APP_NAME"])
                 app_config.get_model(self.args["model"].__name__)
             case _:
@@ -479,7 +479,7 @@ class HttpCheck(HttpDirective):
 
 
 @dataclass
-class HttpTake:
+class Take:
     """Store all the information after the substitution from the `Cases` has been performed.
 
     This class represents a fully resolved HTTP request to be executed, including
@@ -488,7 +488,7 @@ class HttpTake:
     Attributes:
         method (http.HTTPMethod): The HTTP method for this take.
         url (str): The fully resolved URL for this take.
-        checks (list[HttpCheck]): The list of checks to perform on the response.
+        checks (list[Check]): The list of checks to perform on the response.
         data (dict): The data to be sent with the request.
         query_parameters (dict): Query parameters for the URL.
         url_parameters (dict): URL parameters used in URL resolution.
@@ -500,7 +500,7 @@ class HttpTake:
 
     method: http.HTTPMethod
     url: str
-    checks: list[HttpCheck]
+    checks: list[Check]
     data: dict
     query_parameters: dict
     url_parameters: dict
@@ -520,7 +520,7 @@ class HttpTake:
                 raise ValueError(f"'{self.url}' could not be reversed and is not a valid url")
 
         if self.query_parameters:
-            # NOTE: We use http.urlencode instead for compatibility
+            # NOTE mad: We use http.urlencode instead for compatibility
             # https://stackoverflow.com/questions/4995279/including-a-querystring-in-a-django-core-urlresolvers-reverse-call
             # https://gist.github.com/benbacardi/227f924ec1d9bedd242b
             self.url += "?" + urlencode(self.query_parameters)

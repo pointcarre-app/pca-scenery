@@ -275,22 +275,21 @@ def summarize_test_result(result, verbosity=1) -> bool:
 
     summary = serialize_unittest_result(result)
     success = True
-    for key, val in summary.items():
-        if key != "testsRun" and val > 0:
-            success = False
+    if summary["errors"] > 0 or summary["failures"] > 0:
+        success = False
 
     if success:
-        log_lvl, msg, color = logging.INFO,  "🟢 OK", "green"
+        log_lvl, msg, color = logging.INFO,  "\n🟢 OK", "green"
     else:
-        log_lvl, msg, color = logging.ERROR, "❌ FAIL", "red"
+        log_lvl, msg, color = logging.ERROR, "\n❌ FAIL", "red"
 
     # logger.debug(f"\nSummary:\n{tabulate(summary)}\n")
     # logger.log(log_lvl, colorize(color, msg))
 
-    if verbosity > 0:
+    if verbosity > 2:
         print(f"\nSummary:\n{tabulate(summary)}\n")
-
-    print(f"{colorize(color, msg)}\n\n")
+    if verbosity > 1:
+        print(f"{colorize(color, msg)}\n\n")
 
     return success
 

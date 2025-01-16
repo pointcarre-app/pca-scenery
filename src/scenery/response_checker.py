@@ -13,6 +13,7 @@ from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 import bs4
 
 # TODO mad: change type hints using ResponseProtocol
+# TODO mad: create Union of Static and vanilla TestCase by the way
 from scenery.common import ResponseProtocol
 
 class SeleniumResponse(ResponseProtocol):
@@ -68,7 +69,7 @@ class Checker:
 
     @staticmethod
     def get_http_client_response(
-        django_testcase: django.test.TestCase, take: scenery.manifest.HttpTake
+        django_testcase: django.test.TestCase, take: scenery.manifest.Take
     ) -> django.http.HttpResponse:
         """Execute an HTTP request based on the given HttpTake object.
 
@@ -84,6 +85,9 @@ class Checker:
         """
 
         # print("HTTP access", take.url)
+
+        # from pprint import pprint
+        # pprint(take.data)
 
         if take.method == http.HTTPMethod.GET:
             response = django_testcase.client.get(
@@ -101,12 +105,12 @@ class Checker:
         # NOTE: this one is a bit puzzling to me
         # runnning mypy I get:
         # Incompatible return value type (got "_MonkeyPatchedWSGIResponse", expected "HttpResponse")
-        return response  # type: ignore[return-value]
+        return response 
     
     @staticmethod
     def get_selenium_response(
-        django_testcase: StaticLiveServerTestCase, take: scenery.manifest.HttpTake
-    ) -> django.http.HttpResponse:
+        django_testcase: StaticLiveServerTestCase, take: scenery.manifest.Take
+    ) -> SeleniumResponse:
         
         # Get the correct url form the StaticLiveServerTestCase
         url = django_testcase.live_server_url + take.url
@@ -137,9 +141,9 @@ class Checker:
 
     @staticmethod
     def exec_check(
-        django_testcase: django.test.TestCase,
+        django_testcase: django.test.TestCase | StaticLiveServerTestCase,
         response: django.http.HttpResponse,
-        check: scenery.manifest.HttpCheck,
+        check: scenery.manifest.Check,
     ) -> None:
         """Execute a specific check on an HTTP response.
 
@@ -255,6 +259,17 @@ class Checker:
             ValueError: If neither 'find' nor 'find_all' arguments are provided in args.
         """
 
+
+        # print("*******************")
+        # print(django_testcase)
+        # print(response.content)
+        # print("\n"*4)
+        # NOTE: this is incredibly important for the frontend test
+        # TODO: put this somewhere else
+        import time
+        time.sleep(1)
+
+        # content = response.content
 
         soup = bs4.BeautifulSoup(response.content, "html.parser")
 

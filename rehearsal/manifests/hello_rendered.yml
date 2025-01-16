@@ -1,4 +1,4 @@
-testtype: selenium
+testtype: frontend
 
 set_up:
   - reset_db

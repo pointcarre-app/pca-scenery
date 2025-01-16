@@ -2,14 +2,12 @@
 
 from typing import Callable
 
+import django.http
 import django.test
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
-from django.middleware.csrf import get_token
-# from django.test import Client
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-
-import django.http
 
 import scenery.manifest
 from scenery.response_checker import Checker
@@ -115,15 +113,15 @@ class MethodBuilder:
         return setUp
 
     @staticmethod
-    def build_http_test_from_take(take: scenery.manifest.HttpTake) -> Callable:
-        """Build a test method from an HttpTake object.
+    def build_test_from_take(take: scenery.manifest.Take) -> Callable:
+        """Build a test method from an Take object.
 
         This method creates a test function that sends an HTTP request
         based on the take's specifications and executes a series of checks
         on the response.
 
         Args:
-            take (scenery.manifest.HttpTake): An HttpTake object specifying
+            take (scenery.manifest.Take): An Take object specifying
                 the request to be made and the checks to be performed.
 
         Returns:
@@ -131,24 +129,32 @@ class MethodBuilder:
         """
 
         def test(django_testcase: django.test.TestCase) -> None:
+
+            # print("TEST", django_testcase)
             response = Checker.get_http_client_response(django_testcase, take)
             for i, check in enumerate(take.checks):
                 with django_testcase.subTest(f"directive {i}"):
+                    # print(">", check)
+
                     Checker.exec_check(django_testcase, response, check)
 
         return test
     
 
     @staticmethod
-    def build_selenium_test_from_take(take: scenery.manifest.HttpTake) -> Callable:
+    def build_selenium_test_from_take(take: scenery.manifest.Take) -> Callable:
 
         def test(django_testcase: StaticLiveServerTestCase) -> None:
+
+            # print("TEST", django_testcase.__class__.__name__)
+            # print("TEST", django_testcase)
             response = Checker.get_selenium_response(django_testcase, take)
 
             for i, check in enumerate(take.checks):
                 if check.instruction == scenery.manifest.DirectiveCommand.STATUS_CODE:
                     continue 
                 with django_testcase.subTest(f"directive {i}"):
+                    # print(">", check)
                     Checker.exec_check(django_testcase, response, check)
 
         return test
