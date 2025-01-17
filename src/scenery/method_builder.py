@@ -54,7 +54,7 @@ class MethodBuilder:
         return classmethod(setUpTestData)
     
     @staticmethod
-    def build_setUpClass(instructions: list[scenery.manifest.SetUpInstruction]):
+    def build_setUpClass(instructions: list[scenery.manifest.SetUpInstruction], headless):
 
         def setUpClass(django_testcase_cls: type[django.test.TestCase] | type[StaticLiveServerTestCase]) -> None:
             super(django_testcase_cls, django_testcase_cls).setUpClass()
@@ -63,16 +63,12 @@ class MethodBuilder:
 
             if issubclass(django_testcase_cls, StaticLiveServerTestCase):
                 chrome_options = Options()
-                # chrome_options.add_argument("--headless=new")     # NOTE mad: For newer Chrome versions
-                # chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions
+                if headless:
+                    # chrome_options.add_argument("--headless=new")     # NOTE mad: For newer Chrome versions
+                    chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions (Framework)
                 django_testcase_cls.driver = webdriver.Chrome(options=chrome_options)
                 django_testcase_cls.driver.implicitly_wait(10)
 
-            #     # First, get the CSRF token using the test client
-            #     request = django.http.HttpRequest()
-            #     request.META = {}
-            #     csrf_token = get_token(request)
-            # django_testcase_cls.csrf_token = csrf_token
 
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase_cls, instruction)

@@ -11,33 +11,65 @@ import os
 from multiprocessing import Pool
 from collections import Counter
 import logging
-
+from pprint import pprint
 
 def process_manifest(filename, args):
 
-    print(f"\n{filename}", end="")
+    print(f"\n{filename.replace(".yml", " ")}", end="")
 
     loader = TestsLoader()
     runner = TestsRunner()
 
-    backend_suite, frontend_suite = loader.tests_from_manifest(filename, skip_back=args.skip_back, skip_front=args.skip_front, restrict_view=args.restrict_view)
+    # print("Right before laoding")
+    # pprint(
+    #     scenery.common.get_chrome_memory_usage()
+    # )
+
+    backend_suite, frontend_suite = loader.tests_from_manifest(filename, skip_back=args.skip_back, skip_front=args.skip_front, restrict_view=args.restrict_view, restrict_case_id=args.restrict_case_id, restrict_scene_pos=args.restrict_scene_pos, timeout_waiting_time=args.timeout_waiting_time, headless=args.headless)
+
+    # print("Right after loading")
+    # pprint(
+    #     scenery.common.get_chrome_memory_usage()
+    # )
 
     backend_result = runner.run(backend_suite, verbosity=0)
     backend_success, backend_summary = scenery.common.summarize_test_result(backend_result, verbosity=0)
 
+    # print("Right after running backend")
+    # pprint(
+    #     scenery.common.get_chrome_memory_usage()
+    # )
+
     frontend_result = runner.run(frontend_suite, verbosity=0)
     frontend_success, frontend_summary = scenery.common.summarize_test_result(frontend_result, verbosity=0)
 
-    # TODO mad: number of tests
-    # msg = f"Resulting in {len(backend_suite._tests)} backend and {len(frontend_suite._tests)} frontend tests."
-    # n_backend_tests = sum(len(test_suite._tests) for test_suite in backend_parrallel_suites)
-    # n_fonrtend_tests = sum(len(test_suite._tests) for test_suite in frontend_parrallel_suites)
-    # msg = f"Resulting in {n_backend_tests} backend and {n_fonrtend_tests} frontend tests."
+    # print("Right after running frontend")
+    # pprint(
+    #     scenery.common.get_chrome_memory_usage()
+    # )
 
-    # if verbosity >= 1:
-    #     print(f"{msg}\n")
+    # TODO mad: print number of tests
 
     return backend_success, backend_summary, frontend_success, frontend_summary
+
+
+def parse_test_restriction(restrict_str):
+    # TODO mad: could this be in the discoverer please? or rather argparser to give to discover as arguments
+    if restrict_str is not None:
+        restrict_args = restrict_str.split(".")
+        if len(restrict_args) == 1:
+            manifest_name, case_id, scene_pos = restrict_args[0], None, None
+        elif len(restrict_args) == 2:
+            manifest_name, case_id, scene_pos = restrict_args[0], restrict_args[1], None
+        elif len(restrict_args) == 3:
+            manifest_name, case_id, scene_pos = restrict_args[0], restrict_args[1], restrict_args[2]
+        else:
+            raise ValueError(f"Wrong restrict argmuent {restrict_str}")
+        return manifest_name, case_id, scene_pos
+    else:
+        return None, None, None
+        
+
 
 def parse_args():
 
@@ -54,7 +86,6 @@ def parse_args():
         nargs="?",
         default=None,
         help="Optional test restriction <manifest>.<case>.<scene>",
-        dest="restrict_manifest_test"
     )
 
 
@@ -92,9 +123,17 @@ def parse_args():
         help="Location of django settings module",
     )
 
+    parser.add_argument(
+        "--timeout",
+        dest="timeout_waiting_time",
+        type=int,
+        default=5,
+    )
+
     parser.add_argument('--failfast', action='store_true')
     parser.add_argument('--skip-back', action='store_true')
     parser.add_argument('--skip-front', action='store_true')
+    parser.add_argument('--not-headless', action='store_true')
 
     # parser.add_argument(
     #     "--output",
@@ -105,6 +144,9 @@ def parse_args():
     # )
 
     args = parser.parse_args()
+
+    args.headless = not args.not_headless
+
     return args
 
 def main(args) -> int:
@@ -169,9 +211,17 @@ def main(args) -> int:
     #     backend_success &= manifest_backend_success
     #     frontend_success &= manifest_frontend_success
 
+
+    args.restrict_manifest, args.restrict_case_id, args.restrict_scene_pos = parse_test_restriction(args.restrict_test)
     folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
     results = []
     for filename in os.listdir(folder):
+
+        # print("HERE", filename, args.restrict_manifest)
+
+        if args.restrict_manifest is not None and filename.replace(".yml", "") != args.restrict_manifest:
+            continue
+
         results.append(process_manifest(filename, args=args))
         # break
     # with Pool() as pool:

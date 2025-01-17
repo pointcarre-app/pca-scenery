@@ -95,7 +95,7 @@ def log_exec_bar(func):
     
 #     return decorator
 
-def retry_on_timeout(retries=3, delay=1):
+def retry_on_timeout(retries=3, delay=5):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -116,20 +116,20 @@ def retry_on_timeout(retries=3, delay=1):
 
 # COMMON CODE BETWEEN BACKEND AND FRONTEND METACLASS
 
-def parse_test_restriction(restrict_str):
-    # TODO mad: could this be in the discoverer please? or rather argparser to give to discover as arguments
-    if restrict_str is not None:
-        restrict_args = restrict_str.split(".")
-        if len(restrict_args) == 1:
-            restrict_case_id, restrict_scene_pos = restrict_args[0], None
-        elif len(restrict_args) == 2:
-            restrict_case_id, restrict_scene_pos = restrict_args[0], restrict_args[1]
-        else:
-            raise ValueError(f"Wrong restrict argmuent {restrict_str}")
-    else:
-        return None, None
+# def parse_test_restriction(restrict_str):
+#     # TODO mad: could this be in the discoverer please? or rather argparser to give to discover as arguments
+#     if restrict_str is not None:
+#         restrict_args = restrict_str.split(".")
+#         if len(restrict_args) == 1:
+#             restrict_case_id, restrict_scene_pos = restrict_args[0], None
+#         elif len(restrict_args) == 2:
+#             restrict_case_id, restrict_scene_pos = restrict_args[0], restrict_args[1]
+#         else:
+#             raise ValueError(f"Wrong restrict argmuent {restrict_str}")
+#     else:
+#         return None, None
         
-    return restrict_case_id, restrict_scene_pos
+#     return restrict_case_id, restrict_scene_pos
 
 
 def iter_on_takes_from_manifest(manifest, restrict_view, restrict_case_id, restrict_scene_pos):
@@ -180,21 +180,22 @@ class MetaBackTest(type):
         clsname: str,
         bases: tuple[type],
         manifest: Manifest,
-        restrict_test: typing.Optional[str] = None,
+        restrict_case_id: typing.Optional[str] = None,
+        restrict_scene_pos: typing.Optional[str] = None,
         restrict_view: typing.Optional[str] = None,
     ) -> type[django.test.TestCase]:
         """Responsible for building the TestCase class."""
 
 
-        # Handle restriction
-        if restrict_test is not None:
-            restrict_args = restrict_test.split(".")
-            if len(restrict_args) == 1:
-                restrict_case_id, restrict_scene_pos = restrict_args[0], None
-            elif len(restrict_args) == 2:
-                restrict_case_id, restrict_scene_pos = restrict_args[0], restrict_args[1]
-            else:
-                raise ValueError(f"Wrong restrict argmuent {restrict_test}")
+        # # Handle restriction
+        # if restrict_test is not None:
+        #     restrict_args = restrict_test.split(".")
+        #     if len(restrict_args) == 1:
+        #         restrict_case_id, restrict_scene_pos = restrict_args[0], None
+        #     elif len(restrict_args) == 2:
+        #         restrict_case_id, restrict_scene_pos = restrict_args[0], restrict_args[1]
+        #     else:
+        #         raise ValueError(f"Wrong restrict argmuent {restrict_test}")
 
         # Build setUpTestData and SetUp
         # setUpTestData = MethodBuilder.build_setUpTestData(manifest.set_up_test_data)
@@ -207,7 +208,7 @@ class MetaBackTest(type):
             # "setUpTestData": setUpTestData,
             "setUp": setUp,
         }
-        restrict_case_id, restrict_scene_pos = parse_test_restriction(restrict_test)
+        # restrict_case_id, restrict_scene_pos = parse_test_restriction(restrict_test)
         # print("COUCOU", restrict_case_id, restrict_scene_pos)
         for (case_id, case), (scene_pos, scene) in iter_on_takes_from_manifest(manifest, restrict_view, restrict_case_id, restrict_scene_pos):
             # raise Exception
@@ -255,14 +256,17 @@ class MetaFrontTest(type):
         clsname: str,
         bases: tuple[type],
         manifest: Manifest,
-        restrict_test: typing.Optional[str] = None,
+        restrict_case_id: typing.Optional[str] = None,
+        restrict_scene_pos: typing.Optional[str] = None,
         restrict_view: typing.Optional[str] = None,
+        timeout_waiting_time = 5,
+        headless=True
     ) -> type[StaticLiveServerTestCase]:
         """Responsible for building the TestCase class."""
 
 
         # Build setUpTestData and SetUp
-        setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_test_data)
+        setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_test_data, headless=headless)
         setUp = MethodBuilder.build_setUp(manifest.set_up)
         tearDownClass = MethodBuilder.build_tearDownClass()
 
@@ -273,13 +277,13 @@ class MetaFrontTest(type):
             "setUp": setUp,
             "tearDownClass": tearDownClass,
         }
-        restrict_case_id, restrict_scene_pos = parse_test_restriction(restrict_test)
+        # restrict_case_id, restrict_scene_pos = parse_test_restriction(restrict_test)
         # print("COUCOU", restrict_case_id, restrict_scene_pos)
         for (case_id, case), (scene_pos, scene) in iter_on_takes_from_manifest(manifest, restrict_view, restrict_case_id, restrict_scene_pos):
             # raise Exception
             take = scene.shoot(case)
             test = MethodBuilder.build_selenium_test_from_take(take)
-            test = retry_on_timeout()(test)
+            test = retry_on_timeout(delay=timeout_waiting_time)(test)
             # test = screenshot_on_error(test)
             test = log_exec_bar(test)
             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
@@ -577,10 +581,11 @@ class TestsLoader:
     runner = get_runner(settings, test_runner_class="django.test.runner.DiscoverRunner")()
     loader: unittest.loader.TestLoader = runner.test_loader
 
-    def tests_from_manifest(self, filename, verbosity=1, skip_back=False, skip_front=False, restrict_manifest_test=None, restrict_view=None):
+    def tests_from_manifest(self, filename, skip_back=False, skip_front=False, restrict_view=None, timeout_waiting_time=5,restrict_case_id=None, restrict_scene_pos=None, headless=True):
 
-        # TODO mad:
-        restrict_test = None
+
+        # raise Exception("GOTCHA headless =", headless)
+    
         backend_suite, frontend_suite = unittest.TestSuite(), unittest.TestSuite()
 
 
@@ -592,7 +597,7 @@ class TestsLoader:
         # Create backend test            
         if not skip_back and (ttype is None or ttype == "backend"):
             backend_test_cls = MetaBackTest(
-                f"{manifest_name}.backend", (django.test.TestCase,), manifest, restrict_test=restrict_test, restrict_view=restrict_view
+                f"{manifest_name}.backend", (django.test.TestCase,), manifest, restrict_case_id=restrict_case_id,restrict_scene_pos=restrict_scene_pos, restrict_view=restrict_view
             )
             backend_tests = self.loader.loadTestsFromTestCase(
                 backend_test_cls
@@ -603,16 +608,13 @@ class TestsLoader:
         # Create frontend test 
         if not skip_front and (ttype is None or ttype == "frontend"):
             frontend_test_cls = MetaFrontTest(
-                f"{manifest_name}.frontend", (StaticLiveServerTestCase,), manifest, restrict_test=restrict_test, restrict_view=restrict_view
+                f"{manifest_name}.frontend", (StaticLiveServerTestCase,), manifest, restrict_case_id=restrict_case_id,restrict_scene_pos=restrict_scene_pos, restrict_view=restrict_view, timeout_waiting_time=timeout_waiting_time, headless=headless
             )
             frontend_tests = self.loader.loadTestsFromTestCase(
                 frontend_test_cls
             )
             # frontend_parrallel_suites.append(frontend_tests)
-
-            # print(frontend_tests)
             frontend_suite.addTests(frontend_tests)
 
-        # print("**************", len(backend_suite._tests), len(frontend_suite._tests))
 
         return backend_suite, frontend_suite
