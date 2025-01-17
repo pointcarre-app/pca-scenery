@@ -201,7 +201,10 @@ def tabulate(d: dict, color: typing.Callable | str | None = None, delim: str = "
     Returns:
         str: A string representation of the tabulated dictionary.
     """
-    width = max(len(key) for key in d.keys())
+    if len(d) == 0:
+        width = 0
+    else:
+        width = max(len(key) for key in d.keys())
     table: list = [(key, val) for key, val in d.items()]
     if color:
         table = [(key, colorize(color, val)) for key, val in table]

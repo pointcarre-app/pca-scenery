@@ -8,6 +8,7 @@ from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 
 import scenery.manifest
 from scenery.response_checker import Checker
@@ -63,12 +64,12 @@ class MethodBuilder:
 
             if issubclass(django_testcase_cls, StaticLiveServerTestCase):
                 chrome_options = Options()
+                service = Service(executable_path='/usr/bin/google-chrome')
                 if headless:
                     # chrome_options.add_argument("--headless=new")     # NOTE mad: For newer Chrome versions
                     chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions (Framework)
-                django_testcase_cls.driver = webdriver.Chrome(options=chrome_options)
+                django_testcase_cls.driver = webdriver.Chrome(options=chrome_options, service=service)
                 django_testcase_cls.driver.implicitly_wait(10)
-
 
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase_cls, instruction)
