@@ -68,8 +68,11 @@ def main() -> int:
     #     frontend_success &= manifest_frontend_success
 
     folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
-    with Pool() as pool:
-        results = pool.map(process_manifest, os.listdir(folder))
+    results = []
+    for filename in os.listdir(folder):
+        results.append(process_manifest(filename))
+    # with Pool() as pool:
+    #     results = pool.map(process_manifest, os.listdir(folder))
 
     from collections import Counter
     import logging
