@@ -64,7 +64,7 @@ class MethodBuilder:
             if issubclass(django_testcase_cls, StaticLiveServerTestCase):
                 chrome_options = Options()
                 # chrome_options.add_argument("--headless=new")     # NOTE mad: For newer Chrome versions
-                chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions
+                # chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions
                 django_testcase_cls.driver = webdriver.Chrome(options=chrome_options)
                 django_testcase_cls.driver.implicitly_wait(10)
 

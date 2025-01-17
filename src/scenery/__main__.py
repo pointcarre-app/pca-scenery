@@ -15,12 +15,12 @@ import logging
 
 def process_manifest(filename, args):
 
-    print(filename)
+    print(f"\n{filename}", end="")
 
     loader = TestsLoader()
     runner = TestsRunner()
 
-    backend_suite, frontend_suite = loader.tests_from_manifest(filename, skip_back=args.skip_back, skip_front=args.skip_front)
+    backend_suite, frontend_suite = loader.tests_from_manifest(filename, skip_back=args.skip_back, skip_front=args.skip_front, restrict_view=args.restrict_view)
 
     backend_result = runner.run(backend_suite, verbosity=0)
     backend_success, backend_summary = scenery.common.summarize_test_result(backend_result, verbosity=0)
@@ -216,7 +216,7 @@ def main(args) -> int:
     # Exit code
     ###################
     
-    success = min(int(backend_success), int(frontend_success),)
+    success = min(int(overall_backend_success), int(overall_frontend_success),)
     exit_code = 1 - success
 
     if success:

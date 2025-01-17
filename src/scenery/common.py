@@ -259,16 +259,16 @@ def summarize_test_result(result, verbosity=1) -> tuple[bool, Counter]:
     for failed_test, traceback in result.failures:
         test_name = failed_test.id()
         log_lvl, color = logging.ERROR, "red"
-        if verbosity > 0:
-            print(f"\n{colorize(color, test_name)}\n{traceback}")
-            # TODO: log
+        # if verbosity > 0:
+        print(f"\n{colorize(color, test_name)}\n{traceback}")
+        # TODO: log
 
     for failed_test, traceback in result.errors:
         test_name = failed_test.id()
         log_lvl, color = logging.ERROR, "red"
-        if verbosity > 0:
-            print(f"{colorize(color, test_name)}\n{traceback}")
-            # TODO: log
+        # if verbosity > 0:
+        print(f"{colorize(color, test_name)}\n{traceback}")
+        # TODO: log
 
     success = True
     summary = serialize_unittest_result(result)

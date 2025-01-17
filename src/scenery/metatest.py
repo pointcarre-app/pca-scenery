@@ -279,7 +279,7 @@ class MetaFrontTest(type):
             # raise Exception
             take = scene.shoot(case)
             test = MethodBuilder.build_selenium_test_from_take(take)
-            # test = retry_on_timeout()(test)
+            test = retry_on_timeout()(test)
             # test = screenshot_on_error(test)
             test = log_exec_bar(test)
             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
@@ -613,6 +613,6 @@ class TestsLoader:
             # print(frontend_tests)
             frontend_suite.addTests(frontend_tests)
 
-        print("**************", len(backend_suite._tests), len(frontend_suite._tests))
+        # print("**************", len(backend_suite._tests), len(frontend_suite._tests))
 
         return backend_suite, frontend_suite
