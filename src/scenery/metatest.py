@@ -613,6 +613,6 @@ class TestsLoader:
             # print(frontend_tests)
             frontend_suite.addTests(frontend_tests)
 
-
+        print("**************", len(backend_suite._tests), len(frontend_suite._tests))
 
         return backend_suite, frontend_suite

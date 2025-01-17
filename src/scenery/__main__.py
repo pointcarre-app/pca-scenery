@@ -9,20 +9,24 @@ import sys
 import typing
 import os
 from multiprocessing import Pool
+from collections import Counter
+import logging
 
 
-def process_manifest(filename):
+def process_manifest(filename, args):
+
+    print(filename)
 
     loader = TestsLoader()
     runner = TestsRunner()
 
-    frontend_suite, backend_suite = loader.tests_from_manifest(filename)
+    backend_suite, frontend_suite = loader.tests_from_manifest(filename, skip_back=args.skip_back, skip_front=args.skip_front)
 
     backend_result = runner.run(backend_suite, verbosity=0)
-    backend_success = scenery.common.summarize_test_result(backend_result, verbosity=0)
+    backend_success, backend_summary = scenery.common.summarize_test_result(backend_result, verbosity=0)
 
     frontend_result = runner.run(frontend_suite, verbosity=0)
-    frontend_success = scenery.common.summarize_test_result(frontend_result, verbosity=0)
+    frontend_success, frontend_summary = scenery.common.summarize_test_result(frontend_result, verbosity=0)
 
     # TODO mad: number of tests
     # msg = f"Resulting in {len(backend_suite._tests)} backend and {len(frontend_suite._tests)} frontend tests."
@@ -33,7 +37,7 @@ def process_manifest(filename):
     # if verbosity >= 1:
     #     print(f"{msg}\n")
 
-    return backend_success, frontend_success
+    return backend_success, backend_summary, frontend_success, frontend_summary
 
 def parse_args():
 
@@ -166,13 +170,37 @@ def main(args) -> int:
     #     frontend_success &= manifest_frontend_success
 
     folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
-    with Pool() as pool:
-        results = pool.map(process_manifest, os.listdir(folder))
+    results = []
+    for filename in os.listdir(folder):
+        results.append(process_manifest(filename, args=args))
+        # break
+    # with Pool() as pool:
+    #     results = pool.map(process_manifest, os.listdir(folder))
 
-    backend_success, frontend_success = True, True
-    for manifest_backend_success, manifest_frontend_success in results:
-        backend_success &= manifest_backend_success
-        frontend_success &= manifest_frontend_success
+    overall_backend_success, overall_frontend_success = True, True
+    overall_backend_summary, overall_frontend_summary = Counter(), Counter()
+    for backend_success, backend_summary, frontend_success, frontend_summary in results:
+        overall_backend_success &= backend_success
+        overall_frontend_success &= frontend_success
+        overall_frontend_summary.update(frontend_summary)
+        overall_backend_summary.update(backend_summary)
+
+    if overall_backend_success:
+        log_lvl, msg, color = logging.INFO,  "\n🟢 BACKEND OK", "green"
+    else:
+        log_lvl, msg, color = logging.ERROR, "\n❌ BACKEND FAIL", "red"
+
+    print(f"\nSummary:\n{scenery.common.tabulate(overall_backend_summary)}\n")
+    print(f"{scenery.common.colorize(color, msg)}\n\n")
+
+    if overall_frontend_success:
+        log_lvl, msg, color = logging.INFO,  "\n🟢 FRONTEND OK", "green"
+    else:
+        log_lvl, msg, color = logging.ERROR, "\n❌ FRONTEND FAIL", "red"
+
+    print(f"\nSummary:\n{scenery.common.tabulate(overall_frontend_summary)}\n")
+    print(f"{scenery.common.colorize(color, msg)}\n\n")
+
 
     # ###############
     # # OUTPUT RESULT

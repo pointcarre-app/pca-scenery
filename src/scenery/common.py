@@ -9,6 +9,7 @@ import types
 import typing
 import unittest
 import logging
+from collections import Counter
 
 import django
 from django.test.runner import DiscoverRunner
@@ -18,29 +19,23 @@ import yaml
 
 class ResponseProtocol(typing.Protocol):
     @property
-    def status_code(self) -> int:
-        ...
-    
+    def status_code(self) -> int: ...
+
     @property
-    def headers(self) -> typing.Mapping[str, str]:
-        ...
-    
+    def headers(self) -> typing.Mapping[str, str]: ...
+
     @property
-    def content(self) -> bytes:
-        ...
-    
+    def content(self) -> bytes: ...
+
     @property
-    def charset(self) -> str:
-        ...
-    
-    def has_header(self, header_name: str) -> bool:
-        ...
-    
-    def __getitem__(self, header_name: str) -> str:
-        ...
-    
-    def __setitem__(self, header_name: str, value: str) -> None:
-        ...
+    def charset(self) -> str: ...
+
+    def has_header(self, header_name: str) -> bool: ...
+
+    def __getitem__(self, header_name: str) -> str: ...
+
+    def __setitem__(self, header_name: str, value: str) -> None: ...
+
 
 ########################
 # SETTINGS
@@ -70,7 +65,9 @@ def scenery_setup(settings_location: str) -> None:
     # Env variables
     os.environ["SCENERY_COMMON_ITEMS"] = settings.SCENERY_COMMON_ITEMS
     os.environ["SCENERY_SET_UP_INSTRUCTIONS"] = settings.SCENERY_SET_UP_INSTRUCTIONS
-    os.environ["SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM"] = settings.SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM
+    os.environ["SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM"] = (
+        settings.SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM
+    )
     os.environ["SCENERY_TESTED_APP_NAME"] = settings.SCENERY_TESTED_APP_NAME
     os.environ["SCENERY_MANIFESTS_FOLDER"] = settings.SCENERY_MANIFESTS_FOLDER
 
@@ -218,7 +215,7 @@ def tabulate(d: dict, color: typing.Callable | str | None = None, delim: str = "
 ##################
 
 
-def serialize_unittest_result(result: unittest.TestResult) -> dict[str, int]:
+def serialize_unittest_result(result: unittest.TestResult) -> Counter:
     """Serialize a unittest.TestResult object into a dictionary.
 
     Args:
@@ -239,7 +236,7 @@ def serialize_unittest_result(result: unittest.TestResult) -> dict[str, int]:
         ]
     }
     d = {key: len(val) if isinstance(val, list) else val for key, val in d.items()}
-    return d
+    return Counter(d)
 
 
 def pretty_test_name(test: unittest.TestCase) -> str:
@@ -254,7 +251,7 @@ def pretty_test_name(test: unittest.TestCase) -> str:
     return f"{test.__module__}.{test.__class__.__qualname__}.{test._testMethodName}"
 
 
-def summarize_test_result(result, verbosity=1) -> bool:
+def summarize_test_result(result, verbosity=1) -> tuple[bool, Counter]:
     """Returns true if the tests all succeded, false otherwise"""
 
     # logger = logging.getLogger("scenery")
@@ -273,25 +270,22 @@ def summarize_test_result(result, verbosity=1) -> bool:
             print(f"{colorize(color, test_name)}\n{traceback}")
             # TODO: log
 
-    summary = serialize_unittest_result(result)
     success = True
+    summary = serialize_unittest_result(result)
     if summary["errors"] > 0 or summary["failures"] > 0:
         success = False
 
     if success:
-        log_lvl, msg, color = logging.INFO,  "\n🟢 OK", "green"
+        log_lvl, msg, color = logging.INFO, "\n🟢 OK", "green"
     else:
         log_lvl, msg, color = logging.ERROR, "\n❌ FAIL", "red"
 
-    # logger.debug(f"\nSummary:\n{tabulate(summary)}\n")
-    # logger.log(log_lvl, colorize(color, msg))
-
-    if verbosity > 2:
-        print(f"\nSummary:\n{tabulate(summary)}\n")
     if verbosity > 1:
+        print(f"\nSummary:\n{tabulate(summary)}\n")
+    if verbosity > 0:
         print(f"{colorize(color, msg)}\n\n")
 
-    return success
+    return success, summary
 
 
 ###################
