@@ -20,35 +20,18 @@ def process_manifest(filename, args):
     loader = TestsLoader()
     runner = TestsRunner()
 
-    # print("Right before laoding")
-    # pprint(
-    #     scenery.common.get_chrome_memory_usage()
-    # )
 
     backend_suite, frontend_suite = loader.tests_from_manifest(filename, skip_back=args.skip_back, skip_front=args.skip_front, restrict_view=args.restrict_view, restrict_case_id=args.restrict_case_id, restrict_scene_pos=args.restrict_scene_pos, timeout_waiting_time=args.timeout_waiting_time, headless=args.headless)
 
-    # print("Right after loading")
-    # pprint(
-    #     scenery.common.get_chrome_memory_usage()
-    # )
 
     backend_result = runner.run(backend_suite, verbosity=0)
     backend_success, backend_summary = scenery.common.summarize_test_result(backend_result, verbosity=0)
 
-    # print("Right after running backend")
-    # pprint(
-    #     scenery.common.get_chrome_memory_usage()
-    # )
+
 
     frontend_result = runner.run(frontend_suite, verbosity=0)
     frontend_success, frontend_summary = scenery.common.summarize_test_result(frontend_result, verbosity=0)
 
-    # print("Right after running frontend")
-    # pprint(
-    #     scenery.common.get_chrome_memory_usage()
-    # )
-
-    # TODO mad: print number of tests
 
     return backend_success, backend_summary, frontend_success, frontend_summary
 
@@ -235,21 +218,23 @@ def main(args) -> int:
         overall_frontend_summary.update(frontend_summary)
         overall_backend_summary.update(backend_summary)
 
-    if overall_backend_success:
-        log_lvl, msg, color = logging.INFO,  "\n🟢 BACKEND OK", "green"
-    else:
-        log_lvl, msg, color = logging.ERROR, "\n❌ BACKEND FAIL", "red"
+    if not args.skip_back:
+        if overall_backend_success:
+            log_lvl, msg, color = logging.INFO,  "\n🟢 BACKEND OK", "green"
+        else:
+            log_lvl, msg, color = logging.ERROR, "\n❌ BACKEND FAIL", "red"
 
-    print(f"\nSummary:\n{scenery.common.tabulate(overall_backend_summary)}\n")
-    print(f"{scenery.common.colorize(color, msg)}\n\n")
+        print(f"\nSummary:\n{scenery.common.tabulate(overall_backend_summary)}\n")
+        print(f"{scenery.common.colorize(color, msg)}\n\n")
 
-    if overall_frontend_success:
-        log_lvl, msg, color = logging.INFO,  "\n🟢 FRONTEND OK", "green"
-    else:
-        log_lvl, msg, color = logging.ERROR, "\n❌ FRONTEND FAIL", "red"
+    if not args.skip_front:
+        if overall_frontend_success:
+            log_lvl, msg, color = logging.INFO,  "\n🟢 FRONTEND OK", "green"
+        else:
+            log_lvl, msg, color = logging.ERROR, "\n❌ FRONTEND FAIL", "red"
 
-    print(f"\nSummary:\n{scenery.common.tabulate(overall_frontend_summary)}\n")
-    print(f"{scenery.common.colorize(color, msg)}\n\n")
+        print(f"\nSummary:\n{scenery.common.tabulate(overall_frontend_summary)}\n")
+        print(f"{scenery.common.colorize(color, msg)}\n\n")
 
 
     # ###############

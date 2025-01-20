@@ -452,9 +452,10 @@ class Check(Directive):
             case DirectiveCommand.DOM_ELEMENT, dict(d):
                 self.args = {DomArgument(key): value for key, value in d.items()}
                 if attribute := self.args.get(DomArgument.ATTRIBUTE):
-                    self.args[DomArgument.ATTRIBUTE]["value"] = (
-                        self._format_dom_element_attribute_value(attribute["value"])
-                    )
+                    if value:= attribute.get("value"):
+                        self.args[DomArgument.ATTRIBUTE]["value"] = (
+                            self._format_dom_element_attribute_value(value)
+                        )
             case DirectiveCommand.REDIRECT_URL, str(_):
                 pass
             case DirectiveCommand.COUNT_INSTANCES, {"model": ModelBase(), "n": int(n)}:

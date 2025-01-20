@@ -8,12 +8,15 @@ import scenery.common
 from scenery.response_checker import Checker
 import scenery.manifest
 from scenery.manifest_parser import ManifestParser
+from scenery.metatest import MetaFrontTest
 from scenery.method_builder import MethodBuilder
 import rehearsal
 from rehearsal.django_project.some_app.models import SomeModel
 from scenery.set_up_handler import SetUpHandler
 
 import django.http
+from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+
 
 #####################
 # COMMON
@@ -527,7 +530,7 @@ class TestManifestParser(unittest.TestCase):
 
 
 #################
-# HTTP CHECKER
+# CHECKER
 #################
 
 
@@ -838,3 +841,31 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
 
         self.assertTestPasses(self.django_testcase("test_1"))
         self.assertTestPasses(self.django_testcase("test_2"))
+
+
+#################
+# SELENIUM
+#################
+
+class TestSelenium(unittest.TestCase):
+    def test_cache(self):
+
+        d = {
+            "case": {},
+            "scene": {
+                "method": "GET",
+                "url": "https://www.example.com",
+                "directives": [{"status_code": 200}],
+            },
+            "manifest_origin": "origin",
+            "set_up_test_data": ["reset_db"],
+            "set_up": ["create_testuser"],
+        }
+        manifest = ManifestParser.parse_dict(d)
+
+
+        frontend_test_cls = MetaFrontTest(
+                "some_manifest.frontend",
+                (StaticLiveServerTestCase,),
+                manifest,
+            )

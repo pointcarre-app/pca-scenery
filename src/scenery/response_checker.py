@@ -85,7 +85,6 @@ class Checker:
         """
 
         # print("HTTP access", take.url)
-
         # from pprint import pprint
         # pprint(take.data)
 
@@ -182,9 +181,7 @@ class Checker:
             response (django.http.HttpResponse): The HTTP response to check.
             args (int): The expected status code.
         """
-        # print("HERE", response.status_code)
-        # print(response.content)
-        # print(django_testcase.__class__.__name__)
+
         django_testcase.assertEqual(
             response.status_code,
             args,
@@ -260,11 +257,7 @@ class Checker:
         """
 
 
-        # print("*******************")
-        # print(django_testcase)
-        # print(response.content)
-        # print("\n"*4)
-        # NOTE: this is incredibly important for the frontend test
+        # NOTE mad: this is incredibly important for the frontend test
         # TODO: put this somewhere else
         import time
         time.sleep(1)
@@ -304,7 +297,7 @@ class Checker:
         else:
             raise ValueError("Neither find of find_all argument provided")
 
-        # NOTE: I enforce the results to be a bs4.ResultSet[bs4.Tag] above
+        # NOTE mad: I enforce the results to be a bs4.ResultSet[bs4.Tag] above
         dom_elements = typing.cast(bs4.ResultSet[bs4.Tag], dom_elements)
 
         # Perform the additional checks
@@ -324,16 +317,29 @@ class Checker:
                 )
             if attribute := args.get(scenery.manifest.DomArgument.ATTRIBUTE):
                 # TODO: should this move to manifest parser? we will decide in v2
-                if isinstance(attribute["value"], (str, list)):
-                    pass
-                elif isinstance(attribute["value"], int):
-                    attribute["value"] = str(attribute["value"])
-                else:
-                    raise TypeError(
-                        f"attribute value can only by `str` or `list[str]` not '{type(attribute['value'])}'"
+                # TODO mad: in manifest _format_dom_element should be used here, or even before and just disappear
+
+
+                if value := attribute.get("value"):
+                    if isinstance(value, (str, list)):
+                        pass
+                    elif isinstance(value, int):
+                        value = str(value)
+                    else:
+                        raise TypeError(
+                            f"attribute value can only by `str` or `list[str]` not '{type(value)}'"
+                        )
+                    django_testcase.assertEqual(
+                        dom_element[attribute["name"]],
+                        value,
+                        f"Expected attribute '{attribute['name']}' to have value '{value}', but got '{dom_element[attribute['name']]}'",
                     )
-                django_testcase.assertEqual(
-                    dom_element[attribute["name"]],
-                    attribute["value"],
-                    f"Expected attribute '{attribute['name']}' to have value '{attribute['value']}', but got '{dom_element[attribute['name']]}'",
-                )
+                elif regex := attribute.get("regex"):
+
+
+                    django_testcase.assertRegex(
+                        dom_element[attribute["name"]],
+                        regex,
+                        f"Expected attribute '{attribute['name']}' to match regex '{regex}', but got '{dom_element[attribute['name']]}'",
+                    )
+
