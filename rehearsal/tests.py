@@ -849,7 +849,6 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
 
 class TestSelenium(unittest.TestCase):
     def test_cache(self):
-
         d = {
             "case": {},
             "scene": {
@@ -863,9 +862,96 @@ class TestSelenium(unittest.TestCase):
         }
         manifest = ManifestParser.parse_dict(d)
 
-
+        # Create first test class instance and check initial cache
         frontend_test_cls = MetaFrontTest(
                 "some_manifest.frontend",
                 (StaticLiveServerTestCase,),
                 manifest,
             )
+        frontend_test_cls.setUpClass()
+        initial_cache = frontend_test_cls.driver.execute_script("""
+            const entries = performance.getEntriesByType('resource');
+            return entries.map(entry => ({
+                url: entry.name,
+                transferSize: entry.transferSize,
+                type: entry.initiatorType
+            }));
+        """)
+
+        self.assertListEqual(initial_cache, [])
+
+        # TODO mad: finish the test
+
+        # # Add an entry to the cache
+        # test_url = 'https://www.example.com/test-resource'
+        # frontend_test_cls.driver.execute_script("""
+        #     // Create a new request and cache it
+        #     fetch('https://www.example.com/test-resource', {
+        #         method: 'GET',
+        #         cache: 'force-cache'  // This forces the browser to cache the response
+        #     }).then(response => {
+        #         // Optional: You can do something with the response here
+        #         console.log('Resource cached');
+        #     });
+        # """)
+        # # Verify the cache entry was added
+        # updated_cache = frontend_test_cls.driver.execute_script("""
+        #     const entries = performance.getEntriesByType('resource');
+        #     return entries.map(entry => ({
+        #         url: entry.name,
+        #         transferSize: entry.transferSize,
+        #         type: entry.initiatorType
+        #     }));
+        # """)
+
+        # # Assert the new resource is in the cache
+        # cached_urls = [entry['url'] for entry in updated_cache]
+        # self.assertIn(
+        #     test_url,
+        #     cached_urls,
+        #     f"Expected {test_url} to be in cache. Current cache entries: {cached_urls}"
+        # )
+        
+        # Optionally, verify it's a new entry by comparing with initial cache
+        # initial_urls = [entry['url'] for entry in initial_cache]
+        # self.assertNotIn(
+        #     test_url,
+        #     initial_urls,
+        #     f"URL {test_url} should not be in initial cache"
+        # )
+
+        # # Add something to the cache
+        # frontend_test_cls.driver.cache['test_key'] = 'test_value'
+        
+        # Create a new test class instance with the same manifest
+        # new_frontend_test_cls = MetaFrontTest(
+        #     "some_manifest.frontend",
+        #     (StaticLiveServerTestCase,),
+        #     manifest,
+        # )
+        # new_frontend_test_cls.setUpClass()
+
+
+        # new_cache = new_frontend_test_cls.driver.execute_script("""
+        #     const entries = performance.getEntriesByType('resource');
+        #     return entries.map(entry => ({
+        #         url: entry.name,
+        #         transferSize: entry.transferSize,
+        #         type: entry.initiatorType
+        #     }));
+        # """)
+
+        # new_urls = [entry['url'] for entry in new_cache]
+        # self.assertNotIn(
+        #     test_url,
+        #     new_urls,
+        #     f"URL {test_url} should not be in initial cache"
+        # )
+
+        # # from pprint import pprint
+        # # pprint(new_cache)
+        
+        # # Assertions
+        # self.assertIn('test_key', initial_cache)
+        # self.assertEqual(initial_cache['test_key'], 'test_value')
+        # self.assertNotIn('test_key', new_cache, "Cache should be cleared for new test instance")

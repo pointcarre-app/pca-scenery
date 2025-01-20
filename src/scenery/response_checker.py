@@ -165,6 +165,8 @@ class Checker:
             Checker.check_count_instances(django_testcase, response, check.args)
         elif check.instruction == scenery.manifest.DirectiveCommand.DOM_ELEMENT:
             Checker.check_dom(django_testcase, response, check.args)
+        elif check.instruction == scenery.manifest.DirectiveCommand.JS_VARIABLE:
+            Checker.check_js_variable(django_testcase, response, check.args)
         else:
             raise NotImplementedError(check)
 
@@ -343,3 +345,24 @@ class Checker:
                         f"Expected attribute '{attribute['name']}' to match regex '{regex}', but got '{dom_element[attribute['name']]}'",
                     )
 
+
+
+    # def check_js_variable(self, django_testcase: django.test.TestCase, args: dict) -> None:
+    #     """
+    #     Check if a JavaScript variable has the expected value.
+    #     Args:
+    #         django_testcase (django.test.TestCase): The Django test case instance.
+    #         args (dict): The arguments for the check.
+    #     """
+
+    #     # raise Exception("GOTCHA")
+    #     variable_name = args["name"]
+    #     expected_value = args["value"]
+    #     actual_value = django_testcase.driver.execute_script(
+    #         f"return {variable_name};"
+    #     )
+    #     django_testcase.assertEqual(
+    #         actual_value,
+    #         expected_value,
+    #         f"Expected JavaScript variable '{variable_name}' to have value '{expected_value}', but got '{actual_value}'",
+    #     )

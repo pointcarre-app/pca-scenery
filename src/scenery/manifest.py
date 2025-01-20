@@ -111,6 +111,7 @@ class DirectiveCommand(enum.Enum):
     REDIRECT_URL = "redirect_url"
     COUNT_INSTANCES = "count_instances"
     DOM_ELEMENT = "dom_element"
+    JS_VARIABLE = "js_variable"
 
 
 class DomArgument(enum.Enum):
@@ -286,6 +287,10 @@ class Directive:
                 self.args["model"] = app_config.get_model(s)
             case DirectiveCommand.COUNT_INSTANCES, Substituable():
                 pass
+            case DirectiveCommand.JS_VARIABLE, _:
+                pass
+            # case DirectiveCommand.JS_VARIABLE, Substituable():
+            #     pass
             case _:
                 raise ValueError(
                     f"Cannot interpret '{self.instruction}:({self.args})' as Directive"
@@ -462,6 +467,9 @@ class Check(Directive):
                 # NOTE mad: Validate model is registered
                 app_config = django_apps.get_app_config(os.environ["SCENERY_TESTED_APP_NAME"])
                 app_config.get_model(self.args["model"].__name__)
+            case DirectiveCommand.JS_VARIABLE, _:
+                # NOTE mad
+                pass
             case _:
                 raise ValueError(
                     f"Cannot interpret '{self.instruction}:({self.args})' as Directive"

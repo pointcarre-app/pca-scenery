@@ -64,14 +64,13 @@ class MethodBuilder:
 
             if issubclass(django_testcase_cls, StaticLiveServerTestCase):
 
-                print('SETTING UP CHROME')
                 chrome_options = Options()
+                # NOTE mad: this does not play well with headless mode
                 # service = Service(executable_path='/usr/bin/google-chrome')
                 if headless:
-                    print("HEADLESS MODE")
                     chrome_options.add_argument("--headless=new")     # NOTE mad: For newer Chrome versions
                     # chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions (Framework)
-                django_testcase_cls.driver = webdriver.Chrome(options=chrome_options)
+                django_testcase_cls.driver = webdriver.Chrome(options=chrome_options) #  service=service
                 django_testcase_cls.driver.implicitly_wait(10)
 
             for instruction in instructions:
@@ -84,7 +83,8 @@ class MethodBuilder:
 
         def tearDownClass(django_testcase_cls: type[django.test.TestCase] | type[StaticLiveServerTestCase]) -> None:
             if issubclass(django_testcase_cls, StaticLiveServerTestCase):
-                print("HERE I QUIT")
+                # import time
+                # time.sleep(1000)
                 django_testcase_cls.driver.quit()
             super(django_testcase_cls, django_testcase_cls).tearDownClass()
 
