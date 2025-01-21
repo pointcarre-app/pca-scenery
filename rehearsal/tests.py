@@ -848,6 +848,45 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
 #################
 
 class TestSelenium(unittest.TestCase):
+
+    def test_json_stringify(self):
+        d = {
+            "case": {},
+            "scene": {
+                "method": "GET",
+                "url": "https://www.example.com",
+                "directives": [{"status_code": 200}],
+            },
+            "manifest_origin": "origin",
+        }
+        manifest = ManifestParser.parse_dict(d)
+        frontend_test_cls = MetaFrontTest(
+                "some_manifest.frontend",
+                (StaticLiveServerTestCase,),
+                manifest,
+            )
+        frontend_test_cls.setUpClass()
+                    
+        attribute_value = "[1, 2, 3]"
+        val = frontend_test_cls.driver.execute_script(
+            f"return JSON.stringify({attribute_value})"
+        )
+        self.assertEqual(val, "[1,2,3]")
+
+        attribute_value = "{1: (True, ''), 2}"
+        with self.assertRaises(Exception):
+            val = frontend_test_cls.driver.execute_script(
+                f"return JSON.stringify({attribute_value})"
+                )
+            
+
+        attribute_value = "{1: (True, ''), 2: (True, '')"
+        with self.assertRaises(Exception):
+            print("HERE WE GO")
+            val = frontend_test_cls.driver.execute_script(
+                f"return JSON.stringify({attribute_value})"
+                )
+
     def test_cache(self):
         d = {
             "case": {},

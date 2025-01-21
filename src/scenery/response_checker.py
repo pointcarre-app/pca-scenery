@@ -165,8 +165,10 @@ class Checker:
             Checker.check_count_instances(django_testcase, response, check.args)
         elif check.instruction == scenery.manifest.DirectiveCommand.DOM_ELEMENT:
             Checker.check_dom(django_testcase, response, check.args)
-        elif check.instruction == scenery.manifest.DirectiveCommand.JS_VARIABLE:
-            Checker.check_js_variable(django_testcase, response, check.args)
+        # elif check.instruction == scenery.manifest.DirectiveCommand.JS_VARIABLE:
+        #     Checker.check_js_variable(django_testcase, response, check.args)
+        # elif check.instruction == scenery.manifest.DirectiveCommand.JS_STRINGIFY:
+        #     Checker.check_js_stringify(django_testcase, response, check.args)
         else:
             raise NotImplementedError(check)
 
@@ -260,7 +262,7 @@ class Checker:
 
 
         # NOTE mad: this is incredibly important for the frontend test
-        # TODO: put this somewhere else
+        # TODO mad: put this somewhere else or more clean
         import time
         time.sleep(1)
 
@@ -318,11 +320,11 @@ class Checker:
                     f"Expected element text to be '{text}', but got '{dom_element.text}'",
                 )
             if attribute := args.get(scenery.manifest.DomArgument.ATTRIBUTE):
-                # TODO: should this move to manifest parser? we will decide in v2
-                # TODO mad: in manifest _format_dom_element should be used here, or even before and just disappear
 
 
                 if value := attribute.get("value"):
+                    # TODO: should this move to manifest parser? we will decide in v2
+                    # TODO mad: in manifest _format_dom_element should be used here, or even before and just disappear
                     if isinstance(value, (str, list)):
                         pass
                     elif isinstance(value, int):
@@ -344,6 +346,33 @@ class Checker:
                         regex,
                         f"Expected attribute '{attribute['name']}' to match regex '{regex}', but got '{dom_element[attribute['name']]}'",
                     )
+                if attribute.get("json_stringify"):
+
+                    print("GOING HERE", dom_element[attribute["name"]])
+                    if not isinstance(django_testcase, StaticLiveServerTestCase):
+                        raise Exception("json_stringify can only be called for frontend tests")
+                    django_testcase.driver.execute_script(
+                        f"return JSON.stringify({dom_element[attribute['name']]})"
+                    )
+
+                    # correction_container = wait_for(
+                    #     django_testcase,
+                    #     EC.presence_of_element_located((By.ID, f"correction-container-{fragment_id}")),
+                    # )
+                    # correction_data = correction_container.get_attribute("data-correction")
+                    # print("Correction data:", correction_data, type(correction_data))
+
+                    # # The script beloow check that correction_data is a valid json using JSON.stringify
+                    # django_testcase.driver.execute_script(
+                    #     """
+                    #     const correction_data = arguments[0];
+                    #     const correction_data_json = JSON.stringify(correction_data);
+                    #     return correction_data_json;
+                    #     """,
+                    #     correction_data,
+                    # )
+                
+                
 
 
 
