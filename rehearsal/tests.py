@@ -850,6 +850,8 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
 class TestSelenium(unittest.TestCase):
 
     def test_json_stringify(self):
+
+        # Dummy manifest jjust to init the frontend test class
         d = {
             "case": {},
             "scene": {
@@ -866,23 +868,32 @@ class TestSelenium(unittest.TestCase):
                 manifest,
             )
         frontend_test_cls.setUpClass()
-                    
+
+        # Basic list 
         attribute_value = "[1, 2, 3]"
         val = frontend_test_cls.driver.execute_script(
             f"return JSON.stringify({attribute_value})"
         )
         self.assertEqual(val, "[1,2,3]")
 
-        attribute_value = "{1: (True, ''), 2}"
-        with self.assertRaises(Exception):
+        # Actual correction format
+        attribute_value = '{"1": [true, ""], 2: [true, ""], 3: [false, "Some exception"]}'
+        val = frontend_test_cls.driver.execute_script(
+            f"return JSON.stringify({attribute_value})"
+        )
+        self.assertEqual(val, '{"1":[true,""],"2":[true,""],"3":[false,"Some exception"]}')
+
+        attribute_value = '{1: [true,""], 2}'
+        with self.assertRaises(Exception) as e:
+            print("HERE 1", str(e))
             val = frontend_test_cls.driver.execute_script(
                 f"return JSON.stringify({attribute_value})"
                 )
             
 
-        attribute_value = "{1: (True, ''), 2: (True, '')"
-        with self.assertRaises(Exception):
-            print("HERE WE GO")
+        attribute_value = '{"1": [true, ""], 2: [true, ""]'
+        with self.assertRaises(Exception) as e:
+            print("HERE 2", str(e))
             val = frontend_test_cls.driver.execute_script(
                 f"return JSON.stringify({attribute_value})"
                 )

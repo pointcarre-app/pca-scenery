@@ -348,10 +348,10 @@ class Checker:
                     )
                 if attribute.get("json_stringify"):
 
-                    print("GOING HERE", dom_element[attribute["name"]])
+                    # print("GOING HERE", dom_element[attribute["name"]])
                     if not isinstance(django_testcase, StaticLiveServerTestCase):
                         raise Exception("json_stringify can only be called for frontend tests")
-                    django_testcase.driver.execute_script(
+                    value = django_testcase.driver.execute_script(
                         f"return JSON.stringify({dom_element[attribute['name']]})"
                     )
 
