@@ -3,6 +3,9 @@ import os
 import http
 import typing
 import importlib
+import json
+import time
+
 
 import scenery.manifest
 
@@ -263,7 +266,6 @@ class Checker:
 
         # NOTE mad: this is incredibly important for the frontend test
         # TODO mad: put this somewhere else or more clean
-        import time
         time.sleep(1)
 
         # content = response.content
@@ -346,31 +348,24 @@ class Checker:
                         regex,
                         f"Expected attribute '{attribute['name']}' to match regex '{regex}', but got '{dom_element[attribute['name']]}'",
                     )
-                if attribute.get("json_stringify"):
+                if exepected_value_from_ff := attribute.get("json_stringify"):
 
                     # print("GOING HERE", dom_element[attribute["name"]])
                     if not isinstance(django_testcase, StaticLiveServerTestCase):
                         raise Exception("json_stringify can only be called for frontend tests")
-                    value = django_testcase.driver.execute_script(
+                    value_from_ff = django_testcase.driver.execute_script(
                         f"return JSON.stringify({dom_element[attribute['name']]})"
                     )
-
-                    # correction_container = wait_for(
-                    #     django_testcase,
-                    #     EC.presence_of_element_located((By.ID, f"correction-container-{fragment_id}")),
-                    # )
-                    # correction_data = correction_container.get_attribute("data-correction")
-                    # print("Correction data:", correction_data, type(correction_data))
-
-                    # # The script beloow check that correction_data is a valid json using JSON.stringify
-                    # django_testcase.driver.execute_script(
-                    #     """
-                    #     const correction_data = arguments[0];
-                    #     const correction_data_json = JSON.stringify(correction_data);
-                    #     return correction_data_json;
-                    #     """,
-                    #     correction_data,
-                    # )
+                    if exepected_value_from_ff == "_":
+                        # NOTE: this means we only want to check the value is a valid json string
+                        pass
+                    else:
+                        value_from_ff = json.loads(value_from_ff)
+                        django_testcase.assertEqual(
+                            value_from_ff,
+                            exepected_value_from_ff,
+                            f"Expected attribute '{attribute['name']}' to have value '{exepected_value_from_ff}', but got '{value_from_ff}'",
+                        )
                 
                 
 

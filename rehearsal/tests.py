@@ -885,15 +885,13 @@ class TestSelenium(unittest.TestCase):
 
         attribute_value = '{1: [true,""], 2}'
         with self.assertRaises(Exception) as e:
-            print("HERE 1", str(e))
             val = frontend_test_cls.driver.execute_script(
                 f"return JSON.stringify({attribute_value})"
                 )
             
 
         attribute_value = '{"1": [true, ""], 2: [true, ""]'
-        with self.assertRaises(Exception) as e:
-            print("HERE 2", str(e))
+        with self.assertRaises(Exception):
             val = frontend_test_cls.driver.execute_script(
                 f"return JSON.stringify({attribute_value})"
                 )
