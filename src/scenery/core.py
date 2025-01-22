@@ -2,6 +2,7 @@
 
 import os
 import io
+import sys
 import logging
 import itertools
 import unittest
@@ -9,20 +10,21 @@ import typing
 from functools import wraps
 import time
 
+from scenery.manifest import Manifest
+from scenery.method_builder import MethodBuilder
+from scenery.manifest_parser import ManifestParser
+from scenery.common import FrontendDjangoTestCase, BackendDjangoTestCase, CustomDiscoverRunner, DjangoTestCase, summarize_test_result
+
 from django.conf import settings
-from django.contrib.staticfiles.testing import StaticLiveServerTestCase
-import django.test
-import django.test.runner
 from django.test.utils import get_runner
 
 from selenium.common.exceptions import TimeoutException
 
-from scenery.manifest import Manifest
-from scenery.method_builder import MethodBuilder
-from scenery.manifest_parser import ManifestParser
-import scenery.common
 
-from scenery.common import FrontendDjangoTestCase, BackendDjangoTestCase
+
+
+
+
 
 
 # DECORATORS
@@ -49,10 +51,10 @@ def log_exec_bar(func):
     return wrapper
 
 
+# TODO mad: screenshot on error
 # import datetime
-
 # def screenshot_on_error(driver):
-#     # TODO mad
+#     
 #     screenshot_dir = "scenery-screenshots"
 #     def decorator(func):
 #         @wraps(func)
@@ -122,40 +124,18 @@ def retry_on_timeout(retries=3, delay=5):
 #############
 
 # COMMON CODE BETWEEN BACKEND AND FRONTEND METACLASS
-
-# def parse_test_restriction(restrict_str):
-#     # TODO mad: could this be in the discoverer please? or rather argparser to give to discover as arguments
-#     if restrict_str is not None:
-#         restrict_args = restrict_str.split(".")
-#         if len(restrict_args) == 1:
-#             restrict_case_id, restrict_scene_pos = restrict_args[0], None
-#         elif len(restrict_args) == 2:
-#             restrict_case_id, restrict_scene_pos = restrict_args[0], restrict_args[1]
-#         else:
-#             raise ValueError(f"Wrong restrict argmuent {restrict_str}")
-#     else:
-#         return None, None
-
-#     return restrict_case_id, restrict_scene_pos
-
+# TODO: Dry again a little bit
 
 def iter_on_takes_from_manifest(manifest, restrict_view, restrict_case_id, restrict_scene_pos):
     for (case_id, case), (scene_pos, scene) in itertools.product(
         manifest.cases.items(), enumerate(manifest.scenes)
     ):
-        # print(restrict_case_id, "vs", case_id)
-        # print(restrict_scene_pos, "vs", scene_pos)
-        # print(restrict_view, "vs", scene.url)
         if restrict_case_id is not None and case_id != restrict_case_id:
-            # print("A")
             continue
         elif restrict_scene_pos is not None and str(scene_pos) != restrict_scene_pos:
-            # print("A")
             continue
         if restrict_view is not None and restrict_view != scene.url:
-            # print("C")
             continue
-        # print("D")
         yield (case_id, case), (scene_pos, scene)
 
 
@@ -190,66 +170,32 @@ class MetaBackTest(type):
         restrict_case_id: typing.Optional[str] = None,
         restrict_scene_pos: typing.Optional[str] = None,
         restrict_view: typing.Optional[str] = None,
-    ) -> type[django.test.TestCase]:
+    ) -> type[DjangoTestCase]:
         """Responsible for building the TestCase class."""
 
-        # # Handle restriction
-        # if restrict_test is not None:
-        #     restrict_args = restrict_test.split(".")
-        #     if len(restrict_args) == 1:
-        #         restrict_case_id, restrict_scene_pos = restrict_args[0], None
-        #     elif len(restrict_args) == 2:
-        #         restrict_case_id, restrict_scene_pos = restrict_args[0], restrict_args[1]
-        #     else:
-        #         raise ValueError(f"Wrong restrict argmuent {restrict_test}")
-
         # Build setUpTestData and SetUp
+        # TODO mad: do I want setUpTestData or setUpClass?
+        # NOTE mad: right now everything is in the setup
         # setUpTestData = MethodBuilder.build_setUpTestData(manifest.set_up_test_data)
         setUp = MethodBuilder.build_setUp(manifest.set_up)
 
         # Add SetupData and SetUp as methods of the Test class
-        # TODO mad: do I want setUpTestData or setUpClass?
-        # NOTE mad: right now everything is in the setup
         cls_attrs = {
             # "setUpTestData": setUpTestData,
             "setUp": setUp,
         }
-        # restrict_case_id, restrict_scene_pos = parse_test_restriction(restrict_test)
-        # print("COUCOU", restrict_case_id, restrict_scene_pos)
         for (case_id, case), (scene_pos, scene) in iter_on_takes_from_manifest(
             manifest, restrict_view, restrict_case_id, restrict_scene_pos
         ):
-            # raise Exception
             take = scene.shoot(case)
-            test = MethodBuilder.build_test_from_take(take)
-            # test = retry_on_timeout()(test)
-            # test = screenshot_on_error(test)
+            test = MethodBuilder.build_backend_test_from_take(take)
             test = log_exec_bar(test)
             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
         return test_cls
 
-        # # Handle restriction
-        # for (case_id, case), (scene_pos, scene) in itertools.product(
-        #     manifest.cases.items(), enumerate(manifest.scenes)
-        # ):
-        #     if restrict_test is not None:
-        #         if case_id != restrict_case_id:
-        #             continue
-        #         elif restrict_scene_pos is not None and str(scene_pos) != restrict_scene_pos:
-        #             continue
 
-        #     if restrict_view is not None:
-        #         if restrict_view != scene.url:
-        #             continue
-
-        #     take = scene.shoot(case)
-        #     test = MethodBuilder.build_test_from_take(take)
-        #     test = log_exec_bar(test)
-        #     cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
-
-        # test_cls = super().__new__(cls, clsname, bases, cls_attrs)
 
         # # NOTE: mypy is struggling with the metaclass,
         # # I just ignore here instead of casting which does not do the trick
@@ -268,9 +214,9 @@ class MetaFrontTest(type):
         restrict_case_id: typing.Optional[str] = None,
         restrict_scene_pos: typing.Optional[str] = None,
         restrict_view: typing.Optional[str] = None,
-        timeout_waiting_time=5,
-        headless=True,
-    ) -> type[StaticLiveServerTestCase]:
+        timeout_waiting_time: int=5,
+        headless: bool=True,
+    ) -> type[FrontendDjangoTestCase]:
         """Responsible for building the TestCase class."""
 
 
@@ -280,20 +226,18 @@ class MetaFrontTest(type):
         tearDownClass = MethodBuilder.build_tearDownClass()
 
         # Add SetupData and SetUp as methods of the Test class
-        # NOTE: setUpClass and tearDownClass important for the driver
+        # NOTE mad: setUpClass and tearDownClass are important for the driver
         cls_attrs = {
             "setUpClass": setUpClass,
             "setUp": setUp,
             "tearDownClass": tearDownClass,
         }
-        # restrict_case_id, restrict_scene_pos = parse_test_restriction(restrict_test)
-        # print("COUCOU", restrict_case_id, restrict_scene_pos)
+
         for (case_id, case), (scene_pos, scene) in iter_on_takes_from_manifest(
             manifest, restrict_view, restrict_case_id, restrict_scene_pos
         ):
-            # raise Exception
             take = scene.shoot(case)
-            test = MethodBuilder.build_selenium_test_from_take(take)
+            test = MethodBuilder.build_frontend_test_from_take(take)
             test = retry_on_timeout(delay=timeout_waiting_time)(test)
             # test = screenshot_on_error(test)
             test = log_exec_bar(test)
@@ -398,7 +342,7 @@ class TestsDiscoverer:
             if not skip_back and (ttype is None or ttype == "backend"):
                 backend_test_cls = MetaBackTest(
                     f"{manifest_name}.backend",
-                    (django.test.TestCase,),
+                    (BackendDjangoTestCase,),
                     manifest,
                     restrict_test=restrict_test,
                     restrict_view=restrict_view,
@@ -411,7 +355,7 @@ class TestsDiscoverer:
             if not skip_front and (ttype is None or ttype == "frontend"):
                 frontend_test_cls = MetaFrontTest(
                     f"{manifest_name}.frontend",
-                    (StaticLiveServerTestCase,),
+                    (FrontendDjangoTestCase,),
                     manifest,
                     restrict_test=restrict_test,
                     restrict_view=restrict_view,
@@ -453,7 +397,7 @@ class TestsRunner:
         self.logger = logging.getLogger(__package__)
         self.stream = io.StringIO()
         # self.stream = sys.stdout
-        self.runner = scenery.common.CustomDiscoverRunner(stream=self.stream, failfast=failfast)
+        self.runner = CustomDiscoverRunner(stream=self.stream, failfast=failfast)
 
         app_logger = logging.getLogger("app.close_watch")
         app_logger.propagate = False
@@ -461,7 +405,7 @@ class TestsRunner:
     def __del__(self) -> None:
         """Clean up resources when the MetaTestRunner is deleted."""
         # TODO mad: a context manager would be ideal, let's wait v2
-        self.stream.close()
+        # self.stream.close()
         app_logger = logging.getLogger("app.close_watch")
         app_logger.propagate = True
 
@@ -480,97 +424,11 @@ class TestsRunner:
             This method logs test results and prints them to the console based on the verbosity level.
         """
 
-        # TODO: type.hints is wrong
-
-        # TODO: maybe this can dispapper ?!
-        # if verbosity > 0:
-        #     print("Tests runs:")
-
-        # results = {}
-        # for test_name, suite in tests_discovered:
-        #     result = self.runner.run_suite(suite)
-
-        #     result_serialized = scenery.common.serialize_unittest_result(result)
-
-        #     test_name = test_name.replace("test_case_", "")
-        #     test_name = test_name.replace("_scene_", ".")
-
-        #     results[test_name] = result_serialized
-
-        #     if result.errors or result.failures:
-        #         log_lvl, color = logging.ERROR, "red"
-        #     else:
-        #         log_lvl, color = logging.INFO, "green"
-        #     self.logger.log(log_lvl, f"{test_name}\n{scenery.common.tabulate(result_serialized)}")
-        #     if verbosity > 0:
-        #         print(
-        #             f">> {scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
-        #         )
-
-        #     # Log / verbosity
-        #     for head, traceback in result.failures + result.errors:
-        #         msg = f"{test_name}\n{head}\n{traceback}"
-        #         self.logger.error(msg)
-        #         if verbosity > 0:
-        #             print(msg)
-
-        # if verbosity > 0:
-        #     print("Tests runs:")
-        # print(
-        #     f">> {scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
-        # )
-
-        # print(tests_discovered.__class__)
 
         results = self.runner.run_suite(tests_discovered)
 
-        # results = {}
-
-        # from multiprocessing import Pool
-
-        # with Pool() as pool:
-        #     pool.map(self.runner.run_suite, tests_discovered)
-
-        # print("########################", results)
-
-        # print("**********************")
-        # self.runner.stream.seek(0)
-        # print(self.runner.stream.read())
-
-        # from pprint import pprint
-        # results_serialized = scenery.common.serialize_unittest_result(results)
-        # pprint(results_serialized)
-
-        # results = {}
-        # for test_name, suite in tests_discovered:
-        #     result = self.runner.run_suite(suite)
-
-        #     result_serialized = scenery.common.serialize_unittest_result(result)
-
-        #     test_name = test_name.replace("test_case_", "")
-        #     test_name = test_name.replace("_scene_", ".")
-
-        #     results[test_name] = result_serialized
-
-        #     if result.errors or result.failures:
-        #         log_lvl, color = logging.ERROR, "red"
-        #     else:
-        #         log_lvl, color = logging.INFO, "green"
-        #     self.logger.log(log_lvl, f"{test_name}\n{scenery.common.tabulate(result_serialized)}")
-        #     if verbosity > 0:
-        #         print(
-        #             f">> {scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
-        #         )
-
-        #     # Log / verbosity
-        #     for head, traceback in result.failures + result.errors:
-        #         msg = f"{test_name}\n{head}\n{traceback}"
-        #         self.logger.error(msg)
-        #         if verbosity > 0:
-        #             print(msg)
 
         return results
-        # return results_serialized
 
 
 # TEST LOADER
@@ -650,3 +508,23 @@ class TestsLoader:
             frontend_suite.addTests(frontend_tests)
 
         return backend_suite, frontend_suite
+
+
+def process_manifest(filename, args):
+
+    print(f"\n{filename.replace(".yml", " ")}", end="")
+
+    loader = TestsLoader()
+    runner = TestsRunner()
+
+
+    backend_suite, frontend_suite = loader.tests_from_manifest(filename, skip_back=args.skip_back, skip_front=args.skip_front, restrict_view=args.restrict_view, restrict_case_id=args.restrict_case_id, restrict_scene_pos=args.restrict_scene_pos, timeout_waiting_time=args.timeout_waiting_time, headless=args.headless)
+
+
+    backend_result = runner.run(backend_suite, verbosity=0)
+    backend_success, backend_summary = summarize_test_result(backend_result, verbosity=0)
+
+    frontend_result = runner.run(frontend_suite, verbosity=0)
+    frontend_success, frontend_summary = summarize_test_result(frontend_result, verbosity=0)
+
+    return backend_success, backend_summary, frontend_success, frontend_summary

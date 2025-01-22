@@ -11,13 +11,11 @@ from scenery.common import ResponseProtocol, DjangoTestCase, BackendDjangoTestCa
 from scenery.manifest import Take, Check, DirectiveCommand, DomArgument
 
 import bs4
-import django.test
 import django.http
 
 
-# TODO mad: change type hints using ResponseProtocol
-
-# TODO mad: declare HttpResponse
+# NOTE mad: we do not declare django.http.HttpResponse child 
+# as thisis the whole point of protocols to avoid painful inheritance
 
 class SeleniumResponse(ResponseProtocol):
 
@@ -67,7 +65,10 @@ class Checker:
     various checks on the responses, as specified in the test manifests.
     """
 
-    # TODO mad: should the get_response methods should be somwhere else?
+    # NOTE mad: the first two functions take a Take 
+    # as argument to retrieve the server respone
+    # The next function takes the response protocola 
+    # and potentially other arguments to perform checks
 
     @staticmethod
     def get_http_client_response(
@@ -114,11 +115,7 @@ class Checker:
         # Get the correct url form the FrontendDjangoTestCase
         url = django_testcase.live_server_url + take.url
 
-        # print("Selenium access", take.url)
-
         response = SeleniumResponse(django_testcase.driver)
-
-
 
         # TODO: should be a class attribute or something, maybe module could be loaded at the beggining
         selenium_module = importlib.import_module(os.environ["SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM"])
@@ -150,8 +147,8 @@ class Checker:
         specified in the HttpCheck object.
 
         Args:
-            django_testcase (django.test.TestCase): The Django test case instance.
-            response (django.http.HttpResponse): The HTTP response to check.
+            django_testcase (DjangoTestCase): The Django test case instance.
+            response (ResponseProtocol): The response to check.
             check (scenery.manifest.HttpCheck): The check to perform on the response.
 
         Raises:
@@ -181,8 +178,8 @@ class Checker:
         """Check if the response status code matches the expected code.
 
         Args:
-            django_testcase (django.test.TestCase): The Django test case instance.
-            response (django.http.HttpResponse): The HTTP response to check.
+            django_testcase (DjangoTestCase): The Django test case instance.
+            response (ResponseProtocol): The HTTP response to check.
             args (int): The expected status code.
         """
 
@@ -201,10 +198,11 @@ class Checker:
         """Check if the response redirect URL matches the expected URL.
 
         Args:
-            django_testcase (django.test.TestCase): The Django test case instance.
+            django_testcase (DjangoTestCase): The Django test case instance.
             response (django.http.HttpResponseRedirect): The HTTP redirect response to check.
             args (str): The expected redirect URL.
         """
+        # NOTE mad: this will fail when we try with frontend for login etc... but I should rather skip in method builder
         django_testcase.assertIsInstance(
             response,
             django.http.HttpResponseRedirect,
@@ -228,8 +226,8 @@ class Checker:
         """Check if the count of model instances matches the expected count.
 
         Args:
-            django_testcase (django.test.TestCase): The Django test case instance.
-            response (django.http.HttpResponse): The HTTP response (not used in this check).
+            django_testcase (DjangoTestCase): The Django test case instance.
+            response (ResponseProtocol): The HTTP response (not used in this check).
             args (dict): A dictionary containing 'model' (the model class) and 'n' (expected count).
         """
         instances = list(args["model"].objects.all())
@@ -251,8 +249,8 @@ class Checker:
         checks on DOM elements as specified in the args dictionary.
 
         Args:
-            django_testcase (django.test.TestCase): The Django test case instance.
-            response (django.http.HttpResponse): The HTTP response to check.
+            django_testcase (DjangoTestCase): The Django test case instance.
+            response (django.ResponseProtocol): The HTTP response to check.
             args (dict): A dictionary of DomArgument keys and their corresponding values,
                          specifying the checks to perform.
 
@@ -364,11 +362,11 @@ class Checker:
 
 
 # NOTE mad: do not erase
-    # def check_js_variable(self, django_testcase: django.test.TestCase, args: dict) -> None:
+    # def check_js_variable(self, django_testcase: DjangoFrontendTestCase, args: dict) -> None:
     #     """
     #     Check if a JavaScript variable has the expected value.
     #     Args:
-    #         django_testcase (django.test.TestCase): The Django test case instance.
+    #         django_testcase (DjangoTestCase): The Django test case instance.
     #         args (dict): The arguments for the check.
     #     """
 

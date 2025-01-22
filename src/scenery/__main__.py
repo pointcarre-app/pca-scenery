@@ -8,129 +8,15 @@ See: `python -m scenery --help`
 import sys
 import typing
 import os
-from multiprocessing import Pool
 from collections import Counter
 import logging
-from pprint import pprint
 
-def process_manifest(filename, args):
-
-    print(f"\n{filename.replace(".yml", " ")}", end="")
-
-    loader = TestsLoader()
-    runner = TestsRunner()
+from scenery.core import process_manifest
+from scenery.common import parse_args
 
 
-    backend_suite, frontend_suite = loader.tests_from_manifest(filename, skip_back=args.skip_back, skip_front=args.skip_front, restrict_view=args.restrict_view, restrict_case_id=args.restrict_case_id, restrict_scene_pos=args.restrict_scene_pos, timeout_waiting_time=args.timeout_waiting_time, headless=args.headless)
-
-
-    backend_result = runner.run(backend_suite, verbosity=0)
-    backend_success, backend_summary = scenery.common.summarize_test_result(backend_result, verbosity=0)
-
-
-
-    frontend_result = runner.run(frontend_suite, verbosity=0)
-    frontend_success, frontend_summary = scenery.common.summarize_test_result(frontend_result, verbosity=0)
-
-
-    return backend_success, backend_summary, frontend_success, frontend_summary
-
-
-def parse_test_restriction(restrict_str):
-    # TODO mad: could this be in the discoverer please? or rather argparser to give to discover as arguments
-    if restrict_str is not None:
-        restrict_args = restrict_str.split(".")
-        if len(restrict_args) == 1:
-            manifest_name, case_id, scene_pos = restrict_args[0], None, None
-        elif len(restrict_args) == 2:
-            manifest_name, case_id, scene_pos = restrict_args[0], restrict_args[1], None
-        elif len(restrict_args) == 3:
-            manifest_name, case_id, scene_pos = restrict_args[0], restrict_args[1], restrict_args[2]
-        else:
-            raise ValueError(f"Wrong restrict argmuent {restrict_str}")
-        return manifest_name, case_id, scene_pos
-    else:
-        return None, None, None
         
 
-
-def parse_args():
-
-    #################
-    # PARSE ARGUMENTS
-    #################
-
-    import argparse
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--restrict-test",
-        nargs="?",
-        default=None,
-        help="Optional test restriction <manifest>.<case>.<scene>",
-    )
-
-
-    parser.add_argument(
-        "--restrict-view",
-        nargs="?",
-        default=None,
-        help="Optional test restriction <manifest>.<case>.<scene>",
-    )
-
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        dest="verbosity",
-        type=int,
-        default=2,
-        help="Verbose output",
-    )
-
-    parser.add_argument(
-        "-s",
-        "--scenery_settings",
-        dest="scenery_settings_module",
-        type=str,
-        default="scenery_settings",
-        help="Location of scenery settings module",
-    )
-
-    parser.add_argument(
-        "-ds",
-        "--django_settings",
-        dest="django_settings_module",
-        type=str,
-        default=None,
-        help="Location of django settings module",
-    )
-
-    parser.add_argument(
-        "--timeout",
-        dest="timeout_waiting_time",
-        type=int,
-        default=5,
-    )
-
-    parser.add_argument('--failfast', action='store_true')
-    parser.add_argument('--skip-back', action='store_true')
-    parser.add_argument('--skip-front', action='store_true')
-    parser.add_argument('--not-headless', action='store_true')
-
-    # parser.add_argument(
-    #     "--output",
-    #     default=None,
-    #     dest="output",
-    #     action="store",
-    #     help="Export output",
-    # )
-
-    args = parser.parse_args()
-
-    args.headless = not args.not_headless
-
-    return args
 
 def main(args) -> int:
     """
@@ -194,8 +80,8 @@ def main(args) -> int:
     #     backend_success &= manifest_backend_success
     #     frontend_success &= manifest_frontend_success
 
+    args = parse_args()
 
-    args.restrict_manifest, args.restrict_case_id, args.restrict_scene_pos = parse_test_restriction(args.restrict_test)
     folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
     results = []
     for filename in os.listdir(folder):
@@ -284,7 +170,7 @@ if __name__ == "__main__":
 
     scenery.common.django_setup(settings_module=args.django_settings_module)
 
-    from scenery.metatest import TestsLoader, TestsRunner
+    from scenery.core import TestsLoader, TestsRunner
 
 
     

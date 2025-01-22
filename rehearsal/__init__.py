@@ -7,11 +7,10 @@ import typing
 import unittest
 import pprint
 
-import django.test.runner
 
-import scenery.common
+from scenery.common import BackendDjangoTestCase, CustomDiscoverRunner, DjangoTestCase
 
-import django.test
+
 from django.apps import apps as django_apps
 
 
@@ -72,17 +71,16 @@ class CustomTestCase(unittest.TestCase):
 ####################################
 
 
-class TestCaseOfDjangoTestCase(CustomTestCase):
+class TestCaseOfBackendDjangoTestCase(CustomTestCase):
     """
     This class augments the unittest.TestCase such that it is able to:
-    - take a django.test.TestCase and run it via the django test runner
+    - take a BackendDjangoTestCase and run it via the django test runner
     - make assertions on the result of the django TestCase (sucess ,failures and errors)
-    - customize the output of the django.test.TestCase
+    - customize the output of the DjangoTestCase
     """
 
     django_loader: typing.ClassVar[unittest.TestLoader]
-    # django_runner: typing.ClassVar[django.test.runner.DiscoverRunner]
-    django_runner: typing.ClassVar[scenery.common.CustomDiscoverRunner]
+    django_runner: typing.ClassVar[CustomDiscoverRunner]
     django_stream: typing.ClassVar[io.StringIO]
     django_logger: typing.ClassVar[logging.Logger]
 
@@ -90,9 +88,9 @@ class TestCaseOfDjangoTestCase(CustomTestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         cls.django_loader = unittest.TestLoader()
-        # We customize the django testrunner to avoid confusion in the output and django vs unittest
+        # NOTE mad: We customize the django testrunner to avoid confusion in the output and django vs unittest
         cls.django_stream = io.StringIO()
-        cls.django_runner = scenery.common.CustomDiscoverRunner(cls.django_stream)
+        cls.django_runner = CustomDiscoverRunner(cls.django_stream)
         # FIXME: this does not pass type checking
         cls.django_runner.test_runner.resultclass = CustomTestResult  # type: ignore[assignment]
         cls.django_logger = logging.getLogger(__package__ + ".rehearsal.django")
@@ -104,13 +102,13 @@ class TestCaseOfDjangoTestCase(CustomTestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        # We create a django TestCase (customized) to which we will dynamically add setUpTestData, setUp and test_* functions
-        self.django_testcase = type("DjangoTestCase", (django.test.TestCase,), {})
+        # NOTE mad: We create a django TestCase (customized) to which we will dynamically add setUpTestData, setUp and test_* functions
+        self.django_testcase = type("BackendDjangoTestCase", (BackendDjangoTestCase,), {})
 
     def tearDown(self) -> None:
         super().tearDown()
-        msg = self.django_stream.getvalue()
-        self.django_logger.debug(f"{scenery.common.pretty_test_name(self)}\n{msg}")
+        # msg = self.django_stream.getvalue()
+        # self.django_logger.debug(f"{scenery.common.pretty_test_name(self)}\n{msg}")
         self.django_stream.seek(0)
         self.django_stream.truncate()
 
@@ -124,7 +122,7 @@ class TestCaseOfDjangoTestCase(CustomTestCase):
         self.django_logger.info(f"{repr(self)} {result}")
         return typing.cast(CustomTestResult, result)
 
-    def run_django_test(self, django_test: django.test.TestCase) -> CustomTestResult:
+    def run_django_test(self, django_test: DjangoTestCase) -> CustomTestResult:
         suite = unittest.TestSuite()
         suite.addTest(django_test)
         result = self.django_runner.run_suite(suite)
@@ -133,19 +131,19 @@ class TestCaseOfDjangoTestCase(CustomTestCase):
         self.django_logger.info(f"{repr(self)} {result}")
         return typing.cast(CustomTestResult, result)
 
-    def assertTestPasses(self, django_test: django.test.TestCase) -> None:
+    def assertTestPasses(self, django_test: DjangoTestCase) -> None:
         result = self.run_django_test(django_test)
         if result.errors:
             pprint.pprint(result.errors)
         self.assertTrue(result.wasSuccessful(), f"{django_test} was not succesfull")
 
-    def assertTestFails(self, django_test: django.test.TestCase) -> None:
+    def assertTestFails(self, django_test: DjangoTestCase) -> None:
         result = self.run_django_test(django_test)
         self.assertFalse(result.wasSuccessful(), f"{django_test} was not succesfull")
         self.assertEqual(len(result.errors), 0, f"{django_test} did not raise any error")
 
     def assertTestRaises(
-        self, django_test: django.test.TestCase, expected: type[BaseException]
+        self, django_test: DjangoTestCase, expected: type[BaseException]
     ) -> None:
         result = self.run_django_test(django_test)
         self.assertGreater(len(result.errors), 0, f"{django_test} did not raise any error")
@@ -160,163 +158,3 @@ class TestCaseOfDjangoTestCase(CustomTestCase):
             raise result.caught_exception[0](result.caught_exception[1])
 
 
-#####################################
-# DISCOVERER AND RUNNER
-#####################################
-
-
-class RehearsalDiscoverer:
-    def __init__(self) -> None:
-        self.logger = logging.getLogger("rehearsal")
-        self.loader = unittest.TestLoader()
-
-    def discover(self, verbosity: int) -> list[tuple[str, unittest.TestSuite]]:
-        """Returns a list of pair (test_name, suite), each suite contains a single test"""
-
-        import rehearsal.tests
-
-        tests_discovered = []
-
-        # if verbosity >= 1:
-        #     print("Tests discovered:")
-
-        testsuites = self.loader.loadTestsFromModule(rehearsal.tests)
-        tests_discovered = unittest.TestSuite()
-
-        # testsuites = self.loader.loadTestsFromModule(rehearsal.tests)
-
-        for testsuite in testsuites:
-        #     testsuite = typing.cast(unittest.TestSuite, testsuite)
-        #     for test in testsuite:
-        #         test = typing.cast(unittest.TestCase, test)
-        #         test_name = scenery.common.pretty_test_name(test)
-
-        #         # Log / verbosity
-        #         msg = f"Discovered {test_name}"
-        #         self.logger.debug(msg)
-        #         if verbosity >= 2:
-        #             print(f"> {test_name}")
-
-        #         suite = unittest.TestSuite(tests=(test,))
-        #         tests_discovered.append((test_name, suite))
-
-            tests_discovered.addTests(testsuite)
-
-        # msg = f"{len(tests_discovered)} tests."
-        msg = f"Discovered {len(tests_discovered._tests)} tests."
-        if verbosity >= 1:
-            print(f"{msg}\n")
-
-        return tests_discovered
-
-
-class RehearsalRunner:
-    def __init__(self) -> None:
-        # self.runner = unittest.TextTestRunner(stream=io.StringIO())
-        self.runner = unittest.TextTestRunner(stream=sys.stdout)
-        self.logger = logging.getLogger(__package__ + ".rehearsal")
-
-    def run(
-        self, tests_discovered: unittest.TestSuite, verbosity: int,
-    ) -> dict[str, dict[str, int]]:
-        results = self.runner.run(tests_discovered)
-
-        # for failed_test, traceback in results.failures:
-        #     test_name = failed_test.id()  
-        #     log_lvl, color = logging.ERROR, "red"
-        #     if verbosity > 0:
-        #         print(f"{scenery.common.colorize(color, test_name)}\n{traceback}")
-        #         # TODO: log
-                
-        # for failed_test, traceback in results.errors:
-        #     test_name = failed_test.id()  
-        #     log_lvl, color = logging.ERROR, "red"
-        #     if verbosity > 0:
-        #         print(f"{scenery.common.colorize(color, test_name)}\n{traceback}")
-        #         # TODO: log
-
-        # result_serialized = scenery.common.serialize_unittest_result(result)
-
-        # for test_name, suite in tests_discovered:
-        #     # with redirect_stdout():
-        #     result = self.runner.run(suite)
-
-        #     result_serialized = scenery.common.serialize_unittest_result(result)
-        #     results[test_name] = result_serialized
-
-        #     if result.errors or result.failures:
-        #         log_lvl, color = logging.ERROR, "red"
-        #     else:
-        #         log_lvl, color = logging.INFO, "green"
-        #     self.logger.log(log_lvl, f"{test_name}\n{scenery.common.tabulate(result_serialized)}")
-        #     if verbosity > 0:
-        #         print(
-        #             f"{scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
-        #         )
-
-        #     # Log / verbosity
-        #     for head, traceback in result.failures + result.errors:
-        #         msg = f"{test_name}\n{head}\n{traceback}"
-        #         self.logger.error(msg)
-        #         if verbosity > 0:
-        #             print(msg)
-
-
-        # result_serialized = scenery.common.serialize_unittest_result(result)
-
-        # for test_name, suite in tests_discovered:
-        #     # with redirect_stdout():
-        #     result = self.runner.run(suite)
-
-        #     result_serialized = scenery.common.serialize_unittest_result(result)
-        #     results[test_name] = result_serialized
-
-        #     if result.errors or result.failures:
-        #         log_lvl, color = logging.ERROR, "red"
-        #     else:
-        #         log_lvl, color = logging.INFO, "green"
-        #     self.logger.log(log_lvl, f"{test_name}\n{scenery.common.tabulate(result_serialized)}")
-        #     if verbosity > 0:
-        #         print(
-        #             f"{scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
-        #         )
-
-        #     # Log / verbosity
-        #     for head, traceback in result.failures + result.errors:
-        #         msg = f"{test_name}\n{head}\n{traceback}"
-        #         self.logger.error(msg)
-        #         if verbosity > 0:
-        #             print(msg)
-
-        return results
-
-    # def run(
-    #     self, tests_discovered: list[tuple[str, unittest.TestSuite]], verbosity: int
-    # ) -> dict[str, dict[str, int]]:
-    #     results = {}
-    #     for test_name, suite in tests_discovered:
-    #         # with redirect_stdout():
-    #         result = self.runner.run(suite)
-
-    #         result_serialized = scenery.common.serialize_unittest_result(result)
-    #         results[test_name] = result_serialized
-
-    #         if result.errors or result.failures:
-    #             log_lvl, color = logging.ERROR, "red"
-    #         else:
-    #             log_lvl, color = logging.INFO, "green"
-    #         self.logger.log(log_lvl, f"{test_name}\n{scenery.common.tabulate(result_serialized)}")
-    #         if verbosity > 0:
-    #             print(
-    #                 f"{scenery.common.colorize(color, test_name)}\n{scenery.common.tabulate({key: val for key, val in result_serialized.items() if val > 0})}"
-    #             )
-
-    #         # Log / verbosity
-    #         for head, traceback in result.failures + result.errors:
-    #             msg = f"{test_name}\n{head}\n{traceback}"
-    #             self.logger.error(msg)
-    #             if verbosity > 0:
-    #                 print(msg)
-
-        # return results
-        # return result_serialized

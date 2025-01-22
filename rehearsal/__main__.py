@@ -1,40 +1,9 @@
-def process_manifest(filename):
-
-
-    loader = TestsLoader()
-    runner = TestsRunner()
-
-    backend_suite, frontend_suite = loader.tests_from_manifest(filename)
-
-    backend_result = runner.run(backend_suite, verbosity=0)
-    backend_success, backend_summary = scenery.common.summarize_test_result(backend_result, verbosity=0)
-
-    frontend_result = runner.run(frontend_suite, verbosity=0)
-    frontend_success, frontend_summary = scenery.common.summarize_test_result(frontend_result, verbosity=0)
-
-    # from pprint import pprint
-    # print("***************", filename)
-    # pprint(backend_summary)
-    # pprint(frontend_summary)
-
-    # TODO mad: number of tests
-    # msg = f"Resulting in {len(backend_suite._tests)} backend and {len(frontend_suite._tests)} frontend tests."
-    # n_backend_tests = sum(len(test_suite._tests) for test_suite in backend_parrallel_suites)
-    # n_fonrtend_tests = sum(len(test_suite._tests) for test_suite in frontend_parrallel_suites)
-    # msg = f"Resulting in {n_backend_tests} backend and {n_fonrtend_tests} frontend tests."
-
-    # if verbosity >= 1:
-    #     print(f"{msg}\n")
-
-    return backend_success, backend_summary, frontend_success, frontend_summary
+from collections import Counter
+import logging
+import unittest
 
 def main() -> int:
     """Test the package `scenery` itself."""
-
-
-    ###################
-    # RUN TESTS
-    ###################
 
     # NOTE mad: I first run rehearsal per se
     # then check that the main command works
@@ -46,37 +15,33 @@ def main() -> int:
 
     print(f"{scenery.common.colorize("cyan", "# Rehearsal")}\n")
 
-    
-    rehearsal_discoverer = rehearsal.RehearsalDiscoverer()
-    rehearsal_runner = rehearsal.RehearsalRunner()
-    rehearsal_tests = rehearsal_discoverer.discover(verbosity=2)
-    rehearsal_result = rehearsal_runner.run(rehearsal_tests, verbosity=2)
-    rehearsal_success, rehearsal_summary = scenery.common.summarize_test_result(rehearsal_result, verbosity=2)
+    import rehearsal.tests
+    loader = unittest.TestLoader()
+    testsuites = loader.loadTestsFromModule(rehearsal.tests)
+    rehearsal_tests = unittest.TestSuite()
 
-    # print(scenery.common.tabulate(rehearsal_summary))
+    for testsuite in testsuites:
+        rehearsal_tests.addTests(testsuite)
+    rehearsal_runner = unittest.TextTestRunner(stream=sys.stdout)
+    rehearsal_result = rehearsal_runner.run(rehearsal_tests)
+    rehearsal_success, rehearsal_summary = scenery.common.summarize_test_result(rehearsal_result, verbosity=2)
 
     # Dummy django app
     ##################
 
     print(f"{scenery.common.colorize("cyan", "# Dummy django app")}\n")
 
+    from scenery.core import process_manifest
+    from scenery.common import parse_args
 
-    # backend_success, frontend_success = True, True
-    # for filename in os.listdir(folder):
-    #     manifest_backend_success, manifest_frontend_success = process_manifest(filename, verbosity=2)
-    #     backend_success &= manifest_backend_success
-    #     frontend_success &= manifest_frontend_success
+    args = parse_args()
 
     folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
     results = []
     for filename in os.listdir(folder):
-        results.append(process_manifest(filename))
-    # with Pool() as pool:
-    #     results = pool.map(process_manifest, os.listdir(folder))
+        results.append(process_manifest(filename, args=args))
 
-    from collections import Counter
-    import logging
-
+    # TODO: dry with __main__
     overall_backend_success, overall_frontend_success = True, True
     overall_backend_summary, overall_frontend_summary = Counter(), Counter()
     for backend_success, backend_summary, frontend_success, frontend_summary in results:
@@ -176,7 +141,7 @@ if __name__ == "__main__":
 
 
     import rehearsal
-    from scenery.metatest import TestsLoader, TestsRunner
+    from scenery.core import TestsLoader, TestsRunner
 
 
 

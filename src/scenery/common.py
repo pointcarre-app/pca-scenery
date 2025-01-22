@@ -1,4 +1,5 @@
 """General functions and classes used by other modules."""
+import argparse
 from collections import Counter
 import os
 import importlib
@@ -12,11 +13,107 @@ import unittest
 from typing import TypeVar, Union
 
 import django
+from django.test.runner import DiscoverRunner as DjangoDiscoverRunner
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
-import django.test
-from django.test.runner import DiscoverRunner
 
 import yaml
+
+#################
+# PARSE ARGUMENTS
+#################
+
+
+def parse_arg_test_restriction(restrict_str):
+    # TODO mad: could this be in the discoverer please? or rather argparser to give to discover as arguments
+    if restrict_str is not None:
+        restrict_args = restrict_str.split(".")
+        if len(restrict_args) == 1:
+            manifest_name, case_id, scene_pos = restrict_args[0], None, None
+        elif len(restrict_args) == 2:
+            manifest_name, case_id, scene_pos = restrict_args[0], restrict_args[1], None
+        elif len(restrict_args) == 3:
+            manifest_name, case_id, scene_pos = restrict_args[0], restrict_args[1], restrict_args[2]
+        else:
+            raise ValueError(f"Wrong restrict argmuent {restrict_str}")
+        return manifest_name, case_id, scene_pos
+    else:
+        return None, None, None
+
+
+def parse_args():
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--restrict-test",
+        nargs="?",
+        default=None,
+        help="Optional test restriction <manifest>.<case>.<scene>",
+    )
+
+    parser.add_argument(
+        "--restrict-view",
+        nargs="?",
+        default=None,
+        help="Optional view restriction",
+    )
+
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        dest="verbosity",
+        type=int,
+        default=2,
+        help="Verbose output",
+    )
+
+    parser.add_argument(
+        "-s",
+        "--scenery_settings",
+        dest="scenery_settings_module",
+        type=str,
+        default="scenery_settings",
+        help="Location of scenery settings module",
+    )
+
+    parser.add_argument(
+        "-ds",
+        "--django_settings",
+        dest="django_settings_module",
+        type=str,
+        default=None,
+        help="Location of django settings module",
+    )
+
+    parser.add_argument(
+        "--timeout",
+        dest="timeout_waiting_time",
+        type=int,
+        default=5,
+    )
+
+    parser.add_argument('--failfast', action='store_true')
+    parser.add_argument('--skip-back', action='store_true')
+    parser.add_argument('--skip-front', action='store_true')
+    parser.add_argument('--not-headless', action='store_true')
+
+    # parser.add_argument(
+    #     "--output",
+    #     default=None,
+    #     dest="output",
+    #     action="store",
+    #     help="Export output",
+    # )
+
+    args = parser.parse_args()
+
+    args.headless = not args.not_headless
+
+    args.restrict_manifest, args.restrict_case_id, args.restrict_scene_pos = parse_arg_test_restriction(args.restrict_test)
+
+
+    return args
+
 
 
 # CLASSES
@@ -293,17 +390,6 @@ def serialize_unittest_result(result: unittest.TestResult) -> Counter:
     d = {key: len(val) if isinstance(val, list) else val for key, val in d.items()}
     return Counter(d)
 
-#  TODO delete
-def pretty_test_name(test: unittest.TestCase) -> str:
-    """Generate a pretty string representation of a unittest.TestCase.
-
-    Args:
-        test (unittest.TestCase): The test case to generate a name for.
-
-    Returns:
-        str: A string in the format "module.class.method" representing the test case.
-    """
-    return f"{test.__module__}.{test.__class__.__qualname__}.{test._testMethodName}"
 
 
 def summarize_test_result(result, verbosity=1) -> tuple[bool, Counter]:
@@ -366,7 +452,7 @@ def django_setup(settings_module: str) -> None:
 
 
 def overwrite_get_runner_kwargs(
-    django_runner: DiscoverRunner, stream: typing.IO
+    django_runner: DjangoDiscoverRunner, stream: typing.IO
 ) -> dict[str, typing.Any]:
     """Overwrite the get_runner_kwargs method of Django's DiscoverRunner.
 
@@ -393,10 +479,11 @@ def overwrite_get_runner_kwargs(
     return kwargs
 
 
-# from django.test.runner import DiscoverRunner
 
 
-class CustomDiscoverRunner(django.test.runner.DiscoverRunner):
+
+# NOTE mad: this is done to shut down the original  stream of the 
+class CustomDiscoverRunner(DjangoDiscoverRunner):
     """Custom test runner that allows for stream capture."""
 
     def __init__(self, stream: io.StringIO, *args: typing.Any, **kwargs: typing.Any) -> None:

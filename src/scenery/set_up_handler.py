@@ -4,11 +4,8 @@ import importlib
 import logging
 import os
 
-import scenery.manifest
-
-import django.test
-from django.contrib.staticfiles.testing import StaticLiveServerTestCase
-
+from scenery.common import DjangoTestCase
+from scenery.manifest import SetUpInstruction
 
 class SetUpHandler:
     """Responsible for executing instructions used in `TestCase.setUp` and `TestCase.setUpTestData` provided in the manifest.
@@ -29,8 +26,8 @@ class SetUpHandler:
         # NOTE: it either takes the instance or the class
         # depending whether it is class method or not
         # (setUp vs. setUpTestData)
-        django_testcase: django.test.TestCase | type[django.test.TestCase] | StaticLiveServerTestCase | type[StaticLiveServerTestCase],
-        instruction: scenery.manifest.SetUpInstruction,
+        django_testcase: DjangoTestCase | type[DjangoTestCase],
+        instruction: SetUpInstruction,
     ) -> None:
         """Execute the method corresponding to the SetUpInstruction.
 
@@ -38,18 +35,18 @@ class SetUpHandler:
         by the SetUpInstruction. It logs the execution for debugging purposes.
 
         Args:
-            django_testcase (django.test.TestCase): The Django test case instance.
+            django_testcase (DjangoTestCase): The Django test case class or instance.
             instruction (scenery.manifest.SetUpInstruction): The setup instruction to execute.
 
         Raises:
             AttributeError: If the specified setup function is not found in the imported module.
         """
 
-        # if isinstance(django_testcase, django.test.TestCase) or (isinstance(django_testcase, type) and issubclass(django_testcase, django.test.TestCase)):
+        # if isinstance(django_testcase, DjangoTestCase| type[DjangoTestCase]) or (isinstance(django_testcase, type) and issubclass(django_testcase, DjangoTestCase)):
         #     func = getattr(SetUpHandler.http_module, instruction.command)
         #     func(django_testcase, **instruction.args)
 
-        # elif isinstance(django_testcase, StaticLiveServerTestCase) or (isinstance(django_testcase, type) and issubclass(django_testcase, StaticLiveServerTestCase)):
+        # elif isinstance(django_testcase, FrontendTestCase) or (isinstance(django_testcase, type) and issubclass(django_testcase, FrontendDjangoTestCase)):
         #     # TODO: this is not needed anymore I think
         #     try:
         #         func = getattr(SetUpHandler.selenium_module, instruction.command)

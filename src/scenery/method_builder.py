@@ -2,15 +2,12 @@
 
 from typing import Callable
 
-import django.http
-import django.test
-from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 # from selenium.webdriver.chrome.service import Service
 
-# import scenery.manifest
 from scenery.manifest import SetUpInstruction, Take, DirectiveCommand
 from scenery.response_checker import Checker
 from scenery.set_up_handler import SetUpHandler
@@ -29,8 +26,6 @@ class MethodBuilder:
     This class provides static methods to create setup and test methods
     that can be added to Django test cases.
     """
-
-    # TODO mad: I should build the get_response methode of the testcase here
 
     # NOTE mad: do not erase, but 
     @staticmethod
@@ -110,7 +105,7 @@ class MethodBuilder:
         return setUp
 
     @staticmethod
-    def build_test_from_take(take: Take) -> Callable:
+    def build_backend_test_from_take(take: Take) -> Callable:
         """Build a test method from an Take object.
 
         This method creates a test function that sends an HTTP request
@@ -127,31 +122,25 @@ class MethodBuilder:
 
         def test(django_testcase: DjangoTestCase) -> None:
 
-            # print("TEST", django_testcase)
             response = Checker.get_http_client_response(django_testcase, take)
             for i, check in enumerate(take.checks):
                 with django_testcase.subTest(f"directive {i}"):
-                    # print(">", check)
-
                     Checker.exec_check(django_testcase, response, check)
 
         return test
     
 
     @staticmethod
-    def build_selenium_test_from_take(take: Take) -> Callable:
+    def build_frontend_test_from_take(take: Take) -> Callable:
 
-        def test(django_testcase: StaticLiveServerTestCase) -> None:
+        def test(django_testcase: FrontendDjangoTestCase) -> None:
 
-            # print("TEST", django_testcase.__class__.__name__)
-            # print("TEST", django_testcase)
             response = Checker.get_selenium_response(django_testcase, take)
 
             for i, check in enumerate(take.checks):
                 if check.instruction == DirectiveCommand.STATUS_CODE:
                     continue 
                 with django_testcase.subTest(f"directive {i}"):
-                    # print(">", check)
                     Checker.exec_check(django_testcase, response, check)
 
         return test

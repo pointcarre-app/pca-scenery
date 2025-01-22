@@ -8,7 +8,7 @@ import scenery.common
 from scenery.response_checker import Checker
 import scenery.manifest
 from scenery.manifest_parser import ManifestParser
-from scenery.metatest import MetaFrontTest
+from scenery.core import MetaFrontTest
 from scenery.method_builder import MethodBuilder
 import rehearsal
 from rehearsal.django_project.some_app.models import SomeModel
@@ -16,7 +16,6 @@ from scenery.set_up_handler import SetUpHandler
 from scenery.common import FrontendDjangoTestCase
 
 import django.http
-from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 
 
 #####################
@@ -535,7 +534,7 @@ class TestManifestParser(unittest.TestCase):
 #################
 
 
-class TestChecker(rehearsal.TestCaseOfDjangoTestCase):
+class TestChecker(rehearsal.TestCaseOfBackendDjangoTestCase):
     def test_check_status_code(self):
         response = django.http.HttpResponse()
         response.status_code = 200
@@ -744,7 +743,7 @@ class TestChecker(rehearsal.TestCaseOfDjangoTestCase):
 ################
 
 
-class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
+class TestMethodBuilder(rehearsal.TestCaseOfBackendDjangoTestCase):
     exec_order: list[str] = []
 
     def test_execution_order(self):
@@ -793,9 +792,9 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
         setattr(self.django_testcase, "setUpTestData", watch(MethodBuilder.build_setUpTestData([])))
         setattr(self.django_testcase, "setUp", watch(MethodBuilder.build_setUp([])))
 
-        test_1 = MethodBuilder.build_test_from_take(take)
+        test_1 = MethodBuilder.build_backend_test_from_take(take)
         test_1.__name__ = "test_1"
-        test_2 = MethodBuilder.build_test_from_take(take)
+        test_2 = MethodBuilder.build_backend_test_from_take(take)
         test_2.__name__ = "test_2"
 
         setattr(self.django_testcase, "test_1", watch(test_1))
@@ -827,12 +826,12 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
         )
 
         def test_1(django_testcase):
-            # NOTE: the assertion is done on the unittest.TestCase and not the django.TestCase
+            # NOTE: the assertion is done on the unittest.TestCase and not the DjangoTestCase
             instances = SomeModel.objects.all()
             self.assertEqual(len(instances), 1)
 
         def test_2(django_testcase):
-            # NOTE: the assertion is done on the unittest.TestCase and not the django.TestCase
+            # NOTE: the assertion is done on the unittest.TestCase and not the DjangoTestCase
             SetUpHandler.exec_set_up_instruction(
                 django_testcase,
                 scenery.manifest.SetUpInstruction(
@@ -980,7 +979,7 @@ class TestSelenium(unittest.TestCase):
         # Create a new test class instance with the same manifest
         # new_frontend_test_cls = MetaFrontTest(
         #     "some_manifest.frontend",
-        #     (StaticLiveServerTestCase,),
+        #     (FrontendDjangoTestCase,),
         #     manifest,
         # )
         # new_frontend_test_cls.setUpClass()
