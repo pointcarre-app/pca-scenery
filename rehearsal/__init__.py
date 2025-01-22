@@ -1,5 +1,5 @@
 import io
-# import sys
+import sys
 import os
 import logging
 from types import TracebackType
@@ -212,8 +212,8 @@ class RehearsalDiscoverer:
 
 class RehearsalRunner:
     def __init__(self) -> None:
-        self.runner = unittest.TextTestRunner(stream=io.StringIO())
-        # self.runner = unittest.TextTestRunner(stream=sys.stdout)
+        # self.runner = unittest.TextTestRunner(stream=io.StringIO())
+        self.runner = unittest.TextTestRunner(stream=sys.stdout)
         self.logger = logging.getLogger(__package__ + ".rehearsal")
 
     def run(

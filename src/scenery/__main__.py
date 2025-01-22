@@ -254,12 +254,13 @@ def main(args) -> int:
     success = min(int(overall_backend_success), int(overall_frontend_success),)
     exit_code = 1 - success
 
-    if success:
-        msg, color = "\n\n🟢 SCENERY WENT FINE", "green"
-    else:
-        msg, color = "\n\n❌ SCENERY FAILED", "red"
+    if not args.skip_front and not args.skip_back:
+        if success:
+            msg, color = "\n\n🟢 BOTH BACKEND AND FRONTEND WENT FINE", "green"
+        else:
+            msg, color = "\n\n❌ EITHER BACKEND OR FRONTEND FAILED", "red"
 
-    print(f"{scenery.common.colorize(color, msg)}\n\n")
+        print(f"{scenery.common.colorize(color, msg)}\n\n")
 
     return exit_code
 

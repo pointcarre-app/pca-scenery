@@ -753,54 +753,59 @@ class TestMethodBuilder(rehearsal.TestCaseOfDjangoTestCase):
         Note that currently, there is only one single test by TestCase (ie by Take)
         But we could therefore easily go beyond
         """
-        print(scenery.common.colorize("yellow", "execution order skipped, needs to be fixed."))
-        self.skipTest("")
-        # NOTE mad: do not erase code below
+        # print(scenery.common.colorize("yellow", "execution order skipped, needs to be fixed."))
+        # self.skipTest("")
+        # # NOTE mad: do not erase code below
 
-        # # Reset class attribute
-        # TestMethodBuilder.exec_order = []
+        # Reset class attribute
+        TestMethodBuilder.exec_order = []
 
-        # take = scenery.manifest.Take(
-        #     http.HTTPMethod.GET, "http://127.0.0.1:8000/hello/", [], {}, {}, {}
-        # )
+        take = scenery.manifest.Take(
+            http.HTTPMethod.GET, "http://127.0.0.1:8000/hello/", [], {}, {}, {}
+        )
 
-        # @typing.overload
-        # def watch(func: classmethod) -> classmethod: ...
+        @typing.overload
+        def watch(func: classmethod) -> classmethod: ...
 
-        # @typing.overload
-        # def watch(func: typing.Callable) -> typing.Callable: ...
+        @typing.overload
+        def watch(func: typing.Callable) -> typing.Callable: ...
 
-        # def watch(func: typing.Callable | classmethod) -> typing.Callable | classmethod:
-        #     def wrapper(*args, **kwargs):
-        #         if isinstance(func, classmethod):
-        #             # NOTE: otherwise the call fails
-        #             method = func.__get__(None, self.django_testcase)
-        #             x = method(*args, **kwargs)
-        #         else:
-        #             x = func(*args, **kwargs)
+        def watch(func: typing.Callable | classmethod) -> typing.Callable | classmethod:
+            def wrapper(*args, **kwargs):
+                if isinstance(func, classmethod):
+                    # NOTE mad: otherwise the call fails
+                    method = func.__get__(None, self.django_testcase)
+                    x = method(*args, **kwargs)
+                else:
+                    x = func(*args, **kwargs)
 
-        #         TestMethodBuilder.exec_order.append(func.__name__)
-        #         return x
+                # NOTE claude: Get the original function name even for classmethods
+                func_name = func.__name__ if not isinstance(func, classmethod) else func.__func__.__name__
+                TestMethodBuilder.exec_order.append(func.__name__)
+                print(f"Added {func_name} to exec_order. Current order: {TestMethodBuilder.exec_order}")  # Debug print
+                
+                return x
+            # NOTE claude: Preserve the original function name
+            wrapper.__name__ = func.__name__ if not isinstance(func, classmethod) else func.__func__.__name__
+            return wrapper if not isinstance(func, classmethod) else classmethod(wrapper)
 
-        #     return wrapper if not isinstance(func, classmethod) else classmethod(wrapper)
+        setattr(self.django_testcase, "setUpTestData", watch(MethodBuilder.build_setUpTestData([])))
+        setattr(self.django_testcase, "setUp", watch(MethodBuilder.build_setUp([])))
 
-        # setattr(self.django_testcase, "setUpTestData", watch(MethodBuilder.build_setUpTestData([])))
-        # setattr(self.django_testcase, "setUp", watch(MethodBuilder.build_setUp([])))
+        test_1 = MethodBuilder.build_test_from_take(take)
+        test_1.__name__ = "test_1"
+        test_2 = MethodBuilder.build_test_from_take(take)
+        test_2.__name__ = "test_2"
 
-        # test_1 = MethodBuilder.build_test_from_take(take)
-        # test_1.__name__ = "test_1"
-        # test_2 = MethodBuilder.build_test_from_take(take)
-        # test_2.__name__ = "test_2"
+        setattr(self.django_testcase, "test_1", watch(test_1))
+        setattr(self.django_testcase, "test_2", watch(test_2))
 
-        # setattr(self.django_testcase, "test_1", watch(test_1))
-        # setattr(self.django_testcase, "test_2", watch(test_2))
+        self.run_django_testcase()
 
-        # self.run_django_testcase()
-
-        # self.assertListEqual(
-        #     TestMethodBuilder.exec_order,
-        #     ["setUpTestData", "setUp", "test_1", "setUp", "test_2"],
-        # )
+        self.assertListEqual(
+            TestMethodBuilder.exec_order,
+            ["setUpTestData", "setUp", "test_1", "setUp", "test_2"],
+        )
 
     def test_persistency_test_data(self):
         # Check the persistency of data created during tests
