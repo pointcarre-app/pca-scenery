@@ -1,20 +1,36 @@
 """General functions and classes used by other modules."""
-
+from collections import Counter
 import os
 import importlib
 import importlib.util
 import io
+import logging
 import re
 import types
 import typing
 import unittest
-import logging
-from collections import Counter
+from typing import TypeVar, Union
 
 import django
+from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+import django.test
 from django.test.runner import DiscoverRunner
 
 import yaml
+
+
+# CLASSES
+#########
+
+class BackendDjangoTestCase(django.test.TestCase):
+    """A Django TestCase for backend testing"""
+
+class FrontendDjangoTestCase(StaticLiveServerTestCase):
+    """A Django TestCase for frontend testing"""
+
+
+DjangoTestCaseTypes = Union[BackendDjangoTestCase, FrontendDjangoTestCase]
+DjangoTestCase = TypeVar('DjangoTestCase', bound=DjangoTestCaseTypes)       
 
 
 class ResponseProtocol(typing.Protocol):
@@ -59,6 +75,7 @@ def scenery_setup(settings_location: str) -> None:
     Raises:
         ImportError: If the settings module cannot be imported.
     """
+    # TODO: at-root-folder
     # Load from module
     settings = importlib.import_module(settings_location)
 
@@ -276,7 +293,7 @@ def serialize_unittest_result(result: unittest.TestResult) -> Counter:
     d = {key: len(val) if isinstance(val, list) else val for key, val in d.items()}
     return Counter(d)
 
-
+#  TODO delete
 def pretty_test_name(test: unittest.TestCase) -> str:
     """Generate a pretty string representation of a unittest.TestCase.
 

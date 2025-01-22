@@ -22,6 +22,8 @@ from scenery.method_builder import MethodBuilder
 from scenery.manifest_parser import ManifestParser
 import scenery.common
 
+from scenery.common import FrontendDjangoTestCase, BackendDjangoTestCase
+
 
 # DECORATORS
 ############
@@ -575,6 +577,8 @@ class TestsRunner:
 #############
 
 # NOTE mad: I redefine this for multithreading possibilities
+# NOTE mad: sadly this failed but still I thinks it is a better pattern
+# TODO mad: get rid of the one above
 
 
 class TestsLoader:
@@ -619,7 +623,7 @@ class TestsLoader:
         if not skip_back and (ttype is None or ttype == "backend"):
             backend_test_cls = MetaBackTest(
                 f"{manifest_name}.backend",
-                (django.test.TestCase,),
+                (BackendDjangoTestCase,),
                 manifest,
                 restrict_case_id=restrict_case_id,
                 restrict_scene_pos=restrict_scene_pos,
@@ -633,13 +637,13 @@ class TestsLoader:
         if not skip_front and (ttype is None or ttype == "frontend"):
             frontend_test_cls = MetaFrontTest(
                 f"{manifest_name}.frontend",
-                (StaticLiveServerTestCase,),
+                (FrontendDjangoTestCase,),
                 manifest,
                 restrict_case_id=restrict_case_id,
                 restrict_scene_pos=restrict_scene_pos,
                 restrict_view=restrict_view,
                 timeout_waiting_time=timeout_waiting_time,
-                headless=headless,
+                headless=True,
             )
             frontend_tests = self.loader.loadTestsFromTestCase(frontend_test_cls)
             # frontend_parrallel_suites.append(frontend_tests)

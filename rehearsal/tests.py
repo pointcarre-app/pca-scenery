@@ -13,6 +13,7 @@ from scenery.method_builder import MethodBuilder
 import rehearsal
 from rehearsal.django_project.some_app.models import SomeModel
 from scenery.set_up_handler import SetUpHandler
+from scenery.common import FrontendDjangoTestCase
 
 import django.http
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
@@ -869,7 +870,7 @@ class TestSelenium(unittest.TestCase):
         manifest = ManifestParser.parse_dict(d)
         frontend_test_cls = MetaFrontTest(
                 "some_manifest.frontend",
-                (StaticLiveServerTestCase,),
+                (FrontendDjangoTestCase,),
                 manifest,
             )
         frontend_test_cls.setUpClass()
@@ -889,7 +890,7 @@ class TestSelenium(unittest.TestCase):
         self.assertEqual(val, '{"1":[true,""],"2":[true,""],"3":[false,"Some exception"]}')
 
         attribute_value = '{1: [true,""], 2}'
-        with self.assertRaises(Exception) as e:
+        with self.assertRaises(Exception):
             val = frontend_test_cls.driver.execute_script(
                 f"return JSON.stringify({attribute_value})"
                 )
@@ -918,7 +919,7 @@ class TestSelenium(unittest.TestCase):
         # Create first test class instance and check initial cache
         frontend_test_cls = MetaFrontTest(
                 "some_manifest.frontend",
-                (StaticLiveServerTestCase,),
+                (FrontendDjangoTestCase,),
                 manifest,
             )
         frontend_test_cls.setUpClass()

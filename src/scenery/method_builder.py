@@ -8,12 +8,13 @@ from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
+# from selenium.webdriver.chrome.service import Service
 
-import scenery.manifest
+# import scenery.manifest
+from scenery.manifest import SetUpInstruction, Take, DirectiveCommand
 from scenery.response_checker import Checker
 from scenery.set_up_handler import SetUpHandler
-
+from scenery.common import DjangoTestCase, FrontendDjangoTestCase
 
             
 
@@ -31,8 +32,9 @@ class MethodBuilder:
 
     # TODO mad: I should build the get_response methode of the testcase here
 
+    # NOTE mad: do not erase, but 
     @staticmethod
-    def build_setUpTestData(instructions: list[scenery.manifest.SetUpInstruction]) -> classmethod:
+    def build_setUpTestData(instructions: list[SetUpInstruction]) -> classmethod:
         """Build a setUpTestData class method for a Django test case.
 
         This method creates a class method that executes a series of setup
@@ -45,8 +47,7 @@ class MethodBuilder:
             classmethod: A class method that can be added to a Django test case.
         """
 
-
-        def setUpTestData(django_testcase_cls: type[django.test.TestCase]) -> None:
+        def setUpTestData(django_testcase_cls: type[DjangoTestCase] ) -> None:
             super(django_testcase_cls, django_testcase_cls).setUpTestData()
 
             for instruction in instructions:
@@ -55,17 +56,15 @@ class MethodBuilder:
         return classmethod(setUpTestData)
     
     @staticmethod
-    def build_setUpClass(instructions: list[scenery.manifest.SetUpInstruction], headless):
+    def build_setUpClass(instructions: list[SetUpInstruction], headless):
 
-        def setUpClass(django_testcase_cls: type[django.test.TestCase] | type[StaticLiveServerTestCase]) -> None:
+        def setUpClass(django_testcase_cls: type[DjangoTestCase]) -> None:
             super(django_testcase_cls, django_testcase_cls).setUpClass()
 
-
-
-            if issubclass(django_testcase_cls, StaticLiveServerTestCase):
+            if issubclass(django_testcase_cls, FrontendDjangoTestCase):
 
                 chrome_options = Options()
-                # NOTE mad: this does not play well with headless mode
+                # NOTE mad: service does not play well with headless mode
                 # service = Service(executable_path='/usr/bin/google-chrome')
                 if headless:
                     chrome_options.add_argument("--headless=new")     # NOTE mad: For newer Chrome versions
@@ -81,20 +80,17 @@ class MethodBuilder:
     @staticmethod
     def build_tearDownClass() -> classmethod:
 
-        def tearDownClass(django_testcase_cls: type[django.test.TestCase] | type[StaticLiveServerTestCase]) -> None:
-            if issubclass(django_testcase_cls, StaticLiveServerTestCase):
-                # import time
-                # time.sleep(1000)
+        def tearDownClass(django_testcase_cls: type[DjangoTestCase]) -> None:
+            if issubclass(django_testcase_cls, FrontendDjangoTestCase):
                 django_testcase_cls.driver.quit()
             super(django_testcase_cls, django_testcase_cls).tearDownClass()
-
 
         return classmethod(tearDownClass)
 
     @staticmethod
     def build_setUp(
-        instructions: list[scenery.manifest.SetUpInstruction],
-    ) -> Callable[[django.test.TestCase], None]:
+        instructions: list[SetUpInstruction],
+    ) -> Callable[[DjangoTestCase], None]:
         """Build a setUp instance method for a Django test case.
 
         This method creates an instance method that executes a series of setup
@@ -107,14 +103,14 @@ class MethodBuilder:
             function: An instance method that can be added to a Django test case.
         """
 
-        def setUp(django_testcase: django.test.TestCase) -> None:
+        def setUp(django_testcase: DjangoTestCase) -> None:
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase, instruction)
 
         return setUp
 
     @staticmethod
-    def build_test_from_take(take: scenery.manifest.Take) -> Callable:
+    def build_test_from_take(take: Take) -> Callable:
         """Build a test method from an Take object.
 
         This method creates a test function that sends an HTTP request
@@ -129,7 +125,7 @@ class MethodBuilder:
             function: A test method that can be added to a Django test case.
         """
 
-        def test(django_testcase: django.test.TestCase) -> None:
+        def test(django_testcase: DjangoTestCase) -> None:
 
             # print("TEST", django_testcase)
             response = Checker.get_http_client_response(django_testcase, take)
@@ -143,7 +139,7 @@ class MethodBuilder:
     
 
     @staticmethod
-    def build_selenium_test_from_take(take: scenery.manifest.Take) -> Callable:
+    def build_selenium_test_from_take(take: Take) -> Callable:
 
         def test(django_testcase: StaticLiveServerTestCase) -> None:
 
@@ -152,7 +148,7 @@ class MethodBuilder:
             response = Checker.get_selenium_response(django_testcase, take)
 
             for i, check in enumerate(take.checks):
-                if check.instruction == scenery.manifest.DirectiveCommand.STATUS_CODE:
+                if check.instruction == DirectiveCommand.STATUS_CODE:
                     continue 
                 with django_testcase.subTest(f"directive {i}"):
                     # print(">", check)

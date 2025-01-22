@@ -5,19 +5,19 @@ import typing
 import importlib
 import json
 import time
+from pprint import pprint
 
-
-import scenery.manifest
-
-import django.test
-import django.http
-from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from scenery.common import ResponseProtocol, DjangoTestCase, BackendDjangoTestCase, FrontendDjangoTestCase
+from scenery.manifest import Take, Check, DirectiveCommand, DomArgument
 
 import bs4
+import django.test
+import django.http
+
 
 # TODO mad: change type hints using ResponseProtocol
-# TODO mad: create Union of Static and vanilla TestCase by the way
-from scenery.common import ResponseProtocol
+
+# TODO mad: declare HttpResponse
 
 class SeleniumResponse(ResponseProtocol):
 
@@ -31,9 +31,8 @@ class SeleniumResponse(ResponseProtocol):
 
     @property
     def status_code(self) -> int:
-        # TODO mad, sel: should be returned in the html
         # NOTE mad: this is probably much harder to solve in general
-        # Wwe can't use Selenium for the status code
+        # we can't use Selenium for the status code
         # one solution could be to use request
         return -1
     
@@ -68,11 +67,11 @@ class Checker:
     various checks on the responses, as specified in the test manifests.
     """
 
-    # TODO: mad, the get_response methods should be somwhere else
+    # TODO mad: should the get_response methods should be somwhere else?
 
     @staticmethod
     def get_http_client_response(
-        django_testcase: django.test.TestCase, take: scenery.manifest.Take
+        django_testcase: BackendDjangoTestCase, take: Take
     ) -> django.http.HttpResponse:
         """Execute an HTTP request based on the given HttpTake object.
 
@@ -87,8 +86,6 @@ class Checker:
             NotImplementedError: If the HTTP method specified in the take is not implemented.
         """
 
-        # print("HTTP access", take.url)
-        # from pprint import pprint
         # pprint(take.data)
 
         if take.method == http.HTTPMethod.GET:
@@ -111,10 +108,10 @@ class Checker:
     
     @staticmethod
     def get_selenium_response(
-        django_testcase: StaticLiveServerTestCase, take: scenery.manifest.Take
+        django_testcase: FrontendDjangoTestCase, take: Take
     ) -> SeleniumResponse:
         
-        # Get the correct url form the StaticLiveServerTestCase
+        # Get the correct url form the FrontendDjangoTestCase
         url = django_testcase.live_server_url + take.url
 
         # print("Selenium access", take.url)
@@ -143,9 +140,9 @@ class Checker:
 
     @staticmethod
     def exec_check(
-        django_testcase: django.test.TestCase | StaticLiveServerTestCase,
-        response: django.http.HttpResponse,
-        check: scenery.manifest.Check,
+        django_testcase: DjangoTestCase,
+        response: ResponseProtocol,
+        check: Check,
     ) -> None:
         """Execute a specific check on an HTTP response.
 
@@ -160,13 +157,13 @@ class Checker:
         Raises:
             NotImplementedError: If the check instruction is not implemented.
         """
-        if check.instruction == scenery.manifest.DirectiveCommand.STATUS_CODE:
+        if check.instruction == DirectiveCommand.STATUS_CODE:
             Checker.check_status_code(django_testcase, response, check.args)
-        elif check.instruction == scenery.manifest.DirectiveCommand.REDIRECT_URL:
+        elif check.instruction == DirectiveCommand.REDIRECT_URL:
             Checker.check_redirect_url(django_testcase, response, check.args)
-        elif check.instruction == scenery.manifest.DirectiveCommand.COUNT_INSTANCES:
+        elif check.instruction == DirectiveCommand.COUNT_INSTANCES:
             Checker.check_count_instances(django_testcase, response, check.args)
-        elif check.instruction == scenery.manifest.DirectiveCommand.DOM_ELEMENT:
+        elif check.instruction == DirectiveCommand.DOM_ELEMENT:
             Checker.check_dom(django_testcase, response, check.args)
         # elif check.instruction == scenery.manifest.DirectiveCommand.JS_VARIABLE:
         #     Checker.check_js_variable(django_testcase, response, check.args)
@@ -177,8 +174,8 @@ class Checker:
 
     @staticmethod
     def check_status_code(
-        django_testcase: django.test.TestCase,
-        response: django.http.HttpResponse,
+        django_testcase: DjangoTestCase,
+        response: ResponseProtocol,
         args: int,
     ) -> None:
         """Check if the response status code matches the expected code.
@@ -197,8 +194,8 @@ class Checker:
 
     @staticmethod
     def check_redirect_url(
-        django_testcase: django.test.TestCase,
-        response: django.http.HttpResponse,
+        django_testcase: DjangoTestCase,
+        response: ResponseProtocol,
         args: str,
     ) -> None:
         """Check if the response redirect URL matches the expected URL.
@@ -224,8 +221,8 @@ class Checker:
 
     @staticmethod
     def check_count_instances(
-        django_testcase: django.test.TestCase,
-        response: django.http.HttpResponse,
+        django_testcase: DjangoTestCase,
+        response: ResponseProtocol,
         args: dict,
     ) -> None:
         """Check if the count of model instances matches the expected count.
@@ -244,9 +241,9 @@ class Checker:
 
     @staticmethod
     def check_dom(
-        django_testcase: django.test.TestCase | StaticLiveServerTestCase,
-        response: django.http.HttpResponse,
-        args: dict[scenery.manifest.DomArgument, typing.Any],
+        django_testcase: DjangoTestCase,
+        response: ResponseProtocol,
+        args: dict[DomArgument, typing.Any],
     ) -> None:
         """Check for the presence and properties of DOM elements in the response content.
 
@@ -265,64 +262,58 @@ class Checker:
 
 
         # NOTE mad: this is incredibly important for the frontend test
-        # TODO mad: put this somewhere else or more clean
+        # TODO mad: put this somewhere else or more clean?
         time.sleep(1)
-
-        # content = response.content
 
         soup = bs4.BeautifulSoup(response.content, "html.parser")
 
         # Apply the scope
-        if scope := args.get(scenery.manifest.DomArgument.SCOPE):
+        if scope := args.get(DomArgument.SCOPE):
             scope_result = soup.find(**scope)
             django_testcase.assertIsNotNone(
                 scope,
-                f"Expected to find an element matching {args[scenery.manifest.DomArgument.SCOPE]}, but found none",
+                f"Expected to find an element matching {args[DomArgument.SCOPE]}, but found none",
             )
         else:
             scope_result = soup
-
         # NOTE: we inforce type checking by regarding bs4 objects as Tag
         scope_result = typing.cast(bs4.Tag, scope_result)
 
         # Locate the element(s)
-        if args.get(scenery.manifest.DomArgument.FIND_ALL):
-            dom_elements = scope_result.find_all(**args[scenery.manifest.DomArgument.FIND_ALL])
+        if args.get(DomArgument.FIND_ALL):
+            dom_elements = scope_result.find_all(**args[DomArgument.FIND_ALL])
             django_testcase.assertGreaterEqual(
                 len(dom_elements),
                 1,
-                f"Expected to find at least one element matching {args[scenery.manifest.DomArgument.FIND_ALL]}, but found none",
+                f"Expected to find at least one element matching {args[DomArgument.FIND_ALL]}, but found none",
             )
-        elif args.get(scenery.manifest.DomArgument.FIND):
-            dom_element = scope_result.find(**args[scenery.manifest.DomArgument.FIND])
+        elif args.get(DomArgument.FIND):
+            dom_element = scope_result.find(**args[DomArgument.FIND])
             django_testcase.assertIsNotNone(
                 dom_element,
-                f"Expected to find an element matching {args[scenery.manifest.DomArgument.FIND]}, but found none",
+                f"Expected to find an element matching {args[DomArgument.FIND]}, but found none",
             )
             dom_elements = bs4.ResultSet(source=bs4.SoupStrainer(), result=[dom_element])
         else:
             raise ValueError("Neither find of find_all argument provided")
-
-        # NOTE mad: I enforce the results to be a bs4.ResultSet[bs4.Tag] above
+        # NOTE mad: as I enforce the results to be a bs4.ResultSet[bs4.Tag] above
         dom_elements = typing.cast(bs4.ResultSet[bs4.Tag], dom_elements)
 
         # Perform the additional checks
-        if count := args.get(scenery.manifest.DomArgument.COUNT):
+        if count := args.get(DomArgument.COUNT):
             django_testcase.assertEqual(
                 len(dom_elements),
                 count,
                 f"Expected to find {count} elements, but found {len(dom_elements)}",
             )
         for dom_element in dom_elements:
-            # NOTE: we are sure it is not
-            if text := args.get(scenery.manifest.DomArgument.TEXT):
+            if text := args.get(DomArgument.TEXT):
                 django_testcase.assertEqual(
                     dom_element.text,
                     text,
                     f"Expected element text to be '{text}', but got '{dom_element.text}'",
                 )
-            if attribute := args.get(scenery.manifest.DomArgument.ATTRIBUTE):
-
+            if attribute := args.get(DomArgument.ATTRIBUTE):
 
                 if value := attribute.get("value"):
                     # TODO: should this move to manifest parser? we will decide in v2
@@ -351,13 +342,15 @@ class Checker:
                 if exepected_value_from_ff := attribute.get("json_stringify"):
 
                     # print("GOING HERE", dom_element[attribute["name"]])
-                    if not isinstance(django_testcase, StaticLiveServerTestCase):
-                        raise Exception("json_stringify can only be called for frontend tests")
-                    value_from_ff = django_testcase.driver.execute_script(
+                    if isinstance(django_testcase, FrontendDjangoTestCase):
+                        value_from_ff = django_testcase.driver.execute_script(
                         f"return JSON.stringify({dom_element[attribute['name']]})"
                     )
+                    else:
+                        raise Exception("json_stringify can only be called for frontend tests")
+
                     if exepected_value_from_ff == "_":
-                        # NOTE: this means we only want to check the value is a valid json string
+                        # NOTE mad: this means we only want to check the value is a valid json string
                         pass
                     else:
                         value_from_ff = json.loads(value_from_ff)
@@ -370,7 +363,7 @@ class Checker:
                 
 
 
-
+# NOTE mad: do not erase
     # def check_js_variable(self, django_testcase: django.test.TestCase, args: dict) -> None:
     #     """
     #     Check if a JavaScript variable has the expected value.
