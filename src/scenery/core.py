@@ -51,7 +51,7 @@ def log_exec_bar(func):
     return wrapper
 
 
-# TODO mad: screenshot on error
+# TODO mad: screenshot on error (v2)
 # import datetime
 # def screenshot_on_error(driver):
 #     
@@ -194,9 +194,6 @@ class MetaBackTest(type):
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
         return test_cls
-
-
-
         # # NOTE: mypy is struggling with the metaclass,
         # # I just ignore here instead of casting which does not do the trick
         # return test_cls  # type: ignore[return-value]
@@ -245,9 +242,7 @@ class MetaFrontTest(type):
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
 
-        # NOTE mad: mypy is struggling with the metaclass,
-        # I just ignore here instead of casting which does not do the trick
-        return test_cls  # type: ignore[return-value]
+        return test_cls  
 
 
 # DISCOVERER AND RUNNER
@@ -256,126 +251,126 @@ class MetaFrontTest(type):
 # NOTE mad: this will disappear, as this approach is not compatible with parallelization
 
 
-class TestsDiscoverer:
-    """
-    A class for discovering and loading test cases from manifest files.
+# class TestsDiscoverer:
+#     """
+#     A class for discovering and loading test cases from manifest files.
 
-    This class scans a directory for manifest files, creates test classes from these manifests,
-    and loads the tests into test suites.
+#     This class scans a directory for manifest files, creates test classes from these manifests,
+#     and loads the tests into test suites.
 
-    Attributes:
-        logger (Logger): A logger instance for this class.
-        runner (DiscoverRunner): A Django test runner instance.
-        loader (TestLoader): A test loader instance from the runner.
-    """
+#     Attributes:
+#         logger (Logger): A logger instance for this class.
+#         runner (DiscoverRunner): A Django test runner instance.
+#         loader (TestLoader): A test loader instance from the runner.
+#     """
 
-    def __init__(self) -> None:
-        self.logger = logging.getLogger(__package__)
-        self.runner = get_runner(settings, test_runner_class="django.test.runner.DiscoverRunner")()
-        self.loader: unittest.loader.TestLoader = self.runner.test_loader
+#     def __init__(self) -> None:
+#         self.logger = logging.getLogger(__package__)
+#         self.runner = get_runner(settings, test_runner_class="django.test.runner.DiscoverRunner")()
+#         self.loader: unittest.loader.TestLoader = self.runner.test_loader
 
-    def discover(
-        self,
-        restrict_manifest_test: typing.Optional[str] = None,
-        verbosity: int = 2,
-        skip_back=False,
-        skip_front=False,
-        restrict_view=None,
-        headless=True,
-    ) -> list[tuple[str, unittest.TestSuite]]:
-        """
-        Discover and load tests from manifest files.
+#     def discover(
+#         self,
+#         restrict_manifest_test: typing.Optional[str] = None,
+#         verbosity: int = 2,
+#         skip_back=False,
+#         skip_front=False,
+#         restrict_view=None,
+#         headless=True,
+#     ) -> list[tuple[str, unittest.TestSuite]]:
+#         """
+#         Discover and load tests from manifest files.
 
-        Args:
-            restrict (str, optional): A string to restrict which manifests and tests are loaded,
-                                      in the format "manifest.case_id.scene_pos".
-            verbosity (int, optional): The verbosity level for output. Defaults to 2.
+#         Args:
+#             restrict (str, optional): A string to restrict which manifests and tests are loaded,
+#                                       in the format "manifest.case_id.scene_pos".
+#             verbosity (int, optional): The verbosity level for output. Defaults to 2.
 
-        Returns:
-            list: A list of tuples, each containing a test name and a TestSuite with a single test.
+#         Returns:
+#             list: A list of tuples, each containing a test name and a TestSuite with a single test.
 
-        Raises:
-            ValueError: If the restrict argument is not in the correct format.
-        """
-        # TODO mad: this should take an iterable of files or of yaml string would be even better
+#         Raises:
+#             ValueError: If the restrict argument is not in the correct format.
+#         """
+#         # TODO mad: this should take an iterable of files or of yaml string would be even better
 
-        # handle manifest/test restriction
-        if restrict_manifest_test is not None:
-            restrict_args = restrict_manifest_test.split(".")
-            if len(restrict_args) == 1:
-                restrict_manifest, restrict_test = (
-                    restrict_args[0],
-                    None,
-                )
-            elif len(restrict_args) == 2:
-                restrict_manifest, restrict_test = (restrict_args[0], restrict_args[1])
-            elif len(restrict_args) == 3:
-                restrict_manifest, restrict_test = (
-                    restrict_args[0],
-                    restrict_args[1] + "." + restrict_args[2],
-                )
-        else:
-            restrict_manifest, restrict_test = None, None
+#         # handle manifest/test restriction
+#         if restrict_manifest_test is not None:
+#             restrict_args = restrict_manifest_test.split(".")
+#             if len(restrict_args) == 1:
+#                 restrict_manifest, restrict_test = (
+#                     restrict_args[0],
+#                     None,
+#                 )
+#             elif len(restrict_args) == 2:
+#                 restrict_manifest, restrict_test = (restrict_args[0], restrict_args[1])
+#             elif len(restrict_args) == 3:
+#                 restrict_manifest, restrict_test = (
+#                     restrict_args[0],
+#                     restrict_args[1] + "." + restrict_args[2],
+#                 )
+#         else:
+#             restrict_manifest, restrict_test = None, None
 
-        backend_parrallel_suites, frontend_parrallel_suites = [], []
-        suite_cls: type[unittest.TestSuite] = self.runner.test_suite
-        backend_suite, frontend_suite = suite_cls(), suite_cls()
+#         backend_parrallel_suites, frontend_parrallel_suites = [], []
+#         suite_cls: type[unittest.TestSuite] = self.runner.test_suite
+#         backend_suite, frontend_suite = suite_cls(), suite_cls()
 
-        folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
+#         folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
 
-        if verbosity > 0:
-            print("Manifests discovered.")
+#         if verbosity > 0:
+#             print("Manifests discovered.")
 
-        for filename in os.listdir(folder):
-            manifest_name = filename.replace(".yml", "")
+#         for filename in os.listdir(folder):
+#             manifest_name = filename.replace(".yml", "")
 
-            # Handle manifest restriction
-            if restrict_manifest_test is not None and restrict_manifest != manifest_name:
-                continue
-            self.logger.debug(f"{folder}/{filename}")
+#             # Handle manifest restriction
+#             if restrict_manifest_test is not None and restrict_manifest != manifest_name:
+#                 continue
+#             self.logger.debug(f"{folder}/{filename}")
 
-            # Parse manifest
-            manifest = ManifestParser.parse_yaml(os.path.join(folder, filename))
-            ttype = manifest.testtype
+#             # Parse manifest
+#             manifest = ManifestParser.parse_yaml(os.path.join(folder, filename))
+#             ttype = manifest.testtype
 
-            # Create backend test
-            if not skip_back and (ttype is None or ttype == "backend"):
-                backend_test_cls = MetaBackTest(
-                    f"{manifest_name}.backend",
-                    (BackendDjangoTestCase,),
-                    manifest,
-                    restrict_test=restrict_test,
-                    restrict_view=restrict_view,
-                )
-                backend_tests = self.loader.loadTestsFromTestCase(backend_test_cls)
-                # backend_parrallel_suites.append(backend_tests)
-                backend_suite.addTests(backend_tests)
+#             # Create backend test
+#             if not skip_back and (ttype is None or ttype == "backend"):
+#                 backend_test_cls = MetaBackTest(
+#                     f"{manifest_name}.backend",
+#                     (BackendDjangoTestCase,),
+#                     manifest,
+#                     restrict_test=restrict_test,
+#                     restrict_view=restrict_view,
+#                 )
+#                 backend_tests = self.loader.loadTestsFromTestCase(backend_test_cls)
+#                 # backend_parrallel_suites.append(backend_tests)
+#                 backend_suite.addTests(backend_tests)
 
-            # Create frontend test
-            if not skip_front and (ttype is None or ttype == "frontend"):
-                frontend_test_cls = MetaFrontTest(
-                    f"{manifest_name}.frontend",
-                    (FrontendDjangoTestCase,),
-                    manifest,
-                    restrict_test=restrict_test,
-                    restrict_view=restrict_view,
-                    headless=headless,
-                )
-                frontend_tests = self.loader.loadTestsFromTestCase(frontend_test_cls)
-                # frontend_parrallel_suites.append(frontend_tests)
+#             # Create frontend test
+#             if not skip_front and (ttype is None or ttype == "frontend"):
+#                 frontend_test_cls = MetaFrontTest(
+#                     f"{manifest_name}.frontend",
+#                     (FrontendDjangoTestCase,),
+#                     manifest,
+#                     restrict_test=restrict_test,
+#                     restrict_view=restrict_view,
+#                     headless=headless,
+#                 )
+#                 frontend_tests = self.loader.loadTestsFromTestCase(frontend_test_cls)
+#                 # frontend_parrallel_suites.append(frontend_tests)
 
-                # print(frontend_tests)
-                frontend_suite.addTests(frontend_tests)
+#                 # print(frontend_tests)
+#                 frontend_suite.addTests(frontend_tests)
 
-        # msg = f"Resulting in {len(backend_suite._tests)} backend and {len(frontend_suite._tests)} frontend tests."
-        n_backend_tests = sum(len(test_suite._tests) for test_suite in backend_parrallel_suites)
-        n_fonrtend_tests = sum(len(test_suite._tests) for test_suite in frontend_parrallel_suites)
-        msg = f"Resulting in {n_backend_tests} backend and {n_fonrtend_tests} frontend tests."
+#         # msg = f"Resulting in {len(backend_suite._tests)} backend and {len(frontend_suite._tests)} frontend tests."
+#         n_backend_tests = sum(len(test_suite._tests) for test_suite in backend_parrallel_suites)
+#         n_fonrtend_tests = sum(len(test_suite._tests) for test_suite in frontend_parrallel_suites)
+#         msg = f"Resulting in {n_backend_tests} backend and {n_fonrtend_tests} frontend tests."
 
-        if verbosity >= 1:
-            print(f"{msg}\n")
-        return backend_suite, frontend_suite
-        # return backend_parrallel_suites, frontend_parrallel_suites
+#         if verbosity >= 1:
+#             print(f"{msg}\n")
+#         return backend_suite, frontend_suite
+#         # return backend_parrallel_suites, frontend_parrallel_suites
 
 
 class TestsRunner:
@@ -409,7 +404,7 @@ class TestsRunner:
         app_logger = logging.getLogger("app.close_watch")
         app_logger.propagate = True
 
-    def run(self, tests_discovered: list, verbosity: int) -> dict[str, dict[str, int]]:
+    def run(self, tests_discovered: unittest.TestSuite, verbosity: int) -> dict[str, dict[str, int]]:
         """
         Run the discovered tests and collect results.
 
