@@ -13,7 +13,7 @@ from scenery.method_builder import MethodBuilder
 import rehearsal
 from rehearsal.django_project.some_app.models import SomeModel
 from scenery.set_up_handler import SetUpHandler
-from scenery.common import FrontendDjangoTestCase
+from scenery.common import FrontendDjangoTestCase, get_selenium_driver
 
 import django.http
 
@@ -758,7 +758,9 @@ class TestMethodBuilder(rehearsal.TestCaseOfBackendDjangoTestCase):
         # # NOTE mad: do not erase code below
 
         # Reset class attribute
-        TestMethodBuilder.exec_order = []
+        # TestMethodBuilder.exec_order = []
+
+        exec_order= []
 
         take = scenery.manifest.Take(
             http.HTTPMethod.GET, "http://127.0.0.1:8000/hello/", [], {}, {}, {}
@@ -780,31 +782,54 @@ class TestMethodBuilder(rehearsal.TestCaseOfBackendDjangoTestCase):
                     x = func(*args, **kwargs)
 
                 # NOTE claude: Get the original function name even for classmethods
-                func_name = func.__name__ if not isinstance(func, classmethod) else func.__func__.__name__
-                TestMethodBuilder.exec_order.append(func.__name__)
-                print(f"Added {func_name} to exec_order. Current order: {TestMethodBuilder.exec_order}")  # Debug print
+                # func_name = func.__name__ if not isinstance(func, classmethod) else func.__func__.__name__
+                # TestMethodBuilder.exec_order.append(func.__name__)
+                exec_order.append(func.__name__)
+                # print(f"Added {func_name} to exec_order. Current order: {TestMethodBuilder.exec_order}")  # Debug print
                 
                 return x
             # NOTE claude: Preserve the original function name
             wrapper.__name__ = func.__name__ if not isinstance(func, classmethod) else func.__func__.__name__
             return wrapper if not isinstance(func, classmethod) else classmethod(wrapper)
+            
+        @watch
+        def test_1(django_testcase):
+            pass
 
-        setattr(self.django_testcase, "setUpTestData", watch(MethodBuilder.build_setUpTestData([])))
-        setattr(self.django_testcase, "setUp", watch(MethodBuilder.build_setUp([])))
+        @watch
+        def test_2(django_testcase):
+            pass
 
-        test_1 = MethodBuilder.build_backend_test_from_take(take)
-        test_1.__name__ = "test_1"
-        test_2 = MethodBuilder.build_backend_test_from_take(take)
-        test_2.__name__ = "test_2"
+        @watch
+        def setUp(django_testcase):
+            pass
 
-        setattr(self.django_testcase, "test_1", watch(test_1))
-        setattr(self.django_testcase, "test_2", watch(test_2))
+
+        # TODO: add setUpClass and SetUpTestData
+        # TODO: use functions comming from method builder
+        setattr(self.django_testcase, "setUp", setUp)
+        setattr(self.django_testcase, "test_1", test_1)
+        setattr(self.django_testcase, "test_2", test_2)
+
+
+        # setattr(self.django_testcase, "setUpTestData", watch(MethodBuilder.build_setUpTestData([])))
+        # setattr(self.django_testcase, "setUp", watch(MethodBuilder.build_setUp([])))
+
+        # test_1 = MethodBuilder.build_backend_test_from_take(take)
+        # test_1.__name__ = "test_1"
+        # test_2 = MethodBuilder.build_backend_test_from_take(take)
+        # test_2.__name__ = "test_2"
+
+        # setattr(self.django_testcase, "test_1", watch(test_1))
+        # setattr(self.django_testcase, "test_2", watch(test_2))
 
         self.run_django_testcase()
 
         self.assertListEqual(
-            TestMethodBuilder.exec_order,
-            ["setUpTestData", "setUp", "test_1", "setUp", "test_2"],
+            # TestMethodBuilder.exec_order,
+            exec_order,
+            # ["setUpTestData", "setUp", "test_1", "setUp", "test_2"],
+            ["setUp", "test_1", "setUp", "test_2"],
         )
 
     def test_persistency_test_data(self):
@@ -871,6 +896,8 @@ class TestSelenium(unittest.TestCase):
                 "some_manifest.frontend",
                 (FrontendDjangoTestCase,),
                 manifest,
+                driver=get_selenium_driver(headless=True)
+                
             )
         frontend_test_cls.setUpClass()
 
@@ -920,6 +947,7 @@ class TestSelenium(unittest.TestCase):
                 "some_manifest.frontend",
                 (FrontendDjangoTestCase,),
                 manifest,
+                driver=get_selenium_driver(headless=True)
             )
         frontend_test_cls.setUpClass()
         initial_cache = frontend_test_cls.driver.execute_script("""

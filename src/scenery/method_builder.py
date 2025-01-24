@@ -2,8 +2,6 @@
 
 from typing import Callable
 
-
-
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 # from selenium.webdriver.chrome.service import Service
@@ -11,9 +9,8 @@ from selenium.webdriver.chrome.options import Options
 from scenery.manifest import SetUpInstruction, Take, DirectiveCommand
 from scenery.response_checker import Checker
 from scenery.set_up_handler import SetUpHandler
-from scenery.common import DjangoTestCase, FrontendDjangoTestCase
+from scenery.common import DjangoTestCase, FrontendDjangoTestCase, get_selenium_driver
 
-            
 
 ################
 # METHOD BUILDER
@@ -51,21 +48,27 @@ class MethodBuilder:
         return classmethod(setUpTestData)
     
     @staticmethod
-    def build_setUpClass(instructions: list[SetUpInstruction], headless):
+    def build_setUpClass(instructions: list[SetUpInstruction], driver, headless:bool=True):
 
         def setUpClass(django_testcase_cls: type[DjangoTestCase]) -> None:
             super(django_testcase_cls, django_testcase_cls).setUpClass()
 
             if issubclass(django_testcase_cls, FrontendDjangoTestCase):
 
-                chrome_options = Options()
-                # NOTE mad: service does not play well with headless mode
-                # service = Service(executable_path='/usr/bin/google-chrome')
-                if headless:
-                    chrome_options.add_argument("--headless=new")     # NOTE mad: For newer Chrome versions
-                    # chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions (Framework)
-                django_testcase_cls.driver = webdriver.Chrome(options=chrome_options) #  service=service
-                django_testcase_cls.driver.implicitly_wait(10)
+                if driver is None:
+                    # raise Exception("GOTCHA: driver is None")
+                    django_testcase_cls.driver = get_selenium_driver(headless)
+                else:
+                    django_testcase_cls.driver = driver
+
+                # chrome_options = Options()
+                # # NOTE mad: service does not play well with headless mode
+                # # service = Service(executable_path='/usr/bin/google-chrome')
+                # if headless:
+                #     chrome_options.add_argument("--headless=new")     # NOTE mad: For newer Chrome versions
+                #     # chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions (Framework)
+                # django_testcase_cls.driver = webdriver.Chrome(options=chrome_options) #  service=service
+                # django_testcase_cls.driver.implicitly_wait(10)
 
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase_cls, instruction)

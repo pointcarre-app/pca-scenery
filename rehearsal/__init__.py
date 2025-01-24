@@ -120,6 +120,7 @@ class TestCaseOfBackendDjangoTestCase(CustomTestCase):
         # NOTE: type casting  because mypy miss "cls.django_runner.test_runner.resultclass = CustomTestResult"
         #  (see setUpClass)
         self.django_logger.info(f"{repr(self)} {result}")
+
         return typing.cast(CustomTestResult, result)
 
     def run_django_test(self, django_test: DjangoTestCase) -> CustomTestResult:

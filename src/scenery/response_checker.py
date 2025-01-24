@@ -9,6 +9,7 @@ from pprint import pprint
 
 from scenery.common import ResponseProtocol, DjangoTestCase, BackendDjangoTestCase, FrontendDjangoTestCase
 from scenery.manifest import Take, Check, DirectiveCommand, DomArgument
+# from scenery.core
 
 import bs4
 import django.http
@@ -202,7 +203,8 @@ class Checker:
             response (django.http.HttpResponseRedirect): The HTTP redirect response to check.
             args (str): The expected redirect URL.
         """
-        # NOTE mad: this will fail when we try with frontend for login etc... but I should rather skip in method builder
+        # NOTE mad: this will fail when we try with frontend for login etc... 
+        # but I should rather skip those kind of test in the method builder
         django_testcase.assertIsInstance(
             response,
             django.http.HttpResponseRedirect,

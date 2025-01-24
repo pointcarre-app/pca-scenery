@@ -16,25 +16,31 @@ import django
 from django.test.runner import DiscoverRunner as DjangoDiscoverRunner
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+# from selenium.webdriver.chrome.service import Service
+
 import yaml
+
+
 
 #################
 # PARSE ARGUMENTS
 #################
 
 
-def parse_arg_test_restriction(restrict_str):
+def parse_arg_test_restriction(only_test):
     # TODO mad: could this be in the discoverer please? or rather argparser to give to discover as arguments
-    if restrict_str is not None:
-        restrict_args = restrict_str.split(".")
-        if len(restrict_args) == 1:
-            manifest_name, case_id, scene_pos = restrict_args[0], None, None
-        elif len(restrict_args) == 2:
-            manifest_name, case_id, scene_pos = restrict_args[0], restrict_args[1], None
-        elif len(restrict_args) == 3:
-            manifest_name, case_id, scene_pos = restrict_args[0], restrict_args[1], restrict_args[2]
+    if only_test is not None:
+        only_args = only_test.split(".")
+        if len(only_args) == 1:
+            manifest_name, case_id, scene_pos = only_args[0], None, None
+        elif len(only_args) == 2:
+            manifest_name, case_id, scene_pos = only_args[0], only_args[1], None
+        elif len(only_args) == 3:
+            manifest_name, case_id, scene_pos = only_args[0], only_args[1], only_args[2]
         else:
-            raise ValueError(f"Wrong restrict argmuent {restrict_str}")
+            raise ValueError(f"Wrong restrict argmuent {only_test}")
         return manifest_name, case_id, scene_pos
     else:
         return None, None, None
@@ -43,20 +49,6 @@ def parse_arg_test_restriction(restrict_str):
 def parse_args():
 
     parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--restrict-test",
-        nargs="?",
-        default=None,
-        help="Optional test restriction <manifest>.<case>.<scene>",
-    )
-
-    parser.add_argument(
-        "--restrict-view",
-        nargs="?",
-        default=None,
-        help="Optional view restriction",
-    )
 
     parser.add_argument(
         "-v",
@@ -86,6 +78,20 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--only-test",
+        nargs="?",
+        default=None,
+        help="Optional test restriction <manifest>.<case>.<scene>",
+    )
+
+    parser.add_argument(
+        "--only-view",
+        nargs="?",
+        default=None,
+        help="Optional view restriction",
+    )
+
+    parser.add_argument(
         "--timeout",
         dest="timeout_waiting_time",
         type=int,
@@ -93,8 +99,8 @@ def parse_args():
     )
 
     parser.add_argument('--failfast', action='store_true')
-    parser.add_argument('--skip-back', action='store_true')
-    parser.add_argument('--skip-front', action='store_true')
+    parser.add_argument('--only-back', action='store_true')
+    parser.add_argument('--only-front', action='store_true')
     parser.add_argument('--not-headless', action='store_true')
 
     # parser.add_argument(
@@ -109,11 +115,26 @@ def parse_args():
 
     args.headless = not args.not_headless
 
-    args.restrict_manifest, args.restrict_case_id, args.restrict_scene_pos = parse_arg_test_restriction(args.restrict_test)
-
+    args.only_manifest, args.only_case_id, args.only_scene_pos = parse_arg_test_restriction(args.only_test)
 
     return args
 
+###################
+# SELENIUM
+###################
+
+def get_selenium_driver(headless: bool):
+
+    # print("NEW DRIVER")
+    chrome_options = Options()
+    # NOTE mad: service does not play well with headless mode
+    # service = Service(executable_path='/usr/bin/google-chrome')
+    if headless:
+        chrome_options.add_argument("--headless=new")     # NOTE mad: For newer Chrome versions
+        # chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions (Framework)
+    driver = webdriver.Chrome(options=chrome_options) #  service=service
+    driver.implicitly_wait(10)
+    return driver
 
 
 # CLASSES
@@ -326,41 +347,6 @@ def tabulate(d: dict, color: typing.Callable | str | None = None, delim: str = "
     table = ["".join(line) for line in table]
     return "\n".join(table)
 
-# import psutil
-# import time
-# from datetime import datetime
-
-# def get_chrome_memory_usage():
-#     """
-#     Get memory usage of all Chrome processes.
-    
-#     Returns:
-#         dict: Dictionary containing various memory metrics in MB
-#     """
-#     chrome_processes = []
-#     total_memory = 0
-    
-#     # Iterate through all running processes
-#     for proc in psutil.process_iter(['name', 'memory_info']):
-#         try:
-#             # Check if process name contains 'chrome'
-#             if 'chrome' in proc.info['name'].lower():
-#                 memory = proc.info['memory_info'].rss / (1024 * 1024)  # Convert to MB
-#                 chrome_processes.append({
-#                     'pid': proc.pid,
-#                     'memory_mb': round(memory, 2)
-#                 })
-#                 total_memory += memory
-#         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-#             pass
-    
-#     return {
-#         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-#         'total_memory_mb': round(total_memory, 2),
-#         'process_count': len(chrome_processes),
-#         'processes': chrome_processes
-#     }
-
 
 ##################
 # UNITTEST
@@ -486,6 +472,11 @@ class CustomDiscoverRunner(DjangoDiscoverRunner):
     def __init__(self, stream: io.StringIO, *args: typing.Any, **kwargs: typing.Any) -> None:
         super().__init__(*args, **kwargs)
         self.stream = stream
+
+
+    # def __del__(self):
+    #     print("HEHEHE")
+    #     print(self.stream.getvalue())
 
     def get_test_runner_kwargs(self) -> dict[str, typing.Any]:
         """Overwrite the original from django.test.runner.DiscoverRunner."""

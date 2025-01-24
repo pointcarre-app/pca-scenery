@@ -20,26 +20,21 @@ def main(settings_module=None) -> int:
 
     out: dict[str, dict[str, int | str | dict[str, typing.Any]]] = {}
 
-
-    from scenery.common import parse_args, tabulate, colorize, scenery_setup, django_setup
-
+    from scenery.common import parse_args, tabulate, colorize, scenery_setup, django_setup, get_selenium_driver
     args = parse_args()
 
-    out["metadata"] = {"args": args.__dict__}
 
+
+    out["metadata"] = {"args": args.__dict__}
     
     if settings_module is not None:
         args.scenery_settings_module = settings_module
     scenery_setup(settings_location=args.scenery_settings_module)
     django_setup(settings_module=args.django_settings_module)
 
-    from scenery.core import process_manifest
-
-
     ####################
     # SYSTEM CONFIG
     ####################
-
 
     out["metadata"].update(
         {
@@ -53,14 +48,22 @@ def main(settings_module=None) -> int:
     # METATESTING
     #############
 
+    from scenery.core import process_manifest
+
+    # driver = get_selenium_driver(headless=args.headless)
+    driver = None
+
+
+
     folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
     results = []
     for filename in os.listdir(folder):
 
-        if args.restrict_manifest is not None and filename.replace(".yml", "") != args.restrict_manifest:
+        if args.only_manifest is not None and filename.replace(".yml", "") != args.only_manifest:
             continue
-
-        results.append(process_manifest(filename, args=args))
+        
+        result = process_manifest(filename, args=args, driver=driver)
+        results.append(result)
 
     overall_backend_success, overall_frontend_success = True, True
     overall_backend_summary, overall_frontend_summary = Counter(), Counter()
@@ -72,7 +75,7 @@ def main(settings_module=None) -> int:
 
     # TODO mad: this should be with summarize no ?
 
-    if not args.skip_back:
+    if not args.only_front:
         if overall_backend_success:
             log_lvl, msg, color = logging.INFO,  "\n🟢 BACKEND OK", "green"
         else:
@@ -81,7 +84,7 @@ def main(settings_module=None) -> int:
         print(f"\nSummary:\n{tabulate(overall_backend_summary)}\n")
         print(f"{colorize(color, msg)}\n\n")
 
-    if not args.skip_front:
+    if not args.only_back:
         if overall_frontend_success:
             log_lvl, msg, color = logging.INFO,  "\n🟢 FRONTEND OK", "green"
         else:
@@ -108,7 +111,7 @@ def main(settings_module=None) -> int:
     success = min(int(overall_backend_success), int(overall_frontend_success),)
     exit_code = 1 - success
 
-    if not args.skip_front and not args.skip_back:
+    if not args.only_front and not args.only_back:
         if success:
             msg, color = "\n\n🟢 BOTH BACKEND AND FRONTEND WENT FINE", "green"
         else:
