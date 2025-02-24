@@ -1,7 +1,7 @@
-
+from scenery.common import FrontendDjangoTestCase
 from selenium.webdriver.common.by import By
 
-def post_frontend(django_testcase, url, data):
+def post_frontend(django_testcase: FrontendDjangoTestCase, url: str, data: dict) -> None:
     django_testcase.driver.get(url)
     input_field = django_testcase.driver.find_element(By.ID, "testInput")
     input_field.send_keys(data["message"])

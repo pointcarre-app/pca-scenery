@@ -299,6 +299,7 @@ class TestManifest(unittest.TestCase):
                     }
                 ],
                 "manifest_origin": "origin",
+                "testtype": None
             }
         )
 
@@ -762,9 +763,9 @@ class TestMethodBuilder(rehearsal.TestCaseOfBackendDjangoTestCase):
 
         exec_order= []
 
-        take = scenery.manifest.Take(
-            http.HTTPMethod.GET, "http://127.0.0.1:8000/hello/", [], {}, {}, {}
-        )
+        # take = scenery.manifest.Take(
+        #     http.HTTPMethod.GET, "http://127.0.0.1:8000/hello/", [], {}, {}, {}
+        # )
 
         @typing.overload
         def watch(func: classmethod) -> classmethod: ...
@@ -879,6 +880,8 @@ class TestMethodBuilder(rehearsal.TestCaseOfBackendDjangoTestCase):
 
 class TestSelenium(unittest.TestCase):
 
+    # TODO mad: all type checking errors could supposedly be fixed by using a protocol (see claude https://claude.ai/chat/a1548da9-c703-4a39-8305-102d0dc6f083)
+
     def test_json_stringify(self):
 
         # Dummy manifest jjust to init the frontend test class
@@ -899,34 +902,35 @@ class TestSelenium(unittest.TestCase):
                 driver=get_selenium_driver(headless=True)
                 
             )
-        frontend_test_cls.setUpClass()
+        # NOTE mad: mypy struggling with the metclass (see also below)
+        frontend_test_cls.setUpClass() # type: ignore[attr-defined]
 
         # Basic list 
         attribute_value = "[1, 2, 3]"
-        val = frontend_test_cls.driver.execute_script(
+        val = frontend_test_cls.driver.execute_script( # type: ignore[attr-defined]
             f"return JSON.stringify({attribute_value})"
-        )
+        ) 
         self.assertEqual(val, "[1,2,3]")
 
         # Actual correction format
         attribute_value = '{"1": [true, ""], 2: [true, ""], 3: [false, "Some exception"]}'
-        val = frontend_test_cls.driver.execute_script(
+        val = frontend_test_cls.driver.execute_script( # type: ignore[attr-defined]
             f"return JSON.stringify({attribute_value})"
-        )
+        ) 
         self.assertEqual(val, '{"1":[true,""],"2":[true,""],"3":[false,"Some exception"]}')
 
         attribute_value = '{1: [true,""], 2}'
         with self.assertRaises(Exception):
-            val = frontend_test_cls.driver.execute_script(
+            val = frontend_test_cls.driver.execute_script( # type: ignore[attr-defined]
                 f"return JSON.stringify({attribute_value})"
                 )
             
 
         attribute_value = '{"1": [true, ""], 2: [true, ""]'
         with self.assertRaises(Exception):
-            val = frontend_test_cls.driver.execute_script(
+            val = frontend_test_cls.driver.execute_script( # type: ignore[attr-defined]
                 f"return JSON.stringify({attribute_value})"
-                )
+                ) 
 
     def test_cache(self):
         d = {
@@ -949,8 +953,9 @@ class TestSelenium(unittest.TestCase):
                 manifest,
                 driver=get_selenium_driver(headless=True)
             )
-        frontend_test_cls.setUpClass()
-        initial_cache = frontend_test_cls.driver.execute_script("""
+        frontend_test_cls.setUpClass() # type: ignore[attr-defined]
+        initial_cache = frontend_test_cls.driver.execute_script( # type: ignore[attr-defined]
+        """ 
             const entries = performance.getEntriesByType('resource');
             return entries.map(entry => ({
                 url: entry.name,
@@ -961,78 +966,4 @@ class TestSelenium(unittest.TestCase):
 
         self.assertListEqual(initial_cache, [])
 
-        # TODO mad: finish the test
-
-        # # Add an entry to the cache
-        # test_url = 'https://www.example.com/test-resource'
-        # frontend_test_cls.driver.execute_script("""
-        #     // Create a new request and cache it
-        #     fetch('https://www.example.com/test-resource', {
-        #         method: 'GET',
-        #         cache: 'force-cache'  // This forces the browser to cache the response
-        #     }).then(response => {
-        #         // Optional: You can do something with the response here
-        #         console.log('Resource cached');
-        #     });
-        # """)
-        # # Verify the cache entry was added
-        # updated_cache = frontend_test_cls.driver.execute_script("""
-        #     const entries = performance.getEntriesByType('resource');
-        #     return entries.map(entry => ({
-        #         url: entry.name,
-        #         transferSize: entry.transferSize,
-        #         type: entry.initiatorType
-        #     }));
-        # """)
-
-        # # Assert the new resource is in the cache
-        # cached_urls = [entry['url'] for entry in updated_cache]
-        # self.assertIn(
-        #     test_url,
-        #     cached_urls,
-        #     f"Expected {test_url} to be in cache. Current cache entries: {cached_urls}"
-        # )
-        
-        # Optionally, verify it's a new entry by comparing with initial cache
-        # initial_urls = [entry['url'] for entry in initial_cache]
-        # self.assertNotIn(
-        #     test_url,
-        #     initial_urls,
-        #     f"URL {test_url} should not be in initial cache"
-        # )
-
-        # # Add something to the cache
-        # frontend_test_cls.driver.cache['test_key'] = 'test_value'
-        
-        # Create a new test class instance with the same manifest
-        # new_frontend_test_cls = MetaFrontTest(
-        #     "some_manifest.frontend",
-        #     (FrontendDjangoTestCase,),
-        #     manifest,
-        # )
-        # new_frontend_test_cls.setUpClass()
-
-
-        # new_cache = new_frontend_test_cls.driver.execute_script("""
-        #     const entries = performance.getEntriesByType('resource');
-        #     return entries.map(entry => ({
-        #         url: entry.name,
-        #         transferSize: entry.transferSize,
-        #         type: entry.initiatorType
-        #     }));
-        # """)
-
-        # new_urls = [entry['url'] for entry in new_cache]
-        # self.assertNotIn(
-        #     test_url,
-        #     new_urls,
-        #     f"URL {test_url} should not be in initial cache"
-        # )
-
-        # # from pprint import pprint
-        # # pprint(new_cache)
-        
-        # # Assertions
-        # self.assertIn('test_key', initial_cache)
-        # self.assertEqual(initial_cache['test_key'], 'test_value')
-        # self.assertNotIn('test_key', new_cache, "Cache should be cleared for new test instance")
+        # TODO mad: finish the test, see draft in johnny10

@@ -406,7 +406,7 @@ class Manifest:
     scenes: list[Scene]
     cases: dict[str, Case]
     manifest_origin: str
-    testtype: str
+    testtype: str | None #TODO mad: do I really use this?
 
     @classmethod
     def from_formatted_dict(cls, d: ManifestDict) -> "Manifest":

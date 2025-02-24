@@ -146,6 +146,8 @@ class BackendDjangoTestCase(django.test.TestCase):
 class FrontendDjangoTestCase(StaticLiveServerTestCase):
     """A Django TestCase for frontend testing"""
 
+    driver: webdriver.Chrome
+
 
 DjangoTestCaseTypes = Union[BackendDjangoTestCase, FrontendDjangoTestCase]
 DjangoTestCase = TypeVar('DjangoTestCase', bound=DjangoTestCaseTypes)       
@@ -159,7 +161,7 @@ class ResponseProtocol(typing.Protocol):
     def headers(self) -> typing.Mapping[str, str]: ...
 
     @property
-    def content(self) -> bytes: ...
+    def content(self) -> typing.Any: ...
 
     @property
     def charset(self) -> str: ...
@@ -403,6 +405,8 @@ def summarize_test_result(result, verbosity=1) -> tuple[bool, Counter]:
         log_lvl, msg, color = logging.INFO, "\n🟢 OK", "green"
     else:
         log_lvl, msg, color = logging.ERROR, "\n❌ FAIL", "red"
+    log_lvl # NOTE mad: temporary fix for ruff as it is unused yet
+
 
     if verbosity > 1:
         print(f"\nSummary:\n{tabulate(summary)}\n")

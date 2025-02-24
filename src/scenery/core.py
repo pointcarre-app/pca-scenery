@@ -2,7 +2,6 @@
 
 import os
 import io
-import sys
 import logging
 import itertools
 import unittest
@@ -19,7 +18,6 @@ from django.conf import settings
 from django.test.utils import get_runner
 
 from selenium.common.exceptions import TimeoutException
-# from selenium.webdriver.common import WebDriEver
 from urllib3.exceptions import MaxRetryError, NewConnectionError
 
 
@@ -237,8 +235,8 @@ class MetaFrontTest(type):
             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
-
-        return test_cls  
+        
+        return test_cls # type: ignore[return-value]
 
 
 # DISCOVERER AND RUNNER

@@ -1,5 +1,4 @@
 import io
-import sys
 import os
 import logging
 from types import TracebackType

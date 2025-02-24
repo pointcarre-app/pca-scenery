@@ -1,6 +1,6 @@
 import unittest
-import os
 import sys
+# import typing 
 
 def main() -> int:
     """Test the package `scenery` itself."""
@@ -15,10 +15,6 @@ def main() -> int:
     # CONFIG SCENERY
     ###################
 
-    rehearsal_dir = os.path.abspath(os.path.join(__file__, os.pardir))
-
-    # print(f"REHEARSAL DIR{rehearsal_dir}\n")
-
     # NOTE mad: should be consistent with scenery.common.scenery_setup()
     # TODO: remove and use root-folder
     # os.environ["SCENERY_COMMON_ITEMS"] = f"{rehearsal_dir}/common_items.yml"
@@ -26,7 +22,8 @@ def main() -> int:
     # os.environ["SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM"] = "rehearsal.post_requests_instructions_selenium"
     # os.environ["SCENERY_TESTED_APP_NAME"] = "some_app"
     # os.environ["SCENERY_MANIFESTS_FOLDER"] = f"{rehearsal_dir}/manifests"
-
+    # rehearsal_dir = os.path.abspath(os.path.join(__file__, os.pardir))
+    # print(f"REHEARSAL DIR{rehearsal_dir}\n")
 
     from scenery.common import django_setup, scenery_setup, colorize, summarize_test_result
 
@@ -42,7 +39,7 @@ def main() -> int:
     # Rehearsal
     ###########
 
-    print(f"{colorize("cyan", "# Rehearsal")}\n")
+    print(f"{colorize('cyan', '# Rehearsal')}\n")
 
     # import rehearsal
     import rehearsal.tests
@@ -50,8 +47,10 @@ def main() -> int:
     testsuites = loader.loadTestsFromModule(rehearsal.tests)
     rehearsal_tests = unittest.TestSuite()
 
-    for testsuite in testsuites:
-        rehearsal_tests.addTests(testsuite)
+    rehearsal_tests.addTests(testsuites)
+    # for testsuite in testsuites:
+        # testsuite 
+        # rehearsal_tests.addTests(testsuite)
     
     rehearsal_runner = unittest.TextTestRunner(stream=None)
     rehearsal_result = rehearsal_runner.run(rehearsal_tests)
@@ -60,7 +59,7 @@ def main() -> int:
     # Dummy django app
     ##################
 
-    print(f"{colorize("cyan", "# Dummy django app")}\n")
+    print(f"{colorize('cyan', '# Dummy django app')}\n")
 
     from scenery.__main__ import main as scenery_main
     exit_code = scenery_main("rehearsal.scenery_settings")

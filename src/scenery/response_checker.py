@@ -5,7 +5,6 @@ import typing
 import importlib
 import json
 import time
-from pprint import pprint
 
 from scenery.common import ResponseProtocol, DjangoTestCase, BackendDjangoTestCase, FrontendDjangoTestCase
 from scenery.manifest import Take, Check, DirectiveCommand, DomArgument

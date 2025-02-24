@@ -2,10 +2,6 @@
 
 from typing import Callable
 
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-# from selenium.webdriver.chrome.service import Service
-
 from scenery.manifest import SetUpInstruction, Take, DirectiveCommand
 from scenery.response_checker import Checker
 from scenery.set_up_handler import SetUpHandler

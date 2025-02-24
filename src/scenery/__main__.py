@@ -20,7 +20,7 @@ def main(settings_module=None) -> int:
 
     out: dict[str, dict[str, int | str | dict[str, typing.Any]]] = {}
 
-    from scenery.common import parse_args, tabulate, colorize, scenery_setup, django_setup, get_selenium_driver
+    from scenery.common import parse_args, tabulate, colorize, scenery_setup, django_setup
     args = parse_args()
 
 
@@ -80,13 +80,14 @@ def main(settings_module=None) -> int:
             log_lvl, msg, color = logging.INFO,  "\n🟢 BACKEND OK", "green"
         else:
             log_lvl, msg, color = logging.ERROR, "\n❌ BACKEND FAIL", "red"
+        log_lvl # NOTE mad: temporary fix for ruff as it is unused yet
 
         print(f"\nSummary:\n{tabulate(overall_backend_summary)}\n")
         print(f"{colorize(color, msg)}\n\n")
 
     if not args.only_back:
         if overall_frontend_success:
-            log_lvl, msg, color = logging.INFO,  "\n🟢 FRONTEND OK", "green"
+            log_lvl, msg, color = logging.INFO,  "\n🟢 FRONTEND OK", "green" # ignore[assignement]
         else:
             log_lvl, msg, color = logging.ERROR, "\n❌ FRONTEND FAIL", "red"
 
