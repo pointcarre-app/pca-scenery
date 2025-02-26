@@ -1,14 +1,13 @@
 """Perform assertions on HTTP response from the test client."""
 import os
 import http
-import typing
 import importlib
 import json
 import time
+from typing import Any, cast
 
 from scenery.common import ResponseProtocol, DjangoTestCase, BackendDjangoTestCase, FrontendDjangoTestCase
 from scenery.manifest import Take, Check, DirectiveCommand, DomArgument
-# from scenery.core
 
 import bs4
 import django.http
@@ -16,43 +15,66 @@ import django.http
 from selenium import webdriver
 
 
-# NOTE mad: we do not declare django.http.HttpResponse child 
-# as thisis the whole point of protocols to avoid painful inheritance
+# NOTE mad: we do not declare any django.http.HttpResponse child 
+# as this is the whole point of protocols to avoid painful inheritance
 
 class SeleniumResponse(ResponseProtocol):
+    """A response wrapper class for Selenium WebDriver operations.
+
+    This class implements the ResponseProtocol interface for Selenium WebDriver,
+    providing access to response data like headers, content, and charset. Note that
+    some HTTP-specific features like status codes are not available through Selenium.
+
+    Args:
+        driver (webdriver.Chrome): The Selenium Chrome WebDriver instance to wrap.
+
+    Attributes:
+        driver (webdriver.Chrome): The wrapped Selenium WebDriver instance.
+        _headers (dict[str, str]): Dictionary storing response headers.
+
+    Properties:
+        status_code (int): Not implemented for Selenium responses.
+        headers (dict[str, str]): Dictionary of response headers.
+        content (Any): Page source of the current webpage.
+        charset (str): Character encoding of the response.
+
+    Methods:
+        has_header(header_name: str) -> bool: Check if a header exists in the response.
+    """
 
     def __init__(
         self, 
         driver: webdriver.Chrome,
         ) -> None:
-
         self.driver = driver
-
+        self._headers : dict[str, str] = {}
 
     @property
     def status_code(self) -> int:
-        # NOTE mad: this is probably much harder to solve in general
+        """Not implemented for Selenium responses."""
+        # NOTE mad: this is probably hard to solve in general
         # we can't use Selenium for the status code
-        # one solution could be to use request
-        return -1
+        raise NotImplementedError
     
     @property
-    def headers(self) -> typing.Mapping[str, str]:
-        # return None
-        return {}
+    def headers(self) -> dict[str, str]:
+        """Dictionary of response headers."""
+        return self._headers
     
     @property
-    def content(self) -> typing.Any:
+    def content(self) -> Any:
+        """Page source of the current webpage."""
         return self.driver.page_source
     
     @property
-    def charset(self) -> str:
+    def charset(self) -> str | None:
+        """Character encoding of the response."""
         # return None
-        return ""
+        return None
     
     def has_header(self, header_name: str) -> bool:
-        # return header_name in self._headers
-        return header_name in self.headers
+        """Check if a header exists in the response."""
+        return header_name in self._headers
     
     def __getitem__(self, header_name: str) -> str:
         return self._headers[header_name]
@@ -91,9 +113,6 @@ class Checker:
         Raises:
             NotImplementedError: If the HTTP method specified in the take is not implemented.
         """
-
-        # pprint(take.data)
-
         if take.method == http.HTTPMethod.GET:
             response = django_testcase.client.get(
                 take.url,
@@ -107,8 +126,8 @@ class Checker:
         else:
             raise NotImplementedError(take.method)
 
-        # NOTE: this one is a bit puzzling to me
-        # runnning mypy I get:
+        # FIXME mad: this one is a bit puzzling to me
+        # running mypy I get:
         # Incompatible return value type (got "_MonkeyPatchedWSGIResponse", expected "HttpResponse")
         return response # type: ignore[return-value]
     
@@ -116,7 +135,30 @@ class Checker:
     def get_selenium_response(
         django_testcase: FrontendDjangoTestCase, take: Take
     ) -> SeleniumResponse:
-        
+        """Create a SeleniumResponse by executing a request through Selenium WebDriver.
+
+        This function handles both GET and POST requests through Selenium. For POST requests,
+        it dynamically loads and executes request handlers from a configured Selenium module.
+
+        Args:
+            django_testcase (FrontendDjangoTestCase): The test case instance containing
+                the Selenium WebDriver and live server URL.
+            take (Take): The request specification containing method, URL, and data
+                for the request to be executed.
+
+        Returns:
+            SeleniumResponse: A wrapper containing the response from the Selenium-driven request.
+
+        Raises:
+            ImportError: If the SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM module cannot be loaded.
+            AttributeError: If a POST request handler method cannot be found in the Selenium module.
+
+        Notes:
+            - For POST requests, the handler method name is derived from the URL name by
+            replacing ':' with '_' and prefixing with 'post_'.
+            - The Selenium module path must be specified in the SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM
+            environment variable.
+        """
         # Get the correct url form the FrontendDjangoTestCase
         url = django_testcase.live_server_url + take.url
 
@@ -124,8 +166,6 @@ class Checker:
 
         # TODO: should be a class attribute or something, maybe module could be loaded at the beggining
         selenium_module = importlib.import_module(os.environ["SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM"])
-
-
 
         if take.method == http.HTTPMethod.GET:
             django_testcase.driver.get(url)
@@ -187,7 +227,6 @@ class Checker:
             response (ResponseProtocol): The HTTP response to check.
             args (int): The expected status code.
         """
-
         django_testcase.assertEqual(
             response.status_code,
             args,
@@ -214,9 +253,8 @@ class Checker:
             django.http.HttpResponseRedirect,
             f"Expected HttpResponseRedirect but got {type(response)}",
         )
-        # NOTE mad: this is done for static type checking
-        # TODO mad: I don't like it
-        redirect = typing.cast(django.http.HttpResponseRedirect, response)
+        # FIXME mad: this is done for static type checking
+        redirect = cast(django.http.HttpResponseRedirect, response)
         django_testcase.assertEqual(
             redirect.url,
             args,
@@ -247,7 +285,7 @@ class Checker:
     def check_dom(
         django_testcase: DjangoTestCase,
         response: ResponseProtocol,
-        args: dict[DomArgument, typing.Any],
+        args: dict[DomArgument, Any],
     ) -> None:
         """Check for the presence and properties of DOM elements in the response content.
 
@@ -263,8 +301,6 @@ class Checker:
         Raises:
             ValueError: If neither 'find' nor 'find_all' arguments are provided in args.
         """
-
-
         # NOTE mad: this is incredibly important for the frontend test
         # TODO mad: put this somewhere else or more clean?
         time.sleep(1)
@@ -280,8 +316,10 @@ class Checker:
             )
         else:
             scope_result = soup
-        # NOTE: we inforce type checking by regarding bs4 objects as Tag
-        scope_result = typing.cast(bs4.Tag, scope_result)
+
+        # NOTE mad: we inforce type checking by regarding bs4 objects as Tag
+        # FIXME mad
+        scope_result = cast(bs4.Tag, scope_result)
 
         # Locate the element(s)
         if args.get(DomArgument.FIND_ALL):
@@ -300,8 +338,8 @@ class Checker:
             dom_elements = bs4.ResultSet(source=bs4.SoupStrainer(), result=[dom_element])
         else:
             raise ValueError("Neither find of find_all argument provided")
-        # NOTE mad: as I enforce the results to be a bs4.ResultSet[bs4.Tag] above
-        dom_elements = typing.cast(bs4.ResultSet[bs4.Tag], dom_elements)
+        # FIXME mad: as I enforce the results to be a bs4.ResultSet[bs4.Tag] above
+        dom_elements = cast(bs4.ResultSet[bs4.Tag], dom_elements)
 
         # Perform the additional checks
         if count := args.get(DomArgument.COUNT):
@@ -336,7 +374,6 @@ class Checker:
                         f"Expected attribute '{attribute['name']}' to have value '{value}', but got '{dom_element[attribute['name']]}'",
                     )
                 elif regex := attribute.get("regex"):
-
 
                     django_testcase.assertRegex(
                         dom_element[attribute["name"]],

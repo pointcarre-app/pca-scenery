@@ -6,19 +6,19 @@ from collections import Counter
 import os
 import logging
 import sys
-import typing
+from typing import Any
+from typing import Counter as CounterType
 import sysconfig
 
 
-def main(settings_module=None) -> int:
+def main(settings_module:str | None=None) -> int:
     """
     Execute the main functionality of the scenery test runner.
 
     Returns:
         exit_code (int): Exit code indicating success (0) or failure (1)
     """
-
-    out: dict[str, dict[str, int | str | dict[str, typing.Any]]] = {}
+    out: dict[str, dict[str, int | str | dict[str, Any]]] = {}
 
     from scenery.common import parse_args, tabulate, colorize, scenery_setup, django_setup
     args = parse_args()
@@ -50,6 +50,10 @@ def main(settings_module=None) -> int:
 
     from scenery.core import process_manifest
 
+    # NOTE mad: this is here to be able to load driver in two places
+    # See also core.TestsLoader.tests_from_manifest.
+    # Probably not a great pattern but let's fix this later
+
     # driver = get_selenium_driver(headless=args.headless)
     driver = None
 
@@ -66,7 +70,8 @@ def main(settings_module=None) -> int:
         results.append(result)
 
     overall_backend_success, overall_frontend_success = True, True
-    overall_backend_summary, overall_frontend_summary = Counter(), Counter()
+    overall_backend_summary: CounterType[str] = Counter()
+    overall_frontend_summary: CounterType[str] = Counter()
     for backend_success, backend_summary, frontend_success, frontend_summary in results:
         overall_backend_success &= backend_success
         overall_frontend_success &= frontend_success

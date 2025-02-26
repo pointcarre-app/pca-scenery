@@ -17,7 +17,7 @@ class SetUpHandler:
         module: The imported module containing setup instruction implementations.
         logger: A logger instance for debug output.
     """
-
+    
     instructions_module = importlib.import_module(os.environ["SCENERY_SET_UP_INSTRUCTIONS"])
     # selenium_module = importlib.import_module(os.environ["SCENERY_SET_UP_INSTRUCTIONS_SELENIUM"])
 
@@ -41,30 +41,8 @@ class SetUpHandler:
         Raises:
             AttributeError: If the specified setup function is not found in the imported module.
         """
-
-        # if isinstance(django_testcase, DjangoTestCase| type[DjangoTestCase]) or (isinstance(django_testcase, type) and issubclass(django_testcase, DjangoTestCase)):
-        #     func = getattr(SetUpHandler.http_module, instruction.command)
-        #     func(django_testcase, **instruction.args)
-
-        # elif isinstance(django_testcase, FrontendTestCase) or (isinstance(django_testcase, type) and issubclass(django_testcase, FrontendDjangoTestCase)):
-        #     # TODO: this is not needed anymore I think
-        #     try:
-        #         func = getattr(SetUpHandler.selenium_module, instruction.command)
-        #     except AttributeError as e1:
-        #         try:
-        #             func = getattr(SetUpHandler.http_module, instruction.command)
-        #         except AttributeError  as e2:
-        #             raise ExceptionGroup("", [e1, e2])
-        #     func(django_testcase, **instruction.args)
-               
-            
-
-        # else:
-        #     raise ValueError
-
         func = getattr(SetUpHandler.instructions_module, instruction.command)
         func(django_testcase, **instruction.args)
-
 
         logger = logging.getLogger(__package__)
         logger.debug(f"Applied {instruction}")

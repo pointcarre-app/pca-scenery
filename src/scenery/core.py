@@ -27,12 +27,13 @@ from urllib3.exceptions import MaxRetryError, NewConnectionError
 
 
 def log_exec_bar(func: Callable) -> Any:
-    def wrapper(*args, **kwargs): # type: ignore # NOTE mad: this one makes sense as we can take any function
+    """Log the execution of a function with a progress bar."""
+    def wrapper(*args, **kwargs): # type: ignore 
+        # NOTE mad: this type ignore makes sense as we can take any function
         out = func(*args, **kwargs)
         print(".", end="")
         return out
-
-    # TODO mad: en esprit mais ca marche pas comme ca je crois
+    # TODO mad: copy unittest style ca marche pas comme ca je crois
     #     try:
     #         out = func(*args, **kwargs)
     #         print(".", end="")
@@ -46,7 +47,7 @@ def log_exec_bar(func: Callable) -> Any:
     return wrapper
 
 
-# TODO mad: screenshot on error (v2)
+# TODO mad: screenshot on error
 # import datetime
 # def screenshot_on_error(driver):
 #     
@@ -98,6 +99,25 @@ def log_exec_bar(func: Callable) -> Any:
 
 
 def retry_on_timeout(retries: int=3, delay: int=5) -> Callable:
+    """Retry a function on specific timeout-related exceptions.
+
+    This decorator will attempt to execute the decorated function multiple times if it encounters
+    timeout-related exceptions (TimeoutException, MaxRetryError, NewConnectionError,
+    ConnectionRefusedError). Between retries, it will wait for a specified delay period.
+
+    Args:
+        retries (int, optional): Maximum number of retry attempts. Defaults to 3.
+        delay (int, optional): Time to wait between retries in seconds. Defaults to 5.
+
+    Returns:
+        Callable: A decorator function that wraps the original function with retry logic.
+
+    Raises:
+        TimeoutException: If all retry attempts fail with a timeout.
+        MaxRetryError: If all retry attempts fail with max retries exceeded.
+        NewConnectionError: If all retry attempts fail with connection errors.
+        ConnectionRefusedError: If all retry attempts fail with connection refused.
+    """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs): # type: ignore # NOTE mad: as log_exec_bbar, this makes sense for a decorated function
@@ -118,8 +138,8 @@ def retry_on_timeout(retries: int=3, delay: int=5) -> Callable:
 # METACLASSES
 #############
 
-# COMMON CODE BETWEEN BACKEND AND FRONTEND METACLASS
-# TODO mad: Dry again a little bit
+# NOTE mad: this code is used both in banckend and
+# frontend metaclasses
 
 def iter_on_takes_from_manifest(
         manifest: Manifest, 
@@ -127,6 +147,7 @@ def iter_on_takes_from_manifest(
         only_case_id: str | None, 
         only_scene_pos: str | None
     ) -> Iterable[Tuple[str, Case, int, Scene]]:
+    """Iterate over takes from the manifest based on the provided filters."""
     for (case_id, case), (scene_pos, scene) in itertools.product(
         manifest.cases.items(), enumerate(manifest.scenes)
     ):
@@ -171,10 +192,8 @@ class MetaBackTest(type):
         only_view: str | None = None,
     ) -> type[DjangoTestCase]:
         """Responsible for building the TestCase class."""
-
-        # Build setUpTestData and SetUp
-        # TODO mad: do I want setUpTestData or setUpClass?
         # NOTE mad: right now everything is in the setup
+        # TODO mad: setUpTestData and setUpClass
         # setUpTestData = MethodBuilder.build_setUpTestData(manifest.set_up_test_data)
         setUp = MethodBuilder.build_setUp(manifest.set_up)
 
@@ -192,13 +211,37 @@ class MetaBackTest(type):
             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
-        return test_cls
+        return test_cls  # type: ignore [return-value]
+        # FIXME mad: In member "__new__" of class "MetaBackTest": 
+        # src/scenery/core.py:195:16: error: Incompatible return value type (got "MetaBackTest", expected "type[DjangoTestCase]")
 
 
 # FRONTEND TEST
 
-
 class MetaFrontTest(type):
+    """A metaclass for creating frontend test classes dynamically based on a Manifest.
+
+    This metaclass creates test methods for each combination of case and scene in the manifest,
+    and adds setup and teardown methods to the test class. It specifically handles frontend testing
+    setup including web driver configuration.
+
+    Args:
+        clsname (str): The name of the class being created.
+        bases (tuple): The base classes of the class being created.
+        manifest (Manifest): The manifest containing test cases and scenes.
+        driver (webdriver.Chrome): Chrome webdriver instance for frontend testing.
+        only_case_id (str, optional): Restrict tests to a specific case ID.
+        only_scene_pos (str, optional): Restrict tests to a specific scene position.
+        only_view (str, optional): Restrict tests to a specific view.
+        timeout_waiting_time (int, optional): Time in seconds to wait before timeout. Defaults to 5.
+
+    Returns:
+        type: A new test class with dynamically created frontend test methods.
+
+    Raises:
+        ValueError: If the restrict arguments are not in the correct format.
+    """
+
     def __new__(
         cls,
         clsname: str,
@@ -209,17 +252,12 @@ class MetaFrontTest(type):
         only_scene_pos: str | None = None,
         only_view: str | None = None,
         timeout_waiting_time: int=5,
-        # headless: bool=True,
     ) -> type[FrontendDjangoTestCase]:
         """Responsible for building the TestCase class."""
-
-
-        # Build setUpTestData and SetUp
         setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_test_data, driver)
         setUp = MethodBuilder.build_setUp(manifest.set_up)
         tearDownClass = MethodBuilder.build_tearDownClass()
 
-        # Add SetupData and SetUp as methods of the Test class
         # NOTE mad: setUpClass and tearDownClass are important for the driver
         cls_attrs = {
             "setUpClass": setUpClass,
@@ -240,7 +278,7 @@ class MetaFrontTest(type):
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
         
         return test_cls # type: ignore[return-value]
-        # NOTE mad: mypy is struggling with the metaclass,
+        # FIXME mad: mypy is struggling with the metaclass,
         # I just ignore here instead of casting which does not do the trick
 
 
@@ -403,7 +441,7 @@ class TestsRunner:
         app_logger = logging.getLogger("app.close_watch")
         app_logger.propagate = True
 
-    def run(self, tests_discovered: unittest.TestSuite, verbosity: int) -> dict[str, dict[str, int]]:
+    def run(self, tests_discovered: unittest.TestSuite, verbosity: int) -> unittest.TestResult:
         """
         Run the discovered tests and collect results.
 
@@ -417,15 +455,9 @@ class TestsRunner:
         Note:
             This method logs test results and prints them to the console based on the verbosity level.
         """
-
-
+        # TODO mad: could this just disappear?
         results = self.runner.run_suite(tests_discovered)
-
-        return results # type: ignore[return-value]
-        # NOTE mad: Quite puzzled by this one
-        # Incompatible return value type 
-        # (got "TextTestResult[_WritelnDecorator]", expected "dict[str, dict[str, int]]")
-
+        return results 
 
 
 # TEST LOADER
@@ -465,7 +497,36 @@ class TestsLoader:
         driver: webdriver.Chrome | None = None,
         headless: bool=True,
     ) -> Tuple[unittest.TestSuite, unittest.TestSuite]:
+        """Creates test suites from a manifest file for both backend and frontend testing.
 
+        Parses a YAML manifest file and generates corresponding test suites for backend
+        and frontend testing. Tests can be filtered based on various criteria like test type,
+        specific views, or test cases.
+
+        Args:
+            filename (str): The name of the YAML manifest file to parse.
+            only_back (bool, optional): Run only backend tests. Defaults to False.
+            only_front (bool, optional): Run only frontend tests. Defaults to False.
+            only_view (str, optional): Filter tests to run only for a specific view. Defaults to None.
+            timeout_waiting_time (int, optional): Timeout duration for frontend tests in seconds. Defaults to 5.
+            only_case_id (str, optional): Filter tests to run only for a specific case ID. Defaults to None.
+            only_scene_pos (str, optional): Filter tests to run only for a specific scene position. Defaults to None.
+            driver (webdriver.Chrome, optional): Selenium Chrome WebDriver instance. If None, creates new instance. Defaults to None.
+            headless (bool, optional): Whether to run browser in headless mode. Defaults to True.
+
+        Returns:
+            Tuple[unittest.TestSuite, unittest.TestSuite]: A tuple containing:
+                - Backend test suite (first element)
+                - Frontend test suite (second element)
+
+        Notes:
+            - The manifest's testtype determines which suites are created (backend, frontend, or both)
+            - Empty test suites are returned for disabled test types
+            - The driver initialization can occur here or be passed in from external code
+        """
+        # NOTE mad: this is here to be able to load driver in two places
+        # See also scenery/__main__.py
+        # Probably not a great pattern but let's fix this later
         if driver is None:
             driver = get_selenium_driver(headless=headless)
 
@@ -486,9 +547,8 @@ class TestsLoader:
                 only_scene_pos=only_scene_pos,
                 only_view=only_view,
             )
-            # NOTE mad: this one will need to be fixed but is caused by metclasses stuff
+            # FIXME mad: type hinting mislead by metaclasses
             backend_tests = self.loader.loadTestsFromTestCase(backend_test_cls) # type: ignore[arg-type]
-            # backend_parrallel_suites.append(backend_tests)
             backend_suite.addTests(backend_tests)
 
         # Create frontend test
@@ -504,16 +564,43 @@ class TestsLoader:
                 driver=driver,
                 # headless=True,
             )
-            # NOTE mad: this one will need to be fixed but is caused by metclasses stuff
+            # FIXME mad: type hinting mislead by metaclasses
             frontend_tests = self.loader.loadTestsFromTestCase(frontend_test_cls) # type: ignore[arg-type]
-            # frontend_parrallel_suites.append(frontend_tests)
             frontend_suite.addTests(frontend_tests)
 
         return backend_suite, frontend_suite
 
 
-def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.Chrome):
+def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.Chrome | None) -> Tuple[bool, dict, bool, dict]:
+    """Process a test manifest file and executes both backend and frontend tests.
 
+    Takes a manifest file and command line arguments to run the specified tests,
+    collecting and summarizing the results for both backend and frontend test suites.
+
+    Args:
+        filename (str): The name of the YAML manifest file to process.
+        args (argparse.Namespace): Command line arguments containing:
+            - only_back (bool): Run only backend tests
+            - only_front (bool): Run only frontend tests
+            - only_view (str): Filter for specific view
+            - only_case_id (str): Filter for specific case ID
+            - only_scene_pos (str): Filter for specific scene position
+            - timeout_waiting_time (int): Frontend test timeout duration
+            - headless (bool): Whether to run browser in headless mode
+        driver (webdriver.Chrome | None): Selenium Chrome WebDriver instance or None.
+
+    Returns:
+        Tuple[bool, dict, bool, dict]: A tuple containing:
+            - Backend test success status (bool)
+            - Backend test summary results (dict)
+            - Frontend test success status (bool)
+            - Frontend test summary results (dict)
+
+    Notes:
+        - Prints the manifest name (without .yml extension) during execution
+        - Uses TestsLoader and TestsRunner for test execution
+        - Test results are summarized with verbosity level 0
+    """
     print(f"\n{filename.replace(".yml", " ")}", end="")
 
     loader = TestsLoader()
@@ -527,7 +614,6 @@ def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.
         only_case_id=args.only_case_id, 
         only_scene_pos=args.only_scene_pos, 
         timeout_waiting_time=args.timeout_waiting_time, 
-        # driver=args.driver,
         driver = driver,
         headless=args.headless,
     )

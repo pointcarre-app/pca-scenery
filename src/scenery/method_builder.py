@@ -46,7 +46,23 @@ class MethodBuilder:
     
     @staticmethod
     def build_setUpClass(instructions: list[SetUpInstruction], driver: webdriver.Chrome | None, headless:bool=True) -> classmethod:
+        """
+        Build and return a class method for setup operations before any tests in a test case are run.
 
+        This method generates a setUpClass that:
+        - Sets up the test environment using Django's setup
+        - For FrontendDjangoTestCase subclasses, initializes a Selenium WebDriver
+        - Executes a list of setup instructions
+
+        Args:
+            instructions: A list of SetUpInstruction objects to be executed during setup
+            driver: An optional pre-configured Selenium Chrome WebDriver. If None, a new driver
+                will be created with the specified headless setting
+            headless: Boolean flag to run Chrome in headless mode (default: True)
+        
+        Returns:
+            classmethod: A class method that handles test case setup operations
+        """
         def setUpClass(django_testcase_cls: type[DjangoTestCase]) -> None:
             super(django_testcase_cls, django_testcase_cls).setUpClass() # type: ignore[misc]
 
@@ -73,7 +89,16 @@ class MethodBuilder:
     
     @staticmethod
     def build_tearDownClass() -> classmethod:
-
+        """
+        Build and return a class method for teardown operations after all tests in a test case have completed.
+        
+        The generated tearDownClass method performs cleanup operations, specifically:
+        - For FrontendDjangoTestCase subclasses, it quits the Selenium WebDriver
+        - Calls the parent class's tearDownClass method
+        
+        Returns:
+            classmethod: A class method that handles test case teardown operations
+        """
         def tearDownClass(django_testcase_cls: type[DjangoTestCase]) -> None:
             if issubclass(django_testcase_cls, FrontendDjangoTestCase):
                 django_testcase_cls.driver.quit()
@@ -131,7 +156,19 @@ class MethodBuilder:
 
     @staticmethod
     def build_frontend_test_from_take(take: Take) -> Callable:
+        """Build a test method from a Take object for frontend testing.
+    
+        This method creates a test function that uses Selenium
+        based on the take's specifications and executes a series of checks
+        on the response. Unlike backend tests, it skips status code checks.
 
+        Args:
+            take (scenery.manifest.Take): A Take object specifying
+                the browser actions to be performed and the checks to be executed.
+
+        Returns:
+            function: A test method that can be added to a Django test case.
+        """
         def test(django_testcase: FrontendDjangoTestCase) -> None:
 
             response = Checker.get_selenium_response(django_testcase, take)

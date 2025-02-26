@@ -30,6 +30,7 @@ import yaml
 
 
 def parse_arg_test_restriction(only_test: str|None) -> typing.Tuple[str|None, str|None, str|None]:
+    """Parse the --only-test argument into a tuple of (manifest_name, case_id, scene_pos)."""
     # TODO mad: could this be in the discoverer please? or rather argparser to give to discover as arguments
     if only_test is not None:
         only_args = only_test.split(".")
@@ -47,7 +48,7 @@ def parse_arg_test_restriction(only_test: str|None) -> typing.Tuple[str|None, st
 
 
 def parse_args() -> argparse.Namespace:
-
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -124,8 +125,7 @@ def parse_args() -> argparse.Namespace:
 ###################
 
 def get_selenium_driver(headless: bool) -> webdriver.Chrome:
-
-    # print("NEW DRIVER")
+    """Return a Selenium WebDriver instance configured for Chrome."""
     chrome_options = Options()
     # NOTE mad: service does not play well with headless mode
     # service = Service(executable_path='/usr/bin/google-chrome')
@@ -141,10 +141,10 @@ def get_selenium_driver(headless: bool) -> webdriver.Chrome:
 #########
 
 class BackendDjangoTestCase(django.test.TestCase):
-    """A Django TestCase for backend testing"""
+    """A Django TestCase for backend testing."""
 
 class FrontendDjangoTestCase(StaticLiveServerTestCase):
-    """A Django TestCase for frontend testing"""
+    """A Django TestCase for frontend testing."""
 
     driver: webdriver.Chrome
 
@@ -154,23 +154,27 @@ DjangoTestCase = TypeVar('DjangoTestCase', bound=DjangoTestCaseTypes)
 
 
 class ResponseProtocol(typing.Protocol):
-
-    # _headers: typing.Mapping[str, str]
+    """A protocol for HTTP responses, covering both basic Django http response and from Selenium Driver."""
+    
+    @property
+    def status_code(self) -> int:
+        """The HTTP status code of the response."""
 
     @property
-    def status_code(self) -> int: ...
+    def headers(self) -> typing.Mapping[str, str]:
+        """The headers of the response."""
 
     @property
-    def headers(self) -> typing.Mapping[str, str]: ...
+    def content(self) -> typing.Any: 
+        """The content of the response."""
 
     @property
-    def content(self) -> typing.Any: ...
+    def charset(self) -> str | None: 
+        """The charset of the response."""
 
-    @property
-    def charset(self) -> str: ...
-
-    def has_header(self, header_name: str) -> bool: ...
-
+    def has_header(self, header_name: str) -> bool: 
+        """Check if the response has a specific header."""
+    
     def __getitem__(self, header_name: str) -> str: ...
 
     def __setitem__(self, header_name: str, value: str) -> None: ...
@@ -198,7 +202,7 @@ def scenery_setup(settings_location: str) -> None:
     Raises:
         ImportError: If the settings module cannot be imported.
     """
-    # TODO: at-root-folder
+    # TODO mad: at-root-folder
     # Load from module
     settings = importlib.import_module(settings_location)
 
@@ -384,10 +388,7 @@ def serialize_unittest_result(result: unittest.TestResult) -> Counter:
 
 
 def summarize_test_result(result: unittest.TestResult, verbosity: int=1) -> tuple[bool, Counter]:
-    """Returns true if the tests all succeded, false otherwise"""
-
-    # logger = logging.getLogger("scenery")
-
+    """Return true if the tests all succeded, false otherwise."""
     for failed_test, traceback in result.failures:
         test_name = failed_test.id()
         log_lvl, color = logging.ERROR, "red"
