@@ -13,6 +13,8 @@ from scenery.manifest import Take, Check, DirectiveCommand, DomArgument
 import bs4
 import django.http
 
+from selenium import webdriver
+
 
 # NOTE mad: we do not declare django.http.HttpResponse child 
 # as thisis the whole point of protocols to avoid painful inheritance
@@ -21,8 +23,8 @@ class SeleniumResponse(ResponseProtocol):
 
     def __init__(
         self, 
-        driver,
-        ):
+        driver: webdriver.Chrome,
+        ) -> None:
 
         self.driver = driver
 
@@ -36,18 +38,21 @@ class SeleniumResponse(ResponseProtocol):
     
     @property
     def headers(self) -> typing.Mapping[str, str]:
-        return None
+        # return None
+        return {}
     
     @property
-    def content(self) -> bytes:
+    def content(self) -> typing.Any:
         return self.driver.page_source
     
     @property
     def charset(self) -> str:
-        return None
+        # return None
+        return ""
     
     def has_header(self, header_name: str) -> bool:
-        return header_name in self._headers
+        # return header_name in self._headers
+        return header_name in self.headers
     
     def __getitem__(self, header_name: str) -> str:
         return self._headers[header_name]
@@ -105,7 +110,7 @@ class Checker:
         # NOTE: this one is a bit puzzling to me
         # runnning mypy I get:
         # Incompatible return value type (got "_MonkeyPatchedWSGIResponse", expected "HttpResponse")
-        return response 
+        return response # type: ignore[return-value]
     
     @staticmethod
     def get_selenium_response(
@@ -315,7 +320,7 @@ class Checker:
             if attribute := args.get(DomArgument.ATTRIBUTE):
 
                 if value := attribute.get("value"):
-                    # TODO: should this move to manifest parser? we will decide in v2
+                    # TODO mad: should this move to manifest parser? we will decide in v2
                     # TODO mad: in manifest _format_dom_element should be used here, or even before and just disappear
                     if isinstance(value, (str, list)):
                         pass
@@ -342,7 +347,7 @@ class Checker:
 
                     # print("GOING HERE", dom_element[attribute["name"]])
                     if isinstance(django_testcase, FrontendDjangoTestCase):
-                        value_from_ff = django_testcase.driver.execute_script(
+                        value_from_ff = django_testcase.driver.execute_script( # type: ignore[no-untyped-call]
                         f"return JSON.stringify({dom_element[attribute['name']]})"
                     )
                     else:

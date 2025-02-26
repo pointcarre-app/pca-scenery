@@ -1,15 +1,15 @@
 """Build the tests from the Manifest, discover & run tests."""
-
-import os
+import argparse
 import io
-import logging
 import itertools
+import logging
+import os
 import unittest
-import typing
+from typing import Iterable, Callable, Any, Tuple
 from functools import wraps
 import time
 
-from scenery.manifest import Manifest
+from scenery.manifest import Manifest, Case, Scene
 from scenery.method_builder import MethodBuilder
 from scenery.manifest_parser import ManifestParser
 from scenery.common import FrontendDjangoTestCase, BackendDjangoTestCase, CustomDiscoverRunner, DjangoTestCase, summarize_test_result, get_selenium_driver
@@ -17,6 +17,7 @@ from scenery.common import FrontendDjangoTestCase, BackendDjangoTestCase, Custom
 from django.conf import settings
 from django.test.utils import get_runner
 
+from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from urllib3.exceptions import MaxRetryError, NewConnectionError
 
@@ -25,8 +26,8 @@ from urllib3.exceptions import MaxRetryError, NewConnectionError
 ############
 
 
-def log_exec_bar(func):
-    def wrapper(*args, **kwargs):
+def log_exec_bar(func: Callable) -> Any:
+    def wrapper(*args, **kwargs): # type: ignore # NOTE mad: this one makes sense as we can take any function
         out = func(*args, **kwargs)
         print(".", end="")
         return out
@@ -96,10 +97,10 @@ def log_exec_bar(func):
 #     return decorator
 
 
-def retry_on_timeout(retries=3, delay=5):
-    def decorator(func):
+def retry_on_timeout(retries: int=3, delay: int=5) -> Callable:
+    def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs): # type: ignore # NOTE mad: as log_exec_bbar, this makes sense for a decorated function
             for attempt in range(retries):
                 try:
                     return func(*args, **kwargs)
@@ -118,9 +119,14 @@ def retry_on_timeout(retries=3, delay=5):
 #############
 
 # COMMON CODE BETWEEN BACKEND AND FRONTEND METACLASS
-# TODO: Dry again a little bit
+# TODO mad: Dry again a little bit
 
-def iter_on_takes_from_manifest(manifest, only_view, only_case_id, only_scene_pos):
+def iter_on_takes_from_manifest(
+        manifest: Manifest, 
+        only_view: str | None, 
+        only_case_id: str | None, 
+        only_scene_pos: str | None
+    ) -> Iterable[Tuple[str, Case, int, Scene]]:
     for (case_id, case), (scene_pos, scene) in itertools.product(
         manifest.cases.items(), enumerate(manifest.scenes)
     ):
@@ -130,7 +136,7 @@ def iter_on_takes_from_manifest(manifest, only_view, only_case_id, only_scene_po
             continue
         if only_view is not None and only_view != scene.url:
             continue
-        yield (case_id, case), (scene_pos, scene)
+        yield case_id, case, scene_pos, scene
 
 
 # BACKEND TEST
@@ -160,9 +166,9 @@ class MetaBackTest(type):
         clsname: str,
         bases: tuple[type],
         manifest: Manifest,
-        only_case_id: typing.Optional[str] = None,
-        only_scene_pos: typing.Optional[str] = None,
-        only_view: typing.Optional[str] = None,
+        only_case_id: str | None = None,
+        only_scene_pos: str | None = None,
+        only_view: str | None = None,
     ) -> type[DjangoTestCase]:
         """Responsible for building the TestCase class."""
 
@@ -177,7 +183,7 @@ class MetaBackTest(type):
             # "setUpTestData": setUpTestData,
             "setUp": setUp,
         }
-        for (case_id, case), (scene_pos, scene) in iter_on_takes_from_manifest(
+        for case_id, case, scene_pos, scene in iter_on_takes_from_manifest(
             manifest, only_view, only_case_id, only_scene_pos
         ):
             take = scene.shoot(case)
@@ -187,9 +193,6 @@ class MetaBackTest(type):
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
         return test_cls
-        # # NOTE: mypy is struggling with the metaclass,
-        # # I just ignore here instead of casting which does not do the trick
-        # return test_cls  # type: ignore[return-value]
 
 
 # FRONTEND TEST
@@ -201,10 +204,10 @@ class MetaFrontTest(type):
         clsname: str,
         bases: tuple[type],
         manifest: Manifest,
-        driver,
-        only_case_id: typing.Optional[str] = None,
-        only_scene_pos: typing.Optional[str] = None,
-        only_view: typing.Optional[str] = None,
+        driver: webdriver.Chrome,
+        only_case_id: str | None = None,
+        only_scene_pos: str | None = None,
+        only_view: str | None = None,
         timeout_waiting_time: int=5,
         # headless: bool=True,
     ) -> type[FrontendDjangoTestCase]:
@@ -224,7 +227,7 @@ class MetaFrontTest(type):
             "tearDownClass": tearDownClass,
         }
 
-        for (case_id, case), (scene_pos, scene) in iter_on_takes_from_manifest(
+        for case_id, case, scene_pos, scene in iter_on_takes_from_manifest(
             manifest, only_view, only_case_id, only_scene_pos
         ):
             take = scene.shoot(case)
@@ -237,6 +240,8 @@ class MetaFrontTest(type):
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
         
         return test_cls # type: ignore[return-value]
+        # NOTE mad: mypy is struggling with the metaclass,
+        # I just ignore here instead of casting which does not do the trick
 
 
 # DISCOVERER AND RUNNER
@@ -381,7 +386,7 @@ class TestsRunner:
         stream (StringIO): A string buffer for capturing test output.
     """
 
-    def __init__(self, failfast=False) -> None:
+    def __init__(self, failfast: bool=False) -> None:
         """Initialize the MetaTestRunner with a runner, logger, discoverer, and output stream."""
         self.logger = logging.getLogger(__package__)
         self.stream = io.StringIO()
@@ -416,8 +421,11 @@ class TestsRunner:
 
         results = self.runner.run_suite(tests_discovered)
 
+        return results # type: ignore[return-value]
+        # NOTE mad: Quite puzzled by this one
+        # Incompatible return value type 
+        # (got "TextTestResult[_WritelnDecorator]", expected "dict[str, dict[str, int]]")
 
-        return results
 
 
 # TEST LOADER
@@ -447,16 +455,16 @@ class TestsLoader:
 
     def tests_from_manifest(
         self,
-        filename,
-        only_back=False,
-        only_front=False,
-        only_view=None,
-        timeout_waiting_time=5,
-        only_case_id=None,
-        only_scene_pos=None,
-        driver = None,
-        headless=True,
-    ):
+        filename: str,
+        only_back: bool=False,
+        only_front: bool=False,
+        only_view: str | None=None,
+        timeout_waiting_time: int=5,
+        only_case_id: str | None=None,
+        only_scene_pos: str | None=None,
+        driver: webdriver.Chrome | None = None,
+        headless: bool=True,
+    ) -> Tuple[unittest.TestSuite, unittest.TestSuite]:
 
         if driver is None:
             driver = get_selenium_driver(headless=headless)
@@ -478,7 +486,8 @@ class TestsLoader:
                 only_scene_pos=only_scene_pos,
                 only_view=only_view,
             )
-            backend_tests = self.loader.loadTestsFromTestCase(backend_test_cls)
+            # NOTE mad: this one will need to be fixed but is caused by metclasses stuff
+            backend_tests = self.loader.loadTestsFromTestCase(backend_test_cls) # type: ignore[arg-type]
             # backend_parrallel_suites.append(backend_tests)
             backend_suite.addTests(backend_tests)
 
@@ -495,20 +504,20 @@ class TestsLoader:
                 driver=driver,
                 # headless=True,
             )
-            frontend_tests = self.loader.loadTestsFromTestCase(frontend_test_cls)
+            # NOTE mad: this one will need to be fixed but is caused by metclasses stuff
+            frontend_tests = self.loader.loadTestsFromTestCase(frontend_test_cls) # type: ignore[arg-type]
             # frontend_parrallel_suites.append(frontend_tests)
             frontend_suite.addTests(frontend_tests)
 
         return backend_suite, frontend_suite
 
 
-def process_manifest(filename, args, driver):
+def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.Chrome):
 
     print(f"\n{filename.replace(".yml", " ")}", end="")
 
     loader = TestsLoader()
     runner = TestsRunner()
-
 
     backend_suite, frontend_suite = loader.tests_from_manifest(
         filename, 

@@ -29,7 +29,7 @@ import yaml
 #################
 
 
-def parse_arg_test_restriction(only_test):
+def parse_arg_test_restriction(only_test: str|None) -> typing.Tuple[str|None, str|None, str|None]:
     # TODO mad: could this be in the discoverer please? or rather argparser to give to discover as arguments
     if only_test is not None:
         only_args = only_test.split(".")
@@ -46,7 +46,7 @@ def parse_arg_test_restriction(only_test):
         return None, None, None
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser()
 
@@ -123,7 +123,7 @@ def parse_args():
 # SELENIUM
 ###################
 
-def get_selenium_driver(headless: bool):
+def get_selenium_driver(headless: bool) -> webdriver.Chrome:
 
     # print("NEW DRIVER")
     chrome_options = Options()
@@ -154,6 +154,9 @@ DjangoTestCase = TypeVar('DjangoTestCase', bound=DjangoTestCaseTypes)
 
 
 class ResponseProtocol(typing.Protocol):
+
+    # _headers: typing.Mapping[str, str]
+
     @property
     def status_code(self) -> int: ...
 
@@ -380,7 +383,7 @@ def serialize_unittest_result(result: unittest.TestResult) -> Counter:
 
 
 
-def summarize_test_result(result, verbosity=1) -> tuple[bool, Counter]:
+def summarize_test_result(result: unittest.TestResult, verbosity: int=1) -> tuple[bool, Counter]:
     """Returns true if the tests all succeded, false otherwise"""
 
     # logger = logging.getLogger("scenery")

@@ -5,8 +5,9 @@ from typing import Callable
 from scenery.manifest import SetUpInstruction, Take, DirectiveCommand
 from scenery.response_checker import Checker
 from scenery.set_up_handler import SetUpHandler
-from scenery.common import DjangoTestCase, FrontendDjangoTestCase, get_selenium_driver
+from scenery.common import DjangoTestCase, BackendDjangoTestCase, FrontendDjangoTestCase, get_selenium_driver
 
+from selenium import webdriver
 
 ################
 # METHOD BUILDER
@@ -20,7 +21,7 @@ class MethodBuilder:
     that can be added to Django test cases.
     """
 
-    # NOTE mad: do not erase, but 
+    # NOTE mad: do not erase, but this is unused right now
     @staticmethod
     def build_setUpTestData(instructions: list[SetUpInstruction]) -> classmethod:
         """Build a setUpTestData class method for a Django test case.
@@ -36,7 +37,7 @@ class MethodBuilder:
         """
 
         def setUpTestData(django_testcase_cls: type[DjangoTestCase] ) -> None:
-            super(django_testcase_cls, django_testcase_cls).setUpTestData()
+            super(django_testcase_cls, django_testcase_cls).setUpTestData() # type: ignore[misc]
 
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase_cls, instruction)
@@ -44,15 +45,14 @@ class MethodBuilder:
         return classmethod(setUpTestData)
     
     @staticmethod
-    def build_setUpClass(instructions: list[SetUpInstruction], driver, headless:bool=True):
+    def build_setUpClass(instructions: list[SetUpInstruction], driver: webdriver.Chrome | None, headless:bool=True) -> classmethod:
 
         def setUpClass(django_testcase_cls: type[DjangoTestCase]) -> None:
-            super(django_testcase_cls, django_testcase_cls).setUpClass()
+            super(django_testcase_cls, django_testcase_cls).setUpClass() # type: ignore[misc]
 
             if issubclass(django_testcase_cls, FrontendDjangoTestCase):
 
                 if driver is None:
-                    # raise Exception("GOTCHA: driver is None")
                     django_testcase_cls.driver = get_selenium_driver(headless)
                 else:
                     django_testcase_cls.driver = driver
@@ -77,7 +77,7 @@ class MethodBuilder:
         def tearDownClass(django_testcase_cls: type[DjangoTestCase]) -> None:
             if issubclass(django_testcase_cls, FrontendDjangoTestCase):
                 django_testcase_cls.driver.quit()
-            super(django_testcase_cls, django_testcase_cls).tearDownClass()
+            super(django_testcase_cls, django_testcase_cls).tearDownClass() # type: ignore[misc]
 
         return classmethod(tearDownClass)
 
@@ -119,7 +119,7 @@ class MethodBuilder:
             function: A test method that can be added to a Django test case.
         """
 
-        def test(django_testcase: DjangoTestCase) -> None:
+        def test(django_testcase: BackendDjangoTestCase) -> None:
 
             response = Checker.get_http_client_response(django_testcase, take)
             for i, check in enumerate(take.checks):
