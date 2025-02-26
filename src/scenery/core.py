@@ -601,7 +601,8 @@ def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.
         - Uses TestsLoader and TestsRunner for test execution
         - Test results are summarized with verbosity level 0
     """
-    print(f"\n{filename.replace(".yml", " ")}", end="")
+    manifest_name = filename.replace(".yml", "")
+    print(f"\n{manifest_name}", end=" ")
 
     loader = TestsLoader()
     runner = TestsRunner()
