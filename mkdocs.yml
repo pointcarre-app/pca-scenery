@@ -7,23 +7,23 @@ theme:
   name: material
   logo: assets/logo-jules-white.svg
   custom_dir: docs/stylesheets
+  palette:
+    - scheme: default
+      primary: "#6032bc"  
+      accent: "#6032bc"  
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: "#6032bc"  
+      accent: "#6032bc"  
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
 
 extra_css:
   - stylesheets/extra.css
 
-palette:
-  - scheme: default
-    primary: "#6032bc"  
-    accent: "#6032bc"  
-    toggle:
-      icon: material/brightness-7
-      name: Switch to dark mode
-  - scheme: slate
-    primary: "#6032bc"  
-    accent: "#6032bc"  
-    toggle:
-      icon: material/brightness-4
-      name: Switch to light mode
 
 nav:
   - Home: index.md
@@ -33,7 +33,7 @@ nav:
   - Settings: settings.md
   - Manifest specification: manifest_specification.md
   - API Reference: api.md 
-  - Examples: todo
+  - Examples: examples/basic.md
   - Contributing: contributing.md
 plugins:
   - search

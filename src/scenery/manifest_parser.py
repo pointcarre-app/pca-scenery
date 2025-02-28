@@ -1,7 +1,7 @@
 """Parse manifest YAML files and build proper Manifests."""
 
 import os
-import typing
+from typing import Any, cast
 
 import scenery.common
 import scenery.manifest
@@ -73,7 +73,7 @@ class ManifestParser:
         Reformat the manifest dictionary to ensure it has all expected keys and provide default values if needed.
 
         Args:
-            manifest (dict): The original manifest dictionary.
+            d (dict): The original manifest dictionary.
 
         Returns:
             dict: A formatted dictionary with all expected keys.
@@ -123,7 +123,7 @@ class ManifestParser:
             scenery.manifest.Manifest: A Manifest object created from the input dictionary.
         """
         ManifestParser.validate_dict(d)
-        formatted_d = ManifestParser.format_dict(typing.cast(scenery.manifest.RawManifestDict, d))
+        formatted_d = ManifestParser.format_dict(cast(scenery.manifest.RawManifestDict, d))
         return scenery.manifest.Manifest.from_formatted_dict(formatted_d)
 
     ##########
@@ -131,14 +131,14 @@ class ManifestParser:
     ##########
 
     @staticmethod
-    def validate_yaml(obj: typing.Any) -> None:
+    def validate_yaml(obj: Any) -> None:
         """
         Validate the structure of a YAML-loaded manifest.
 
         This method checks if the YAML content is a dictionary and if it contains only expected keys.
 
         Args:
-            yaml: The YAML content to validate.
+            obj (Any): The YAML content to validate.
 
         Raises:
             TypeError: If the YAML content is not a dictionary.
@@ -177,14 +177,14 @@ class ManifestParser:
             raise ConstructorError
 
     @staticmethod
-    def read_manifest_yaml(filename: str) -> typing.Any:
+    def read_manifest_yaml(filename: str) -> Any:
         """
         Read a YAML manifest file with custom tags.
 
         This method uses a custom YAML loader to handle special tags like !case and !common-item.
 
         Args:
-            fn (str): The filename of the YAML manifest to read.
+            filename (str): The filename of the YAML manifest to read.
 
         Returns:
             dict: The parsed content of the YAML file.

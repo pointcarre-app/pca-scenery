@@ -169,17 +169,6 @@ class MetaBackTest(type):
 
     This metaclass creates test methods for each combination of case and scene in the manifest,
     and adds setup methods to the test class.
-
-    Args:
-        clsname (str): The name of the class being created.
-        bases (tuple): The base classes of the class being created.
-        manifest (Manifest): The manifest containing test cases and scenes.
-
-    Returns:
-        type: A new test class with dynamically created test methods.
-
-    Raises:
-        ValueError: If the restrict argument is not in the correct format.
     """
 
     def __new__(
@@ -191,7 +180,19 @@ class MetaBackTest(type):
         only_scene_pos: str | None = None,
         only_view: str | None = None,
     ) -> type[DjangoTestCase]:
-        """Responsible for building the TestCase class."""
+        """Responsible for building the TestCase class.
+        Args:
+            clsname (str): The name of the class being created.
+            bases (tuple): The base classes of the class being created.
+            manifest (Manifest): The manifest containing test cases and scenes.
+
+        Returns:
+            type: A new test class with dynamically created test methods.
+
+        Raises:
+            ValueError: If the restrict argument is not in the correct format.
+        
+        """
         # NOTE mad: right now everything is in the setup
         # TODO mad: setUpTestData and setUpClass
         # setUpTestData = MethodBuilder.build_setUpTestData(manifest.set_up_test_data)
@@ -224,22 +225,6 @@ class MetaFrontTest(type):
     This metaclass creates test methods for each combination of case and scene in the manifest,
     and adds setup and teardown methods to the test class. It specifically handles frontend testing
     setup including web driver configuration.
-
-    Args:
-        clsname (str): The name of the class being created.
-        bases (tuple): The base classes of the class being created.
-        manifest (Manifest): The manifest containing test cases and scenes.
-        driver (webdriver.Chrome): Chrome webdriver instance for frontend testing.
-        only_case_id (str, optional): Restrict tests to a specific case ID.
-        only_scene_pos (str, optional): Restrict tests to a specific scene position.
-        only_view (str, optional): Restrict tests to a specific view.
-        timeout_waiting_time (int, optional): Time in seconds to wait before timeout. Defaults to 5.
-
-    Returns:
-        type: A new test class with dynamically created frontend test methods.
-
-    Raises:
-        ValueError: If the restrict arguments are not in the correct format.
     """
 
     def __new__(
@@ -253,7 +238,23 @@ class MetaFrontTest(type):
         only_view: str | None = None,
         timeout_waiting_time: int=5,
     ) -> type[FrontendDjangoTestCase]:
-        """Responsible for building the TestCase class."""
+        """Responsible for building the TestCase class.
+        Args:
+            clsname (str): The name of the class being created.
+            bases (tuple): The base classes of the class being created.
+            manifest (Manifest): The manifest containing test cases and scenes.
+            driver (webdriver.Chrome): Chrome webdriver instance for frontend testing.
+            only_case_id (str, optional): Restrict tests to a specific case ID.
+            only_scene_pos (str, optional): Restrict tests to a specific scene position.
+            only_view (str, optional): Restrict tests to a specific view.
+            timeout_waiting_time (int, optional): Time in seconds to wait before timeout. Defaults to 5.
+
+        Returns:
+            type: A new test class with dynamically created frontend test methods.
+
+        Raises:
+            ValueError: If the restrict arguments are not in the correct format.
+        """
         setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_test_data, driver)
         setUp = MethodBuilder.build_setUp(manifest.set_up)
         tearDownClass = MethodBuilder.build_tearDownClass()

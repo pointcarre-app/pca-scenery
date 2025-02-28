@@ -104,7 +104,7 @@ class Checker:
         """Execute an HTTP request based on the given HttpTake object.
 
         Args:
-            client: The Django test client to use for the request.
+            django_testcase (BackendDjangoTestCase): The Django testcase instance.
             take (scenery.manifest.HttpTake): The HttpTake object specifying the request details.
 
         Returns:

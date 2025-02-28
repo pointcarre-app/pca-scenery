@@ -5,9 +5,9 @@
 ::: scenery.common
     :members:
 
-## Http Checker
+## Core
 
-::: scenery.http_checker
+::: scenery.core
     :members:
 
 ## Manifest Parser
@@ -20,17 +20,17 @@
 ::: scenery.manifest
     :members:
 
-## Metatest
-
-::: scenery.metatest
-    :members:
-
 ## Method builder
 
 ::: scenery.method_builder
     :members:
 
-## Method builder
+## Response Checker
+
+::: scenery.response_checker
+    :members:
+
+## Set up handler
 
 ::: scenery.set_up_handler
     :members:

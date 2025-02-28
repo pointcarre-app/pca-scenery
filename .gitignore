@@ -2,6 +2,7 @@ env/
 env_test_*/
 build/
 dist/
+site/
 **/__pycache__/
 pca_scenery.egg-info/
 **/.mypy_cache
