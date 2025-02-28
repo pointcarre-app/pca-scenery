@@ -181,6 +181,7 @@ class MetaBackTest(type):
         only_view: str | None = None,
     ) -> type[DjangoTestCase]:
         """Responsible for building the TestCase class.
+
         Args:
             clsname (str): The name of the class being created.
             bases (tuple): The base classes of the class being created.
@@ -191,7 +192,6 @@ class MetaBackTest(type):
 
         Raises:
             ValueError: If the restrict argument is not in the correct format.
-        
         """
         # NOTE mad: right now everything is in the setup
         # TODO mad: setUpTestData and setUpClass
@@ -239,6 +239,7 @@ class MetaFrontTest(type):
         timeout_waiting_time: int=5,
     ) -> type[FrontendDjangoTestCase]:
         """Responsible for building the TestCase class.
+        
         Args:
             clsname (str): The name of the class being created.
             bases (tuple): The base classes of the class being created.
