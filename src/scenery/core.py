@@ -260,6 +260,7 @@ class MetaFrontTest(type):
         setUp = MethodBuilder.build_setUp(manifest.set_up)
         tearDownClass = MethodBuilder.build_tearDownClass()
 
+
         # NOTE mad: setUpClass and tearDownClass are important for the driver
         cls_attrs = {
             "setUpClass": setUpClass,
