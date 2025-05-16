@@ -1,5 +1,10 @@
+# import logging
 import unittest
 import sys
+
+from rich.console import Console
+from rich.rule import Rule
+
 # import typing 
 
 def main() -> int:
@@ -10,10 +15,15 @@ def main() -> int:
     # by running the test I created 
     # for the dummy django app
 
+    console = Console()
+
 
     ###################
     # CONFIG SCENERY
     ###################
+
+    console.print(Rule("[section]CONFIG SCENERY[/section]", style="yellow"))
+    
 
     # NOTE mad: should be consistent with scenery.common.scenery_setup()
     # TODO: remove and use root-folder
@@ -25,7 +35,7 @@ def main() -> int:
     # rehearsal_dir = os.path.abspath(os.path.join(__file__, os.pardir))
     # print(f"REHEARSAL DIR{rehearsal_dir}\n")
 
-    from scenery.common import django_setup, scenery_setup, colorize, summarize_test_result
+    from scenery.common import django_setup, scenery_setup, summarize_test_result, rich_tabulate
 
     scenery_setup("rehearsal.scenery_settings")
 
@@ -39,39 +49,39 @@ def main() -> int:
     # Rehearsal
     ###########
 
-    print(f"{colorize('cyan', '# Rehearsal')}\n")
+    console.print(Rule("[section]REHEARSAL[/section]", style="yellow"))
 
-    # import rehearsal
     import rehearsal.tests
-    loader = unittest.TestLoader()
-    testsuites = loader.loadTestsFromModule(rehearsal.tests)
-    rehearsal_tests = unittest.TestSuite()
 
-    rehearsal_tests.addTests(testsuites)
-    # for testsuite in testsuites:
-        # testsuite 
-        # rehearsal_tests.addTests(testsuite)
-    
+    loader = unittest.TestLoader()
+    rehearsal_tests = unittest.TestSuite()
     rehearsal_runner = unittest.TextTestRunner(stream=None)
+
+    testsuites = loader.loadTestsFromModule(rehearsal.tests)
+    rehearsal_tests.addTests(testsuites)    
     rehearsal_result = rehearsal_runner.run(rehearsal_tests)
-    rehearsal_success, rehearsal_summary = summarize_test_result(rehearsal_result, verbosity=2)
+    rehearsal_success, rehearsal_summary = summarize_test_result(rehearsal_result, msg_prefix="Rehearsal", verbosity=2)
+    rich_tabulate(rehearsal_summary, "Rehearsal testsuite", "")
+
 
     # Dummy django app
     ##################
 
-    print(f"{colorize('cyan', '# Dummy django app')}\n")
+    console.print(Rule("[section]SCENERY ON DUMMY APP[/section]", style="yellow"))
 
     from scenery.__main__ import main as scenery_main
     exit_code = scenery_main("rehearsal.scenery_settings")
+
+    ####################
+    # OUTPUT
+    ####################
+
 
     # TODO mad: exit_code and overall success
     return exit_code
 
 
 if __name__ == "__main__":
-
-
-
 
     exit_code = main()
     sys.exit(exit_code)

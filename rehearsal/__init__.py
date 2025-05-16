@@ -118,7 +118,7 @@ class TestCaseOfBackendDjangoTestCase(CustomTestCase):
         result = self.django_runner.run_suite(suite)
         # NOTE: type casting  because mypy miss "cls.django_runner.test_runner.resultclass = CustomTestResult"
         #  (see setUpClass)
-        self.django_logger.info(f"{repr(self)} {result}")
+        # self.django_logger.info(f"{repr(self)} {result}")
 
         return typing.cast(CustomTestResult, result)
 
@@ -128,7 +128,7 @@ class TestCaseOfBackendDjangoTestCase(CustomTestCase):
         result = self.django_runner.run_suite(suite)
         # NOTE: type casting  because mypy miss "cls.django_runner.test_runner.resultclass = CustomTestResult"
         #  (see setUpClass)
-        self.django_logger.info(f"{repr(self)} {result}")
+        # self.django_logger.info(f"{repr(self)} {result}")
         return typing.cast(CustomTestResult, result)
 
     def assertTestPasses(self, django_test: DjangoTestCase) -> None:

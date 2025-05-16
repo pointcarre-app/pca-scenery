@@ -20,16 +20,24 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 # from selenium.webdriver.chrome.service import Service
 
-# Add to your imports
 from rich import box
 from rich.console import Console
+from rich.logging import RichHandler
 from rich.progress import Progress, BarColumn, TextColumn
 from rich.style import Style
 from rich.table import Table
 
+
 import yaml
 
 
+# Set up logging with Rich handler
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, markup=True)]
+)
 
 #################
 # PARSE ARGUMENTS
@@ -281,6 +289,7 @@ def snake_to_camel_case(s: str) -> str:
 
 
 class colorize:
+    # TODO mad: remove for rich
     """A context manager for colorizing text in the console.
 
     This class can be used either as a context manager or called directly to wrap text in color codes.
@@ -353,7 +362,7 @@ def tabulate(d: dict, color: typing.Callable | str | None = None, delim: str = "
     Returns:
         str: A string representation of the tabulated dictionary.
     """
-    Warning("The tabulate method is depracted, use table method")
+    # Warning("The tabulate method is depracted, use table method")
     if len(d) == 0:
         width = 0
     else:
@@ -365,17 +374,30 @@ def tabulate(d: dict, color: typing.Callable | str | None = None, delim: str = "
     table = ["".join(line) for line in table]
     return "\n".join(table)
 
-def rich_tabulate(d, col1_title, col2_title, title, formatting):
+
+
+def rich_tabulate(d, col1_title, col2_title, title=None, formatting={}):
         console = Console()
         
         # Create a new table
-        table = Table(title=title, box=box.ROUNDED)
+        show_header = col1_title is not None or col2_title is not None
+        table = Table(title=title, box=box.ROUNDED, show_header=show_header)
         table.add_column(col1_title, style="cyan", no_wrap=True)
         table.add_column(col2_title, justify="right")
 
         # Add rows
-        for key, (format_str, color) in formatting.items():
+        # for key, (format_str, color) in formatting.items():
 
+        #     label = key.replace("_", " ").capitalize()
+        #     row_values = [label,]
+        #     value = d.get(key)
+        #     formatted_value = format_str.format(value)
+        #     if color:
+        #         formatted_value = f"[{color}]{formatted_value}[/{color}]"
+        #     row_values.append(formatted_value)
+        for key, value in d.items():
+
+            format_str, color = formatting.get(key, ("{}", None))
             label = key.replace("_", " ").capitalize()
             row_values = [label,]
             value = d.get(key)
@@ -386,6 +408,7 @@ def rich_tabulate(d, col1_title, col2_title, title, formatting):
             
             table.add_row(*row_values)
         
+    
         # Print the table
         console.print(table)
 
@@ -465,35 +488,54 @@ def serialize_unittest_result(result: unittest.TestResult) -> Counter:
 
 
 
-def summarize_test_result(result: unittest.TestResult, verbosity: int=1) -> tuple[bool, Counter]:
-    """Return true if the tests all succeded, false otherwise."""
+def summarize_test_result(result: unittest.TestResult, verbosity: int=1, msg_prefix=None) -> tuple[bool, Counter]:
+    """Return true if the tests all succeeded, false otherwise."""
+
+    console = Console()
     for failed_test, traceback in result.failures:
         test_name = failed_test.id()
         log_lvl, color = logging.ERROR, "red"
-        print(f"\n{colorize(color, test_name)}\n{traceback}")
+        msg = f"[{color}]{test_name}[/{color}]\n{traceback}"
+        # logging.log(log_lvl, msg)
+        # print(f"\n{colorize(color, test_name)}\n{traceback}")
+        console.log(msg)
 
 
     for failed_test, traceback in result.errors:
         test_name = failed_test.id()
         log_lvl, color = logging.ERROR, "red"
-        print(f"{colorize(color, test_name)}\n{traceback}")
+        msg = f"[{color}]{test_name}[/{color}]\n{traceback}"
+        console.log(msg)
+        # logging.log(log_lvl, msg)
+        # print(f"{colorize(color, test_name)}\n{traceback}")
 
     success = True
     summary = serialize_unittest_result(result)
     if summary["errors"] > 0 or summary["failures"] > 0:
         success = False
 
-    if success:
-        log_lvl, msg, color = logging.INFO, "\n🟢 OK", "green"
+    # if verbosity > 1:
+    #     rich_tabulate(summary, "metric", "value")
+
+    if not msg_prefix:
+        msg = ""
     else:
-        log_lvl, msg, color = logging.ERROR, "\n❌ FAIL", "red"
-    log_lvl # NOTE mad: temporary fix for ruff as it is unused yet
+        msg = f"{msg_prefix} "
 
+    if success:
+        log_lvl, msg, color = logging.INFO, f"🟢 {msg}OK", "green"
+    else:
+        log_lvl, msg, color = logging.ERROR, f"❌ {msg}FAIL", "red"
+    msg = f"[{color}]{msg}[/{color}]"
+    logging.log(log_lvl, msg)
+    # console.log(msg)
 
-    if verbosity > 1:
-        print(f"\nSummary:\n{tabulate(summary)}\n")
-    if verbosity > 0:
-        print(f"{colorize(color, msg)}\n\n")
+    log_lvl # NOTE mad: to avoid ruff error
+
+    # if verbosity > 1:
+    #     print(f"\nSummary:\n{tabulate(summary)}\n")
+    # if verbosity > 0:
+    #     print(f"{colorize(color, msg)}\n\n")
 
     return success, summary
 

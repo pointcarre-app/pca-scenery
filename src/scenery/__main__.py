@@ -10,6 +10,8 @@ from typing import Any
 from typing import Counter as CounterType
 import sysconfig
 
+from rich.console import Console
+from rich.rule import Rule
 
 def main(settings_module:str | None=None) -> int:
     """
@@ -19,9 +21,14 @@ def main(settings_module:str | None=None) -> int:
         exit_code (int): Exit code indicating success (0) or failure (1)
     """
 
+    console = Console()
+
+    console.print(Rule("[section]CONFIG SCENERY[/section]", style="cyan"))
+
+
     out: dict[str, dict[str, int | str | dict[str, Any]]] = {}
 
-    from scenery.common import parse_args, tabulate, colorize, scenery_setup, django_setup
+    from scenery.common import parse_args, scenery_setup, django_setup, rich_tabulate
     args = parse_args()
 
 
@@ -49,6 +56,9 @@ def main(settings_module:str | None=None) -> int:
     # METATESTING
     #############
 
+    console.print(Rule("[section]TESTING[/section]", style="cyan"))
+
+
     from scenery.core import process_manifest
 
     # NOTE mad: this is here to be able to load driver in two places
@@ -70,6 +80,11 @@ def main(settings_module:str | None=None) -> int:
         result = process_manifest(filename, args=args, driver=driver)
         results.append(result)
 
+    #############
+    # OUTPUT
+    #############
+
+
     overall_backend_success, overall_frontend_success = True, True
     overall_backend_summary: CounterType[str] = Counter()
     overall_frontend_summary: CounterType[str] = Counter()
@@ -79,28 +94,26 @@ def main(settings_module:str | None=None) -> int:
         overall_frontend_summary.update(frontend_summary)
         overall_backend_summary.update(backend_summary)
 
-    # TODO mad: this should be with summarize no ?
-    # TODO mad: make it rich
 
     if not args.only_front:
         if overall_backend_success:
-            log_lvl, msg, color = logging.INFO,  "\n🟢 BACKEND OK", "green"
+            log_lvl, msg, color = logging.INFO,  "🟢 All backend tests OK", "green"
         else:
-            log_lvl, msg, color = logging.ERROR, "\n❌ BACKEND FAIL", "red"
-        log_lvl # NOTE mad: temporary fix for ruff as it is unused yet
+            log_lvl, msg, color = logging.ERROR, "❌ Some backend test FAILED", "red"
 
-        print(f"\nSummary:\n{tabulate(overall_backend_summary)}\n")
-        print(f"{colorize(color, msg)}\n\n")
+        msg = f"[{color}]{msg}[/{color}]"
+        logging.log(log_lvl, msg)
+        rich_tabulate(overall_backend_summary, "Backend testsuite", "")
 
     if not args.only_back:
         if overall_frontend_success:
-            log_lvl, msg, color = logging.INFO,  "\n🟢 FRONTEND OK", "green" # ignore[assignement]
+            log_lvl, msg, color = logging.INFO,  "🟢 All frontend tests OK", "green" 
         else:
-            log_lvl, msg, color = logging.ERROR, "\n❌ FRONTEND FAIL", "red"
+            log_lvl, msg, color = logging.ERROR, "❌ Some frontend test FAILED", "red"
 
-        print(f"\nSummary:\n{tabulate(overall_frontend_summary)}\n")
-        print(f"{colorize(color, msg)}\n\n")
-
+        msg = f"[{color}]{msg}[/{color}]"
+        logging.log(log_lvl, msg)
+        rich_tabulate(overall_frontend_summary, "Frontend testsuite", "")
 
     # ###############
     # # OUTPUT RESULT
@@ -121,11 +134,11 @@ def main(settings_module:str | None=None) -> int:
 
     if not args.only_front and not args.only_back:
         if success:
-            msg, color = "\n\n🟢 BOTH BACKEND AND FRONTEND WENT FINE", "green"
+            log_lvl, msg, color = logging.INFO, "🟢 Both backend and frontend OK", "green"
         else:
-            msg, color = "\n\n❌ EITHER BACKEND OR FRONTEND FAILED", "red"
-
-        print(f"{colorize(color, msg)}\n\n")
+            msg, color = "❌ Some backend or frontend test FAILED", "red"
+        msg = f"[{color}]{msg}[/{color}]"
+        logging.log(log_lvl, msg)
 
     return exit_code
 

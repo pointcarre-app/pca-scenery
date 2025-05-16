@@ -31,7 +31,7 @@ def log_exec_bar(func: Callable) -> Any:
     def wrapper(*args, **kwargs): # type: ignore 
         # NOTE mad: this type ignore makes sense as we can take any function
         out = func(*args, **kwargs)
-        print(".", end="")
+        # print(".", end="")
         return out
     # TODO mad: copy unittest style ca marche pas comme ca je crois
     #     try:
@@ -434,6 +434,7 @@ class TestsRunner:
         # self.stream = sys.stdout
         self.runner = CustomDiscoverRunner(stream=self.stream, failfast=failfast)
 
+        # TODO mad: this is PCA specific
         app_logger = logging.getLogger("app.close_watch")
         app_logger.propagate = False
 
@@ -605,7 +606,8 @@ def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.
         - Test results are summarized with verbosity level 0
     """
     manifest_name = filename.replace(".yml", "")
-    print(f"\n{manifest_name}", end=" ")
+    logging.log(logging.INFO, f"Manifest: {filename}")
+    # print(f"\n{manifest_name}", end=" ")
 
     loader = TestsLoader()
     runner = TestsRunner()
@@ -624,9 +626,9 @@ def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.
 
 
     backend_result = runner.run(backend_suite, verbosity=0)
-    backend_success, backend_summary = summarize_test_result(backend_result, verbosity=0)
+    backend_success, backend_summary = summarize_test_result(backend_result, msg_prefix="Backend", verbosity=0)
 
     frontend_result = runner.run(frontend_suite, verbosity=0)
-    frontend_success, frontend_summary = summarize_test_result(frontend_result, verbosity=0)
+    frontend_success, frontend_summary = summarize_test_result(frontend_result, msg_prefix="Frontend", verbosity=0)
 
     return backend_success, backend_summary, frontend_success, frontend_summary
