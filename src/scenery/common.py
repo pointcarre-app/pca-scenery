@@ -488,54 +488,34 @@ def serialize_unittest_result(result: unittest.TestResult) -> Counter:
 
 
 
-def summarize_test_result(result: unittest.TestResult, verbosity: int=1, msg_prefix=None) -> tuple[bool, Counter]:
+def summarize_test_result(result: unittest.TestResult, test_name) -> tuple[bool, Counter]:
     """Return true if the tests all succeeded, false otherwise."""
 
-    console = Console()
     for failed_test, traceback in result.failures:
         test_name = failed_test.id()
-        log_lvl, color = logging.ERROR, "red"
+        log_lvl, color = logging.INFO, "red"
         msg = f"[{color}]{test_name}[/{color}]\n{traceback}"
-        # logging.log(log_lvl, msg)
-        # print(f"\n{colorize(color, test_name)}\n{traceback}")
-        console.log(msg)
+        logging.log(log_lvl, msg)
 
 
     for failed_test, traceback in result.errors:
         test_name = failed_test.id()
         log_lvl, color = logging.ERROR, "red"
         msg = f"[{color}]{test_name}[/{color}]\n{traceback}"
-        console.log(msg)
-        # logging.log(log_lvl, msg)
-        # print(f"{colorize(color, test_name)}\n{traceback}")
+        logging.log(log_lvl, msg)
 
     success = True
     summary = serialize_unittest_result(result)
     if summary["errors"] > 0 or summary["failures"] > 0:
         success = False
 
-    # if verbosity > 1:
-    #     rich_tabulate(summary, "metric", "value")
-
-    if not msg_prefix:
-        msg = ""
-    else:
-        msg = f"{msg_prefix} "
-
     if success:
-        log_lvl, msg, color = logging.INFO, f"🟢 {msg}OK", "green"
+        log_lvl, msg, color = logging.INFO, f"{test_name} passed", "green"
     else:
-        log_lvl, msg, color = logging.ERROR, f"❌ {msg}FAIL", "red"
+        log_lvl, msg, color = logging.ERROR, f"{test_name} failed", "red"
     msg = f"[{color}]{msg}[/{color}]"
     logging.log(log_lvl, msg)
-    # console.log(msg)
 
-    log_lvl # NOTE mad: to avoid ruff error
-
-    # if verbosity > 1:
-    #     print(f"\nSummary:\n{tabulate(summary)}\n")
-    # if verbosity > 0:
-    #     print(f"{colorize(color, msg)}\n\n")
 
     return success, summary
 

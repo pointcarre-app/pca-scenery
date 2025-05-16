@@ -605,8 +605,7 @@ def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.
         - Uses TestsLoader and TestsRunner for test execution
         - Test results are summarized with verbosity level 0
     """
-    manifest_name = filename.replace(".yml", "")
-    logging.log(logging.INFO, f"Manifest: {filename}")
+    logging.log(logging.INFO, f"Manifest found: {filename}")
     # print(f"\n{manifest_name}", end=" ")
 
     loader = TestsLoader()
@@ -626,9 +625,7 @@ def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.
 
 
     backend_result = runner.run(backend_suite, verbosity=0)
-    backend_success, backend_summary = summarize_test_result(backend_result, msg_prefix="Backend", verbosity=0)
 
     frontend_result = runner.run(frontend_suite, verbosity=0)
-    frontend_success, frontend_summary = summarize_test_result(frontend_result, msg_prefix="Frontend", verbosity=0)
 
-    return backend_success, backend_summary, frontend_success, frontend_summary
+    return backend_result, frontend_result

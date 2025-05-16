@@ -12,6 +12,7 @@ import sysconfig
 
 from rich.console import Console
 from rich.rule import Rule
+from rich.panel import Panel
 
 def main(settings_module:str | None=None) -> int:
     """
@@ -24,14 +25,13 @@ def main(settings_module:str | None=None) -> int:
     console = Console()
 
     console.print(Rule("[section]CONFIG SCENERY[/section]", style="cyan"))
+    logging.log(logging.INFO, "Scenery start")
 
 
     out: dict[str, dict[str, int | str | dict[str, Any]]] = {}
 
-    from scenery.common import parse_args, scenery_setup, django_setup, rich_tabulate
+    from scenery.common import parse_args, scenery_setup, django_setup, rich_tabulate, summarize_test_result
     args = parse_args()
-
-
 
     out["metadata"] = {"args": args.__dict__}
     
@@ -46,9 +46,11 @@ def main(settings_module:str | None=None) -> int:
 
     out["metadata"].update(
         {
-            "stdlib": sysconfig.get_paths()["stdlib"],
-            "purelib": sysconfig.get_paths()["purelib"],
-            "scenery": __package__,
+            "sysconfig": {
+                "stdlib": sysconfig.get_paths()["stdlib"],
+                "purelib": sysconfig.get_paths()["purelib"],
+                "scenery": __package__,
+            }
         }
     )
 
@@ -56,8 +58,11 @@ def main(settings_module:str | None=None) -> int:
     # METATESTING
     #############
 
+    rich_tabulate(out["metadata"]["sysconfig"], "sysconfig", "")
+
     console.print(Rule("[section]TESTING[/section]", style="cyan"))
 
+    logging.log(logging.INFO, "Testing start")
 
     from scenery.core import process_manifest
 
@@ -68,56 +73,71 @@ def main(settings_module:str | None=None) -> int:
     # driver = get_selenium_driver(headless=args.headless)
     driver = None
 
-
-
     folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
-    results = []
+    # results = []
+    overall_backend_success, overall_frontend_success = True, True
+    overall_backend_summary: CounterType[str] = Counter()
+    overall_frontend_summary: CounterType[str] = Counter()
+
     for filename in os.listdir(folder):
 
         if args.only_manifest is not None and filename.replace(".yml", "") != args.only_manifest:
             continue
         
-        result = process_manifest(filename, args=args, driver=driver)
-        results.append(result)
+        backend_result, frontend_result = process_manifest(filename, args=args, driver=driver)
+        backend_success, backend_summary = summarize_test_result(backend_result, "backend")
+        frontend_success, frontend_summary = summarize_test_result(frontend_result, "frontend")
 
-    #############
-    # OUTPUT
-    #############
-
-
-    overall_backend_success, overall_frontend_success = True, True
-    overall_backend_summary: CounterType[str] = Counter()
-    overall_frontend_summary: CounterType[str] = Counter()
-    for backend_success, backend_summary, frontend_success, frontend_summary in results:
         overall_backend_success &= backend_success
         overall_frontend_success &= frontend_success
         overall_frontend_summary.update(frontend_summary)
         overall_backend_summary.update(backend_summary)
 
+        # results.append((filename, result))
+
+    #############
+    # OUTPUT
+    #############
+
+    result_msg = ""
+    result_color = "green"
 
     if not args.only_front:
         if overall_backend_success:
-            log_lvl, msg, color = logging.INFO,  "🟢 All backend tests OK", "green"
+            log_lvl, msg, color = logging.INFO,  "all backend tests passed", "green"
+            result_msg += "🟢 "
         else:
-            log_lvl, msg, color = logging.ERROR, "❌ Some backend test FAILED", "red"
+            result_msg += "❌ "
+            result_color = "red"
+            log_lvl, msg, color = logging.ERROR, "some backend tests failed", "red"
+        result_msg += msg + "\n"
 
-        msg = f"[{color}]{msg}[/{color}]"
-        logging.log(log_lvl, msg)
-        rich_tabulate(overall_backend_summary, "Backend testsuite", "")
+        logging.log(log_lvl, f"[{color}]{msg}[/{color}]")
 
     if not args.only_back:
         if overall_frontend_success:
-            log_lvl, msg, color = logging.INFO,  "🟢 All frontend tests OK", "green" 
+            log_lvl, msg, color = logging.INFO,  "all frontend tests passed", "green" 
+            result_msg += "🟢 "
         else:
-            log_lvl, msg, color = logging.ERROR, "❌ Some frontend test FAILED", "red"
+            result_msg += "❌ "
+            result_color = "red"
+            log_lvl, msg, color = logging.ERROR, "some frontend test failed", "red"
+        result_msg += msg
 
         msg = f"[{color}]{msg}[/{color}]"
         logging.log(log_lvl, msg)
-        rich_tabulate(overall_frontend_summary, "Frontend testsuite", "")
 
-    # ###############
-    # # OUTPUT RESULT
-    # ###############
+
+
+    console.print(Panel(
+        result_msg,
+        title="Results",
+        border_style=result_color
+    ))
+    if not args.only_back:
+        rich_tabulate(overall_backend_summary, "backend", "")
+    if not args.only_back:
+        rich_tabulate(overall_frontend_summary, "frontend", "")
 
     # if args.output is not None:
     #     import json
@@ -132,13 +152,16 @@ def main(settings_module:str | None=None) -> int:
     success = min(int(overall_backend_success), int(overall_frontend_success),)
     exit_code = 1 - success
 
-    if not args.only_front and not args.only_back:
-        if success:
-            log_lvl, msg, color = logging.INFO, "🟢 Both backend and frontend OK", "green"
-        else:
-            msg, color = "❌ Some backend or frontend test FAILED", "red"
-        msg = f"[{color}]{msg}[/{color}]"
-        logging.log(log_lvl, msg)
+    if success:
+        log_lvl, msg, color = logging.INFO, "scenery passed", "green"
+        result_msg = "🟢 " + msg
+    else:
+        log_lvl, msg, color = logging.ERROR, "scenery failed", "red"
+        result_msg = "❌ " + msg
+
+    logging.log(log_lvl, f"[{color}]{msg}[/{color}]")
+
+    console.print(Rule(result_msg.upper(), style=color))
 
     return exit_code
 

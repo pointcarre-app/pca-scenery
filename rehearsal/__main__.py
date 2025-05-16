@@ -1,9 +1,10 @@
-# import logging
+import logging
 import unittest
 import sys
 
 from rich.console import Console
 from rich.rule import Rule
+from rich.panel import Panel
 
 # import typing 
 
@@ -51,6 +52,8 @@ def main() -> int:
 
     console.print(Rule("[section]REHEARSAL[/section]", style="yellow"))
 
+    logging.log(logging.INFO, "Rehearsal start")
+
     import rehearsal.tests
 
     loader = unittest.TestLoader()
@@ -60,8 +63,27 @@ def main() -> int:
     testsuites = loader.loadTestsFromModule(rehearsal.tests)
     rehearsal_tests.addTests(testsuites)    
     rehearsal_result = rehearsal_runner.run(rehearsal_tests)
-    rehearsal_success, rehearsal_summary = summarize_test_result(rehearsal_result, msg_prefix="Rehearsal", verbosity=2)
-    rich_tabulate(rehearsal_summary, "Rehearsal testsuite", "")
+    rehearsal_success, rehearsal_summary = summarize_test_result(rehearsal_result, "rehearsal")
+
+        # if verbosity > 1:
+    #     rich_tabulate(summary, "metric", "value")
+
+    # if not msg_prefix:
+    #     msg = ""
+    # else:
+    #     msg = f"{msg_prefix} "
+
+    if rehearsal_success:
+        msg, color = "🟢 reaharsal passed", "green"
+    else:
+        msg, color = "❌ rehearsal failed", "red"
+
+    console.print(Panel(
+        msg,
+        title="Results",
+        border_style=color
+    ))
+    rich_tabulate(rehearsal_summary, "rehearsal", "")
 
 
     # Dummy django app
@@ -70,14 +92,25 @@ def main() -> int:
     console.print(Rule("[section]SCENERY ON DUMMY APP[/section]", style="yellow"))
 
     from scenery.__main__ import main as scenery_main
-    exit_code = scenery_main("rehearsal.scenery_settings")
+    scenery_exit_code = scenery_main("rehearsal.scenery_settings")
 
     ####################
     # OUTPUT
     ####################
 
+    overall_success = scenery_exit_code == 0 and rehearsal_success
+    exit_code = 1 - overall_success
 
-    # TODO mad: exit_code and overall success
+    if overall_success:
+        log_lvl, msg, color = logging.INFO, "reharsal passed", "green1"
+        result_msg = "🟢 " + msg
+    else:
+        log_lvl, msg, color = logging.ERROR, "reharsal failed", "bright_red"
+        result_msg = "❌ " + msg
+
+    logging.log(log_lvl, f"[{color}]{msg}[/{color}]")
+
+    console.print(Rule(result_msg.upper(), style=color))
     return exit_code
 
 
