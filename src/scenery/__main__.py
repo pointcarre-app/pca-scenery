@@ -18,6 +18,7 @@ def main(settings_module:str | None=None) -> int:
     Returns:
         exit_code (int): Exit code indicating success (0) or failure (1)
     """
+
     out: dict[str, dict[str, int | str | dict[str, Any]]] = {}
 
     from scenery.common import parse_args, tabulate, colorize, scenery_setup, django_setup
@@ -79,6 +80,7 @@ def main(settings_module:str | None=None) -> int:
         overall_backend_summary.update(backend_summary)
 
     # TODO mad: this should be with summarize no ?
+    # TODO mad: make it rich
 
     if not args.only_front:
         if overall_backend_success:

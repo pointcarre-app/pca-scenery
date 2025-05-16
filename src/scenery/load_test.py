@@ -87,7 +87,6 @@ class LoadTester:
         endpoints = list(self.results.keys())
 
         for ep in endpoints:
-            print(colorize("cyan", ep if ep else "Base url"))
         
             success_times = [r['elapsed_time'] for r in self.results[ep]]
             error_times = [r['elapsed_time'] for r in self.errors[ep]]
