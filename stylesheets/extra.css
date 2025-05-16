@@ -1,0 +1,20 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600&display=swap');
+
+/* Target specifically the site name in the navbar */
+.md-header__title {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+}
+
+.md-nav__title {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+}
+
+/* If you want to target just the main title text and not subtitles */
+/* .md-header__title .md-header__topic:first-child {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+} */
+
