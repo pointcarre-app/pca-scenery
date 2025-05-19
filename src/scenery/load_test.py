@@ -6,7 +6,7 @@ import http
 from collections import defaultdict
 import statistics
 
-from scenery.common import colorize, show_histogram, rich_tabulate
+from scenery.common import show_histogram, rich_tabulate
 
 
 class LoadTester:

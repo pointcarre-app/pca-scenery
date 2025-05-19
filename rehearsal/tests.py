@@ -4,7 +4,6 @@ import http
 import unittest
 import typing
 
-import scenery.common
 from scenery.response_checker import Checker
 import scenery.manifest
 from scenery.manifest_parser import ManifestParser
