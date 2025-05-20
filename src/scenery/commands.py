@@ -6,13 +6,14 @@ import logging
 from typing import Counter as CounterType
 import sys
 import sysconfig
+import statistics
 
 from rich.console import Console
 from rich.rule import Rule
 from rich.panel import Panel
 
-# import scenery.cli
-from scenery.common import summarize_test_result, interpret
+import scenery.cli
+from scenery.common import summarize_test_result, interpret, iter_on_manifests
 
 
 
@@ -20,7 +21,6 @@ from scenery.common import summarize_test_result, interpret
 # SCENERY CONFIG
 ########################
 
-# @scenery.cli.command
 def scenery_setup(setting_module) -> None:
     """Read the settings module and set the corresponding environment variables.
 
@@ -70,7 +70,6 @@ def scenery_setup(setting_module) -> None:
 # DJANGO CONFIG
 ###################
 
-# @scenery.cli.command
 def django_setup(settings_module: str) -> int:
     """Set up the Django environment.
 
@@ -87,8 +86,8 @@ def django_setup(settings_module: str) -> int:
     django.setup()
 
     
-    from django.conf import settings
-    logging.debug(f"INSTALLED_APPS: {settings.INSTALLED_APPS}")
+    from django.conf import settings as django_settings
+    logging.debug(f"INSTALLED_APPS: {django_settings.INSTALLED_APPS}")
 
     emojy, msg, color, log_lvl = interpret(True)
     logging.log(log_lvl, f"[{color}]django_setup {msg}[/{color}]")
@@ -97,11 +96,7 @@ def django_setup(settings_module: str) -> int:
 
 
 
-
-
-
-# @scenery.cli.command
-def integration_tests(args) -> int:
+def integration_tests(args):
     """
     Execute the main functionality of the scenery test runner.
 
@@ -111,7 +106,7 @@ def integration_tests(args) -> int:
 
     console = Console()
 
-    # NOTE mad: this needs to be loaded afeter scenery_setup and
+    # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
     from scenery.core import process_manifest
 
 
@@ -121,15 +116,11 @@ def integration_tests(args) -> int:
     # driver = get_selenium_driver(headless=args.headless)
     driver = None
 
-    folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
     overall_backend_success, overall_frontend_success = True, True
     overall_backend_summary: CounterType[str] = Counter()
     overall_frontend_summary: CounterType[str] = Counter()
 
-    for filename in os.listdir(folder):
-
-        if args.only_manifest is not None and filename.replace(".yml", "") != args.only_manifest:
-            continue
+    for filename in iter_on_manifests(args):
         
         backend_result, frontend_result = process_manifest(filename, args=args, driver=driver)
         backend_success, backend_summary = summarize_test_result(backend_result, "backend")
@@ -174,17 +165,6 @@ def integration_tests(args) -> int:
         logging.log(log_lvl, f"[{color}]{msg}[/{color}]")
         panel_msg += f"\n{emojy} {msg}"
 
-    
-
-
-
-
-    # if not args.only_back:
-    #     rich_tabulate(overall_backend_summary, "backend", "")
-    # if not args.only_back:
-    #     rich_tabulate(overall_frontend_summary, "frontend", "")
-
-
 
     ###################
     # Exit code
@@ -204,3 +184,87 @@ def integration_tests(args) -> int:
     console.print(Rule(f"{emojy} Scenery {msg}".upper(), style=color))
 
     return overall_success, {}
+
+
+
+def load_tests(args):
+
+    from scenery.load_test import LoadTester
+    
+    url = "http://localhost:8000"
+    endpoint = ""
+    users = 50
+    requests_per_user = 20
+
+
+    tester = LoadTester(url)
+    
+    # Run a load test against a specific endpoint
+    results, errors = tester.run_load_test(
+        endpoint=endpoint, 
+        users=users,             
+        requests_per_user=requests_per_user  
+    )
+
+    endpoints = list(set(list(results.keys()) + list(errors.keys())))
+
+    logging.debug(f"{endpoints=}")
+
+    for ep in endpoints:
+
+    
+        success_times = [r['elapsed_time'] for r in results[ep]]
+        error_times = [r['elapsed_time'] for r in errors[ep]]
+        
+        total_requests = len(success_times) + len(error_times)
+        if total_requests == 0:
+            continue
+            
+        error_rate = (len(error_times) / total_requests) * 100 if total_requests > 0 else 0
+        
+        ep_analysis = {
+            'total_requests': total_requests,
+            'successful_requests': len(success_times),
+            'failed_requests': len(error_times),
+            'error_rate': error_rate
+        }
+        
+        if success_times:
+            ep_analysis.update({
+                'avg_time': statistics.mean(success_times),
+                'min_time': min(success_times),
+                'max_time': max(success_times),
+                'median_time': statistics.median(success_times)
+            })
+            
+            if len(success_times) > 1:
+                ep_analysis['stdev_time'] = statistics.stdev(success_times)
+        
+
+        # Define the metrics we want to display and their format
+        formatting = {
+            "total_requests": ("{}", None),
+            "successful_requests": ("{}", None),
+            "failed_requests": ("{}", None),
+            "error_rate": ("{:.2f}%", None),
+            "avg_time": ("{:.4f}s", None),
+            "median_time": ("{:.4f}s", None),
+            "min_time": ("{:.4f}s", None),
+            "max_time": ("{:.4f}s", None),
+            "stdev_time": ("{:.4f}s", None),
+        }
+        scenery.cli.rich_tabulate(
+            ep_analysis, 
+            "Metric", 
+            "Value", 
+            f"Load test on '{ep if ep else "Base URL"}'",
+            formatting,
+            )
+        scenery.cli.show_histogram(success_times)
+
+
+
+
+
+
+    return True, {}

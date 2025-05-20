@@ -30,10 +30,9 @@ def parse_args():
 
     args = parser.parse_args()
 
+    if hasattr(args, "only_test"):
+        args.only_manifest, args.only_case_id, args.only_scene_pos = parse_arg_test_restriction(args.only_test)
 
-    if args.not_headless is not None:     
-        args.headless = not args.not_headless
-    args.only_manifest, args.only_case_id, args.only_scene_pos = parse_arg_test_restriction(args.only_test)
 
     return args
 
@@ -106,10 +105,10 @@ def parse_integration_args(subparser: argparse._SubParsersAction) -> argparse.Na
     )
 
     parser.add_argument(
-        "--only-view",
+        "--only-url",
         nargs="?",
         default=None,
-        help="Optional view restriction",
+        help="Optional url restriction",
     )
 
     parser.add_argument(
@@ -122,7 +121,7 @@ def parse_integration_args(subparser: argparse._SubParsersAction) -> argparse.Na
     parser.add_argument('--failfast', action='store_true')
     parser.add_argument('--only-back', action='store_true')
     parser.add_argument('--only-front', action='store_true')
-    parser.add_argument('--not-headless', action='store_true')
+    parser.add_argument('--headless', action='store_true')
 
 
 
@@ -244,7 +243,6 @@ def main():
 
     # Set up logging with Rich handler
     logging.basicConfig(
-        # level=logging.INFO,
         level=args.log,
         format="%(message)s",
         datefmt="[%X]",
@@ -255,14 +253,11 @@ def main():
     success, out = command(scenery.commands.scenery_setup)(args.scenery_settings_module)
     success, out = command(scenery.commands.django_setup)(args.django_settings_module)
 
-    # command(scenery.commands.django_setup)()
 
     if args.command == "integration":
         success, out = command(scenery.commands.integration_tests)(args)
-    # elif args.command == "load":
-    #     command(scenery.commands.load)(args)
-    else:
-        logging.error(f"{args.command} is not a thing")
+    elif args.command == "load":
+        command(scenery.commands.load_tests)(args)
 
 
 

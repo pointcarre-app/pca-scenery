@@ -4,9 +4,8 @@ import threading
 import requests
 import http
 from collections import defaultdict
-import statistics
+import logging
 
-from scenery.common import show_histogram, rich_tabulate
 
 
 class LoadTester:
@@ -60,6 +59,8 @@ class LoadTester:
     def run_load_test(self, endpoint, method='GET', data=None, headers=None, users=10, requests_per_user=10, ramp_up=2):
         """Execute concurrent load test using threading"""
         threads = []
+
+        logging.info(f"Load test with {users=}")
         
         # Create threads for each simulated user
         for i in range(users):
@@ -78,86 +79,4 @@ class LoadTester:
         for thread in threads:
             thread.join()
             
-        # return self.analyze_results(endpoint)
-
-
-    def analyze_results(self):
-        """Analyze test results and return statistics"""
-
-        endpoints = list(self.results.keys())
-
-        for ep in endpoints:
-        
-            success_times = [r['elapsed_time'] for r in self.results[ep]]
-            error_times = [r['elapsed_time'] for r in self.errors[ep]]
-            
-            total_requests = len(success_times) + len(error_times)
-            if total_requests == 0:
-                continue
-                
-            error_rate = (len(error_times) / total_requests) * 100 if total_requests > 0 else 0
-            
-            ep_analysis = {
-                'total_requests': total_requests,
-                'successful_requests': len(success_times),
-                'failed_requests': len(error_times),
-                'error_rate': error_rate
-            }
-            
-            if success_times:
-                ep_analysis.update({
-                    'avg_time': statistics.mean(success_times),
-                    'min_time': min(success_times),
-                    'max_time': max(success_times),
-                    'median_time': statistics.median(success_times)
-                })
-                
-                if len(success_times) > 1:
-                    ep_analysis['stdev_time'] = statistics.stdev(success_times)
-            
-
-                    # Define the metrics we want to display and their format
-            formatting = {
-                "total_requests": ("{}", None),
-                "successful_requests": ("{}", None),
-                "failed_requests": ("{}", None),
-                "error_rate": ("{:.2f}%", None),
-                "avg_time": ("{:.4f}s", None),
-                "median_time": ("{:.4f}s", None),
-                "min_time": ("{:.4f}s", None),
-                "max_time": ("{:.4f}s", None),
-                "stdev_time": ("{:.4f}s", None),
-            }
-            rich_tabulate(
-                ep_analysis, 
-                "Metric", 
-                "Value", 
-                f"Load test on '{ep if ep else "Base URL"}'",
-                formatting,
-                )
-            show_histogram(success_times)
-
-
-
-
-
-
-if __name__ == "__main__":
-
-    url = "http://localhost:8000"
-    endpoint = ""
-    users = 50
-    requests_per_user = 20
-
-
-    tester = LoadTester(url)
-    
-    # Run a load test against a specific endpoint
-    tester.run_load_test(
-        endpoint=endpoint, 
-        users=users,             
-        requests_per_user=requests_per_user  
-    )
-
-    # Analyze and print the results
-    tester.analyze_results()
+        return self.results, self.errors

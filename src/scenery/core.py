@@ -12,7 +12,7 @@ import time
 from scenery.manifest import Manifest, Case, Scene
 from scenery.method_builder import MethodBuilder
 from scenery.manifest_parser import ManifestParser
-from scenery.common import FrontendDjangoTestCase, BackendDjangoTestCase, CustomDiscoverRunner, DjangoTestCase, summarize_test_result, get_selenium_driver
+from scenery.common import FrontendDjangoTestCase, BackendDjangoTestCase, CustomDiscoverRunner, DjangoTestCase, get_selenium_driver
 
 from django.conf import settings
 from django.test.utils import get_runner
@@ -143,7 +143,7 @@ def retry_on_timeout(retries: int=3, delay: int=5) -> Callable:
 
 def iter_on_takes_from_manifest(
         manifest: Manifest, 
-        only_view: str | None, 
+        only_url: str | None, 
         only_case_id: str | None, 
         only_scene_pos: str | None
     ) -> Iterable[Tuple[str, Case, int, Scene]]:
@@ -155,7 +155,7 @@ def iter_on_takes_from_manifest(
             continue
         elif only_scene_pos is not None and str(scene_pos) != only_scene_pos:
             continue
-        if only_view is not None and only_view != scene.url:
+        if only_url is not None and only_url != scene.url:
             continue
         yield case_id, case, scene_pos, scene
 
@@ -178,7 +178,7 @@ class MetaBackTest(type):
         manifest: Manifest,
         only_case_id: str | None = None,
         only_scene_pos: str | None = None,
-        only_view: str | None = None,
+        only_url: str | None = None,
     ) -> type[DjangoTestCase]:
         """Responsible for building the TestCase class.
 
@@ -204,7 +204,7 @@ class MetaBackTest(type):
             "setUp": setUp,
         }
         for case_id, case, scene_pos, scene in iter_on_takes_from_manifest(
-            manifest, only_view, only_case_id, only_scene_pos
+            manifest, only_url, only_case_id, only_scene_pos
         ):
             take = scene.shoot(case)
             test = MethodBuilder.build_backend_test_from_take(take)
@@ -235,7 +235,7 @@ class MetaFrontTest(type):
         driver: webdriver.Chrome,
         only_case_id: str | None = None,
         only_scene_pos: str | None = None,
-        only_view: str | None = None,
+        only_url: str | None = None,
         timeout_waiting_time: int=5,
     ) -> type[FrontendDjangoTestCase]:
         """Responsible for building the TestCase class.
@@ -247,7 +247,7 @@ class MetaFrontTest(type):
             driver (webdriver.Chrome): Chrome webdriver instance for frontend testing.
             only_case_id (str, optional): Restrict tests to a specific case ID.
             only_scene_pos (str, optional): Restrict tests to a specific scene position.
-            only_view (str, optional): Restrict tests to a specific view.
+            only_url (str, optional): Restrict tests to a specific view.
             timeout_waiting_time (int, optional): Time in seconds to wait before timeout. Defaults to 5.
 
         Returns:
@@ -269,7 +269,7 @@ class MetaFrontTest(type):
         }
 
         for case_id, case, scene_pos, scene in iter_on_takes_from_manifest(
-            manifest, only_view, only_case_id, only_scene_pos
+            manifest, only_url, only_case_id, only_scene_pos
         ):
             take = scene.shoot(case)
             test = MethodBuilder.build_frontend_test_from_take(take)
@@ -494,7 +494,7 @@ class TestsLoader:
         filename: str,
         only_back: bool=False,
         only_front: bool=False,
-        only_view: str | None=None,
+        only_url: str | None=None,
         timeout_waiting_time: int=5,
         only_case_id: str | None=None,
         only_scene_pos: str | None=None,
@@ -511,7 +511,7 @@ class TestsLoader:
             filename (str): The name of the YAML manifest file to parse.
             only_back (bool, optional): Run only backend tests. Defaults to False.
             only_front (bool, optional): Run only frontend tests. Defaults to False.
-            only_view (str, optional): Filter tests to run only for a specific view. Defaults to None.
+            only_url (str, optional): Filter tests to run only for a specific view. Defaults to None.
             timeout_waiting_time (int, optional): Timeout duration for frontend tests in seconds. Defaults to 5.
             only_case_id (str, optional): Filter tests to run only for a specific case ID. Defaults to None.
             only_scene_pos (str, optional): Filter tests to run only for a specific scene position. Defaults to None.
@@ -549,7 +549,7 @@ class TestsLoader:
                 manifest,
                 only_case_id=only_case_id,
                 only_scene_pos=only_scene_pos,
-                only_view=only_view,
+                only_url=only_url,
             )
             # FIXME mad: type hinting mislead by metaclasses
             backend_tests = self.loader.loadTestsFromTestCase(backend_test_cls) # type: ignore[arg-type]
@@ -563,7 +563,7 @@ class TestsLoader:
                 manifest,
                 only_case_id=only_case_id,
                 only_scene_pos=only_scene_pos,
-                only_view=only_view,
+                only_url=only_url,
                 timeout_waiting_time=timeout_waiting_time,
                 driver=driver,
                 # headless=True,
@@ -586,7 +586,7 @@ def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.
         args (argparse.Namespace): Command line arguments containing:
             - only_back (bool): Run only backend tests
             - only_front (bool): Run only frontend tests
-            - only_view (str): Filter for specific view
+            - only_url (str): Filter for specific view
             - only_case_id (str): Filter for specific case ID
             - only_scene_pos (str): Filter for specific scene position
             - timeout_waiting_time (int): Frontend test timeout duration
@@ -615,7 +615,7 @@ def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.
         filename, 
         only_back=args.only_back, 
         only_front=args.only_front, 
-        only_view=args.only_view, 
+        only_url=args.only_url, 
         only_case_id=args.only_case_id, 
         only_scene_pos=args.only_scene_pos, 
         timeout_waiting_time=args.timeout_waiting_time, 

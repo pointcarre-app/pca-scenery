@@ -1,11 +1,12 @@
 import argparse
+import logging
 import unittest
-import sys
+# import sys
 
 
 from rich.console import Console
 from rich.rule import Rule
-from rich.panel import Panel
+from rich.logging import RichHandler
 
 # import typing 
 
@@ -15,7 +16,7 @@ from scenery.common import summarize_test_result
 
 
 
-def unitary_tests():
+def rehearsal_unitary_tests():
 
     import rehearsal.tests
 
@@ -32,10 +33,8 @@ def unitary_tests():
 
 
 def main() -> int:
-    """Test the package `scenery` itself."""
-
-    # NOTE mad: I first run rehearsal per se then check that the main command works
-    # by running the tests I created  for the dummy django app
+    """Test the package `scenery` itself. First run rehearsal unitary tests 
+    then check that the main command works by running it on the dummy django app"""
 
     console = Console()
 
@@ -46,11 +45,19 @@ def main() -> int:
     console.print(Rule("[section]CONFIG FOR REHEARSAL[/section]", style="yellow"))
     
 
+    logging.basicConfig(
+        level="INFO",
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True, markup=True)]
+    )
+
+
     import scenery.cli
     from scenery.commands import scenery_setup, django_setup
 
-    scenery.cli.command(scenery_setup, show_panel=False, show_report=False)("rehearsal.scenery_settings")
-    scenery.cli.command(django_setup, show_panel=False, show_report=False)("rehearsal.django_project.django_project.settings")
+    scenery.cli.command(scenery_setup)("rehearsal.scenery_settings")
+    scenery.cli.command(django_setup)("rehearsal.django_project.django_project.settings")
 
     ####################
     # RUN
@@ -62,7 +69,7 @@ def main() -> int:
 
     console.print(Rule("[section]REHEARSAL[/section]", style="yellow"))
 
-    unit_success, unit_out = scenery.cli.command(unitary_tests)()
+    # unit_success, unit_out = rehearsal_unitary_tests()
 
 
     # Dummy django app
@@ -70,20 +77,22 @@ def main() -> int:
 
     console.print(Rule("[section]SCENERY ON DUMMY APP[/section]", style="yellow"))
 
-    from scenery.commands import integration_tests
+    from scenery.commands import integration_tests, load_tests
 
     args = argparse.Namespace(
         scenery_settings_module="rehearsal.scenery_settings", 
         only_manifest=None, 
         only_back=False, 
         only_front=False,
-        only_view=None,
+        only_url=None,
         only_case_id=None,
         only_scene_pos=None,
         timeout_waiting_time=None,
-        headless=True
+        headless=True,
+        log="DEBUG"
         )
-    scenery_success, scenery_out = scenery.cli.command(integration_tests)(args)
+    # scenery_success, scenery_out = scenery.cli.command(integration_tests)(args)
+    load_success, load_out = scenery.cli.command(load_tests)(args)
 
     # ####################
     # # OUTPUT
@@ -108,4 +117,4 @@ def main() -> int:
 if __name__ == "__main__":
 
     exit_code = main()
-    sys.exit(exit_code)
+    # sys.exit(exit_code)

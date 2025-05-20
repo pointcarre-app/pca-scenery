@@ -18,7 +18,6 @@ class SetUpHandler:
         logger: A logger instance for debug output.
     """
     
-    logging.info(os.environ["SCENERY_SET_UP_INSTRUCTIONS"])
     instructions_module = importlib.import_module(os.environ["SCENERY_SET_UP_INSTRUCTIONS"])
     # selenium_module = importlib.import_module(os.environ["SCENERY_SET_UP_INSTRUCTIONS_SELENIUM"])
 
@@ -45,5 +44,4 @@ class SetUpHandler:
         func = getattr(SetUpHandler.instructions_module, instruction.command)
         func(django_testcase, **instruction.args)
 
-        logger = logging.getLogger(__package__)
-        logger.debug(f"Applied {instruction}")
+        logging.debug(f"Applied {instruction}")

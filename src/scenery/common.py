@@ -1,6 +1,7 @@
 """General functions and classes used by other modules."""
+import argparse
 from collections import Counter
-
+import os
 import io
 import logging
 import re
@@ -35,9 +36,9 @@ def get_selenium_driver(headless: bool) -> webdriver.Chrome:
     driver.implicitly_wait(10)
     return driver
 
-
+###################
 # CLASSES
-#########
+###################
 
 class BackendDjangoTestCase(django.test.TestCase):
     """A Django TestCase for backend testing."""
@@ -101,6 +102,17 @@ def read_yaml(filename: str) -> typing.Any:
     """
     with open(filename, "r") as f:
         return yaml.safe_load(f)
+    
+
+def iter_on_manifests(args: argparse.Namespace):
+
+
+    for filename in os.listdir(os.environ["SCENERY_MANIFESTS_FOLDER"]):
+
+        if args.only_manifest is not None and filename.replace(".yml", "") != args.only_manifest:
+            continue
+
+        yield filename
 
 
 #######################
@@ -236,7 +248,7 @@ def overwrite_get_runner_kwargs(
 
 
 
-# NOTE mad: this is done to shut down the original  stream of the 
+# NOTE mad: this is done to shut down the original stream
 class CustomDiscoverRunner(DjangoDiscoverRunner):
     """Custom test runner that allows for stream capture."""
 
