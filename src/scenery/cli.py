@@ -9,17 +9,9 @@ from rich.rule import Rule
 from rich.progress import Progress, BarColumn, TextColumn
 from rich.style import Style
 from rich.table import Table
-from rich.panel import Panel
-
-# Set up logging with Rich handler
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(rich_tracebacks=True, markup=True)]
-)
 
 import scenery.commands
+
 
 
 
@@ -41,21 +33,26 @@ def parse_args():
 
     if args.not_headless is not None:     
         args.headless = not args.not_headless
-    if args.only_test is not None:
-        args.only_manifest, args.only_case_id, args.only_scene_pos = parse_arg_test_restriction(args.only_test)
+    args.only_manifest, args.only_case_id, args.only_scene_pos = parse_arg_test_restriction(args.only_test)
 
     return args
 
 
 def add_common_arguments(parser: argparse.ArgumentParser):
 
+    # parser.add_argument(
+    #     "-v",
+    #     "--verbose",
+    #     dest="verbosity",
+    #     type=int,
+    #     default=2,
+    #     help="Verbose output",
+    # )
+
     parser.add_argument(
-        "-v",
-        "--verbose",
-        dest="verbosity",
-        type=int,
-        default=2,
-        help="Verbose output",
+        "--log",
+        default="INFO",
+        help="Logging level"
     )
 
     parser.add_argument(
@@ -221,7 +218,7 @@ def show_histogram(x):
 
 
 
-def command(func, show_panel=True, show_report=True):
+def command(func):
     def wrapper(*args):
 
         command_label = func.__name__.replace("_", " ").capitalize()
@@ -231,19 +228,6 @@ def command(func, show_panel=True, show_report=True):
         logging.log(logging.INFO, f"Starting {func.__name__}...")
 
         success, out = func(*args)
-        
-        # emojy, msg, color, log_lvl = interpret(success)
-
-        # logging.log(log_lvl, f"[{color}]{func.__name__} {msg}[{color}]")
-
-        # if show_panel:
-        #     console.print(Panel(
-        #         f"{emojy} {command_label} {msg}",
-        #         border_style=color
-        #     ))
-
-        # if out and show_report:
-        #     rich_tabulate(out, func.__name__, "")
         
         return success, out
 
@@ -257,8 +241,19 @@ def main():
 
     args = parse_args()
 
+
+    # Set up logging with Rich handler
+    logging.basicConfig(
+        # level=logging.INFO,
+        level=args.log,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True, markup=True)]
+    )
+
+
     success, out = command(scenery.commands.scenery_setup)(args.scenery_settings_module)
-    success, out = command(scenery.commands.django_setup)(args.scenery_settings_module)
+    success, out = command(scenery.commands.django_setup)(args.django_settings_module)
 
     # command(scenery.commands.django_setup)()
 
@@ -266,8 +261,8 @@ def main():
         success, out = command(scenery.commands.integration_tests)(args)
     # elif args.command == "load":
     #     command(scenery.commands.load)(args)
-    # else:
-    #     logging.error(f"{args.command} is not a thing")
+    else:
+        logging.error(f"{args.command} is not a thing")
 
 
 

@@ -41,8 +41,8 @@ def scenery_setup(setting_module) -> None:
 
     # TODO mad: we choose convention over verification here
     # settings = importlib.import_module("rehearsal.scenery_settings")
-    if setting_module == "rehearsal.scenery_settings":
-        sys.path.append(os.path.join('.'))
+    # if setting_module == "rehearsal.scenery_settings":
+    sys.path.append(os.path.join('.'))
     settings = importlib.import_module(setting_module)
     
     # Env variables
@@ -83,7 +83,12 @@ def django_setup(settings_module: str) -> int:
     import django
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", settings_module)
+    logging.debug(f"DJANGO_SETTINGS_MODULE is set to: {os.environ.get('DJANGO_SETTINGS_MODULE')}")
     django.setup()
+
+    
+    from django.conf import settings
+    logging.debug(f"INSTALLED_APPS: {settings.INSTALLED_APPS}")
 
     emojy, msg, color, log_lvl = interpret(True)
     logging.log(log_lvl, f"[{color}]django_setup {msg}[/{color}]")

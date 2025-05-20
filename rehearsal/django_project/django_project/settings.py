@@ -156,6 +156,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # manage the app for rehearsal
 if main_script == "manage.py":
+
     ALLOWED_HOSTS = []
 
     ROOT_URLCONF = "django_project.urls"
@@ -165,7 +166,8 @@ if main_script == "manage.py":
 
 
 # run rehearsal
-elif main_script.endswith("rehearsal/__main__.py"):
+elif main_script.endswith("rehearsal/__main__.py") or main_script.endswith("env/bin/scenery"):
+
     ALLOWED_HOSTS = ["testserver"]
 
     ROOT_URLCONF = "rehearsal.django_project.django_project.urls"

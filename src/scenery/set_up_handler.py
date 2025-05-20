@@ -18,6 +18,7 @@ class SetUpHandler:
         logger: A logger instance for debug output.
     """
     
+    logging.info(os.environ["SCENERY_SET_UP_INSTRUCTIONS"])
     instructions_module = importlib.import_module(os.environ["SCENERY_SET_UP_INSTRUCTIONS"])
     # selenium_module = importlib.import_module(os.environ["SCENERY_SET_UP_INSTRUCTIONS_SELENIUM"])
 
