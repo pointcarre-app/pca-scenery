@@ -445,7 +445,7 @@ class TestsRunner:
         app_logger = logging.getLogger("app.close_watch")
         app_logger.propagate = True
 
-    def run(self, tests_discovered: unittest.TestSuite, verbosity: int) -> unittest.TestResult:
+    def run(self, tests_discovered: unittest.TestSuite) -> unittest.TestResult:
         """
         Run the discovered tests and collect results.
 

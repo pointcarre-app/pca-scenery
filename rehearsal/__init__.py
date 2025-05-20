@@ -93,7 +93,7 @@ class TestCaseOfBackendDjangoTestCase(CustomTestCase):
         # FIXME: this does not pass type checking
         cls.django_runner.test_runner.resultclass = CustomTestResult  # type: ignore[assignment]
         cls.django_logger = logging.getLogger(__package__ + ".rehearsal.django")
-
+        
     @classmethod
     def tearDownClass(cls) -> None:
         super().tearDownClass()
@@ -120,6 +120,7 @@ class TestCaseOfBackendDjangoTestCase(CustomTestCase):
         #  (see setUpClass)
         # self.django_logger.info(f"{repr(self)} {result}")
 
+
         return typing.cast(CustomTestResult, result)
 
     def run_django_test(self, django_test: DjangoTestCase) -> CustomTestResult:
@@ -129,6 +130,7 @@ class TestCaseOfBackendDjangoTestCase(CustomTestCase):
         # NOTE: type casting  because mypy miss "cls.django_runner.test_runner.resultclass = CustomTestResult"
         #  (see setUpClass)
         # self.django_logger.info(f"{repr(self)} {result}")
+
         return typing.cast(CustomTestResult, result)
 
     def assertTestPasses(self, django_test: DjangoTestCase) -> None:

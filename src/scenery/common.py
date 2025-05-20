@@ -40,6 +40,8 @@ def get_selenium_driver(headless: bool) -> webdriver.Chrome:
 # CLASSES
 ###################
 
+# TODO: clarify whether this here instead of core as I want to be able to import before scenery_setup
+
 class BackendDjangoTestCase(django.test.TestCase):
     """A Django TestCase for backend testing."""
 

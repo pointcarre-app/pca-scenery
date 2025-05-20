@@ -189,34 +189,68 @@ def integration_tests(args):
 
 def load_tests(args):
 
+    import unittest
+
+    from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+
     from scenery.load_test import LoadTester
-    
+
+    from scenery.core import TestsLoader, TestsRunner
+
+    from rehearsal import CustomTestResult, CustomDiscoverRunner
+
+
+    # loader = TestsLoader()
+    # runner = TestsRunner()
+    # runner.runner.resultclass = CustomTestResult
+
     url = "http://localhost:8000"
     endpoint = ""
     users = 50
     requests_per_user = 20
 
 
-    tester = LoadTester(url)
-    
-    # Run a load test against a specific endpoint
-    results, errors = tester.run_load_test(
-        endpoint=endpoint, 
-        users=users,             
-        requests_per_user=requests_per_user  
-    )
 
-    endpoints = list(set(list(results.keys()) + list(errors.keys())))
+    class LoadTestCase(StaticLiveServerTestCase):
 
+        def setUp(self):
+            super().setUp()
+            self.tester = LoadTester(url)
+
+        def test_load(self):
+
+            # Run a load test against a specific endpoint
+            self.tester.run_load_test(
+                endpoint=endpoint, 
+                users=users,             
+                requests_per_user=requests_per_user  
+            )
+
+        
+
+    django_runner = CustomDiscoverRunner(None)
+    django_runner.test_runner.resultclass = CustomTestResult  
+
+    django_test = LoadTestCase("test_load")
+
+    suite = unittest.TestSuite()
+    suite.addTest(django_test)
+    result = django_runner.run_suite(suite)
+
+    endpoints = django_test.tester.data.keys()
     logging.debug(f"{endpoints=}")
 
     for ep in endpoints:
 
     
-        success_times = [r['elapsed_time'] for r in results[ep]]
-        error_times = [r['elapsed_time'] for r in errors[ep]]
+        # success_times = [r['elapsed_time'] for r in results[ep]]
+        # error_times = [r['elapsed_time'] for r in errors[ep]]
+
+        success_times = [r['elapsed_time'] for r in django_test.tester.data[ep] if r["success"]]
+        error_times = [r['elapsed_time'] for r in django_test.tester.data[ep] if not r["success"]]
         
-        total_requests = len(success_times) + len(error_times)
+        # total_requests = len(success_times) + len(error_times)
+        total_requests = len(django_test.tester.data)
         if total_requests == 0:
             continue
             

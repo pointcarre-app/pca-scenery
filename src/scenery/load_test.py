@@ -11,8 +11,9 @@ import logging
 class LoadTester:
     def __init__(self, base_url):
         self.base_url = base_url
-        self.results = defaultdict(list)
-        self.errors = defaultdict(list)
+        # self.request_results = defaultdict(list)
+        # self.request_errors = defaultdict(list)
+        self.data = defaultdict(list)
         self.lock = threading.Lock()  # Thread synchronization
 
     def make_request(self, endpoint, method='GET', data=None, headers=None):
@@ -52,9 +53,9 @@ class LoadTester:
             
             with self.lock:
                 if result.get('success', False):
-                    self.results[endpoint].append(result)
+                    self.data[endpoint].append(result)
                 else:
-                    self.errors[endpoint].append(result)
+                    self.data[endpoint].append(result)
 
     def run_load_test(self, endpoint, method='GET', data=None, headers=None, users=10, requests_per_user=10, ramp_up=2):
         """Execute concurrent load test using threading"""
@@ -79,4 +80,4 @@ class LoadTester:
         for thread in threads:
             thread.join()
             
-        return self.results, self.errors
+        # return self.request_results, self.request_errors
