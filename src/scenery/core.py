@@ -624,8 +624,8 @@ def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.
     )
 
 
-    backend_result = runner.run(backend_suite, verbosity=0)
+    backend_result = runner.run(backend_suite)
 
-    frontend_result = runner.run(frontend_suite, verbosity=0)
+    frontend_result = runner.run(frontend_suite)
 
     return backend_result, frontend_result

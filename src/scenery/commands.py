@@ -1,3 +1,4 @@
+import argparse
 from collections import Counter
 import importlib
 import os
@@ -21,7 +22,7 @@ from scenery.common import summarize_test_result, interpret, iter_on_manifests
 # SCENERY CONFIG
 ########################
 
-def scenery_setup(setting_module) -> None:
+def scenery_setup(args: argparse.Namespace) -> None:
     """Read the settings module and set the corresponding environment variables.
 
     This function imports the specified settings module and sets environment variables
@@ -43,7 +44,7 @@ def scenery_setup(setting_module) -> None:
     # settings = importlib.import_module("rehearsal.scenery_settings")
     # if setting_module == "rehearsal.scenery_settings":
     sys.path.append(os.path.join('.'))
-    settings = importlib.import_module(setting_module)
+    settings = importlib.import_module(args.scenery_settings_module)
     
     # Env variables
     os.environ["SCENERY_COMMON_ITEMS"] = settings.SCENERY_COMMON_ITEMS
@@ -70,7 +71,7 @@ def scenery_setup(setting_module) -> None:
 # DJANGO CONFIG
 ###################
 
-def django_setup(settings_module: str) -> int:
+def django_setup(args: argparse.Namespace) -> int:
     """Set up the Django environment.
 
     This function sets the DJANGO_SETTINGS_MODULE environment variable and calls django.setup().
@@ -81,13 +82,13 @@ def django_setup(settings_module: str) -> int:
 
     import django
 
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", settings_module)
-    logging.debug(f"DJANGO_SETTINGS_MODULE is set to: {os.environ.get('DJANGO_SETTINGS_MODULE')}")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", args.django_settings_module)
+    logging.debug(f"{os.environ.get('DJANGO_SETTINGS_MODULE')=}")
     django.setup()
 
     
     from django.conf import settings as django_settings
-    logging.debug(f"INSTALLED_APPS: {django_settings.INSTALLED_APPS}")
+    logging.debug(f"{django_settings.INSTALLED_APPS=}")
 
     emojy, msg, color, log_lvl = interpret(True)
     logging.log(log_lvl, f"[{color}]django_setup {msg}[/{color}]")
@@ -242,15 +243,10 @@ def load_tests(args):
 
     for ep in endpoints:
 
-    
-        # success_times = [r['elapsed_time'] for r in results[ep]]
-        # error_times = [r['elapsed_time'] for r in errors[ep]]
-
         success_times = [r['elapsed_time'] for r in django_test.tester.data[ep] if r["success"]]
         error_times = [r['elapsed_time'] for r in django_test.tester.data[ep] if not r["success"]]
         
-        # total_requests = len(success_times) + len(error_times)
-        total_requests = len(django_test.tester.data)
+        total_requests = len(django_test.tester.data[ep])
         if total_requests == 0:
             continue
             
@@ -296,7 +292,8 @@ def load_tests(args):
             )
         scenery.cli.show_histogram(success_times)
 
-
+        # TODO: message if response times too high ?
+        # TODO: 
 
 
 

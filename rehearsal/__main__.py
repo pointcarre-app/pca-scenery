@@ -38,15 +38,21 @@ def main() -> int:
 
     console = Console()
 
+
     ###################
     # CONFIG SCENERY
     ###################
 
     console.print(Rule("[section]CONFIG FOR REHEARSAL[/section]", style="yellow"))
     
+    args = argparse.Namespace(
+        scenery_settings_module="rehearsal.scenery_settings", 
+        django_settings_module="rehearsal.django_project.django_project.settings",
+        log="INFO"
+    )
 
     logging.basicConfig(
-        level="INFO",
+        level=args.log,
         format="%(message)s",
         datefmt="[%X]",
         handlers=[RichHandler(rich_tracebacks=True, markup=True)]
@@ -56,8 +62,8 @@ def main() -> int:
     import scenery.cli
     from scenery.commands import scenery_setup, django_setup
 
-    scenery.cli.command(scenery_setup)("rehearsal.scenery_settings")
-    scenery.cli.command(django_setup)("rehearsal.django_project.django_project.settings")
+    scenery.cli.command(scenery_setup)(args)
+    scenery.cli.command(django_setup)(args)
 
     ####################
     # RUN
@@ -69,7 +75,7 @@ def main() -> int:
 
     console.print(Rule("[section]REHEARSAL[/section]", style="yellow"))
 
-    # unit_success, unit_out = rehearsal_unitary_tests()
+    unit_success, unit_out = rehearsal_unitary_tests()
 
 
     # Dummy django app
@@ -89,9 +95,9 @@ def main() -> int:
         only_scene_pos=None,
         timeout_waiting_time=None,
         headless=True,
-        log="DEBUG"
+        log=args.log
         )
-    # scenery_success, scenery_out = scenery.cli.command(integration_tests)(args)
+    scenery_success, scenery_out = scenery.cli.command(integration_tests)(args)
     load_success, load_out = scenery.cli.command(load_tests)(args)
 
     # ####################
