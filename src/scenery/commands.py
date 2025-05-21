@@ -9,13 +9,16 @@ import sys
 import sysconfig
 import statistics
 
-from rich.console import Console
+from rich.console import Console, Group
+from rich.columns import Columns
 from rich.rule import Rule
 from rich.panel import Panel
+
 
 import scenery.cli
 from scenery.common import summarize_test_result, interpret, iter_on_manifests
 
+from rehearsal import CustomDiscoverRunner
 
 
 ########################
@@ -182,7 +185,7 @@ def integration_tests(args):
     ))
 
 
-    console.print(Rule(f"{emojy} Scenery {msg}".upper(), style=color))
+    console.print(Rule(f"{emojy} Integration tests {msg}", style=color))
 
     return overall_success, {}
 
@@ -190,22 +193,24 @@ def integration_tests(args):
 
 def load_tests(args):
 
+    console = Console()
+
     import unittest
 
     from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 
     from scenery.load_test import LoadTester
 
-    from scenery.core import TestsLoader, TestsRunner
+    # from scenery.core import TestsLoader, TestsRunner
 
-    from rehearsal import CustomTestResult, CustomDiscoverRunner
+    # from rehearsal import CustomTestResult, CustomDiscoverRunner
 
 
     # loader = TestsLoader()
     # runner = TestsRunner()
     # runner.runner.resultclass = CustomTestResult
 
-    url = "http://localhost:8000"
+    # url = "http://localhost:8000"
     endpoint = ""
     users = 50
     requests_per_user = 20
@@ -216,7 +221,7 @@ def load_tests(args):
 
         def setUp(self):
             super().setUp()
-            self.tester = LoadTester(url)
+            self.tester = LoadTester(self.live_server_url)
 
         def test_load(self):
 
@@ -228,9 +233,8 @@ def load_tests(args):
             )
 
         
-
     django_runner = CustomDiscoverRunner(None)
-    django_runner.test_runner.resultclass = CustomTestResult  
+    # django_runner.test_runner.resultclass = CustomTestResult  
 
     django_test = LoadTestCase("test_load")
 
@@ -241,12 +245,12 @@ def load_tests(args):
     endpoints = django_test.tester.data.keys()
     logging.debug(f"{endpoints=}")
 
-    for ep in endpoints:
+    for endpoint in endpoints:
 
-        success_times = [r['elapsed_time'] for r in django_test.tester.data[ep] if r["success"]]
-        error_times = [r['elapsed_time'] for r in django_test.tester.data[ep] if not r["success"]]
+        success_times = [r['elapsed_time']*1000 for r in django_test.tester.data[endpoint] if r["success"]]
+        error_times = [r['elapsed_time']*1000 for r in django_test.tester.data[endpoint] if not r["success"]]
         
-        total_requests = len(django_test.tester.data[ep])
+        total_requests = len(django_test.tester.data[endpoint])
         if total_requests == 0:
             continue
             
@@ -258,6 +262,9 @@ def load_tests(args):
             'failed_requests': len(error_times),
             'error_rate': error_rate
         }
+
+
+        # TODO mad: confirm with sel if success_times is the right one
         
         if success_times:
             ep_analysis.update({
@@ -270,27 +277,33 @@ def load_tests(args):
             if len(success_times) > 1:
                 ep_analysis['stdev_time'] = statistics.stdev(success_times)
         
-
-        # Define the metrics we want to display and their format
         formatting = {
-            "total_requests": ("{}", None),
-            "successful_requests": ("{}", None),
-            "failed_requests": ("{}", None),
             "error_rate": ("{:.2f}%", None),
-            "avg_time": ("{:.4f}s", None),
-            "median_time": ("{:.4f}s", None),
-            "min_time": ("{:.4f}s", None),
-            "max_time": ("{:.4f}s", None),
-            "stdev_time": ("{:.4f}s", None),
+            "avg_time": ("{:.2f}ms", None),
+            "median_time": ("{:.2f}ms", None),
+            "min_time": ("{:.2f}ms", None),
+            "max_time": ("{:.2f}ms", None),
+            "stdev_time": ("{:.2f}ms", None),
         }
-        scenery.cli.rich_tabulate(
+         
+
+        table = scenery.cli.table_from_dict(
             ep_analysis, 
             "Metric", 
             "Value", 
-            f"Load test on '{ep if ep else "Base URL"}'",
+            "",
             formatting,
             )
-        scenery.cli.show_histogram(success_times)
+        
+        histogram = scenery.cli.histogram(success_times)
+
+
+        # columns = Columns([table, histogram], equal=False, expand=True)
+        # console.print(Panel(columns, title=f"{endpoint=}"))
+        group = Group(table, histogram)
+        console.print(Panel(group, title=f"{endpoint=}"))
+
+    
 
         # TODO: message if response times too high ?
         # TODO: 

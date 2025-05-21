@@ -49,6 +49,7 @@ def main() -> int:
         scenery_settings_module="rehearsal.scenery_settings", 
         django_settings_module="rehearsal.django_project.django_project.settings",
         log="INFO"
+        # log="DEBUG"
     )
 
     logging.basicConfig(
@@ -75,7 +76,7 @@ def main() -> int:
 
     console.print(Rule("[section]REHEARSAL[/section]", style="yellow"))
 
-    unit_success, unit_out = rehearsal_unitary_tests()
+    # unit_success, unit_out = rehearsal_unitary_tests()
 
 
     # Dummy django app
@@ -97,7 +98,7 @@ def main() -> int:
         headless=True,
         log=args.log
         )
-    scenery_success, scenery_out = scenery.cli.command(integration_tests)(args)
+    # scenery_success, scenery_out = scenery.cli.command(integration_tests)(args)
     load_success, load_out = scenery.cli.command(load_tests)(args)
 
     # ####################

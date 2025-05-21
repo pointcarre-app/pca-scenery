@@ -575,7 +575,7 @@ class TestsLoader:
         return backend_suite, frontend_suite
 
 
-def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.Chrome | None) -> Tuple[bool, dict, bool, dict]:
+def process_manifest(manifest_filename: str, args: argparse.Namespace, driver: webdriver.Chrome | None) -> Tuple[bool, dict, bool, dict]:
     """Process a test manifest file and executes both backend and frontend tests.
 
     Takes a manifest file and command line arguments to run the specified tests,
@@ -605,14 +605,14 @@ def process_manifest(filename: str, args: argparse.Namespace, driver: webdriver.
         - Uses TestsLoader and TestsRunner for test execution
         - Test results are summarized with verbosity level 0
     """
-    logging.log(logging.INFO, f"Manifest found: {filename}")
+    logging.log(logging.INFO, f"{manifest_filename=}")
     # print(f"\n{manifest_name}", end=" ")
 
     loader = TestsLoader()
     runner = TestsRunner()
 
     backend_suite, frontend_suite = loader.tests_from_manifest(
-        filename, 
+        manifest_filename, 
         only_back=args.only_back, 
         only_front=args.only_front, 
         only_url=args.only_url, 

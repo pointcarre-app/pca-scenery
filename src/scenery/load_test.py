@@ -61,7 +61,9 @@ class LoadTester:
         """Execute concurrent load test using threading"""
         threads = []
 
-        logging.info(f"Load test with {users=}")
+        logging.info(f"{users=}")
+        logging.info(f"{requests_per_user=}")
+        logging.info(f"{ramp_up=}")
         
         # Create threads for each simulated user
         for i in range(users):
