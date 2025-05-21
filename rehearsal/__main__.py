@@ -38,19 +38,26 @@ def main() -> int:
 
     console = Console()
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--log", default="INFO")
+    args = parser.parse_args()
+
 
     ###################
     # CONFIG SCENERY
     ###################
 
     console.print(Rule("[section]CONFIG FOR REHEARSAL[/section]", style="yellow"))
+
+    args.scenery_settings_module = "rehearsal.scenery_settings"
+    args.django_settings_module = "rehearsal.django_project.django_project.settings"
     
-    args = argparse.Namespace(
-        scenery_settings_module="rehearsal.scenery_settings", 
-        django_settings_module="rehearsal.django_project.django_project.settings",
-        log="INFO"
-        # log="DEBUG"
-    )
+    # args = argparse.Namespace(
+    #     scenery_settings_module="rehearsal.scenery_settings", 
+    #     django_settings_module="rehearsal.django_project.django_project.settings",
+    #     log="INFO"
+    #     # log="DEBUG"
+    # )
 
     logging.basicConfig(
         level=args.log,

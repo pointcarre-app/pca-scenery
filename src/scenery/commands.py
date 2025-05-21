@@ -13,7 +13,7 @@ from rich.console import Console, Group
 from rich.columns import Columns
 from rich.rule import Rule
 from rich.panel import Panel
-
+from rich.text import Text
 
 import scenery.cli
 from scenery.common import summarize_test_result, interpret, iter_on_manifests
@@ -108,7 +108,6 @@ def integration_tests(args):
         exit_code (int): Exit code indicating success (0) or failure (1)
     """
 
-    console = Console()
 
     # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
     from scenery.core import process_manifest
@@ -141,6 +140,8 @@ def integration_tests(args):
     # OUTPUT
     #############
 
+    console = Console()
+
     panel_msg = ""
     panel_color = "green"
 
@@ -170,9 +171,6 @@ def integration_tests(args):
         panel_msg += f"\n{emojy} {msg}"
 
 
-    ###################
-    # Exit code
-    ###################
     overall_success = overall_backend_success and overall_frontend_success
     emojy, msg, color, log_lvl = interpret(overall_success)
     logging.log(log_lvl, f"[{color}]scenery {msg}[/{color}]")
@@ -193,7 +191,6 @@ def integration_tests(args):
 
 def load_tests(args):
 
-    console = Console()
 
     import unittest
 
@@ -211,49 +208,102 @@ def load_tests(args):
     # runner.runner.resultclass = CustomTestResult
 
     # url = "http://localhost:8000"
-    endpoint = ""
-    users = 50
-    requests_per_user = 20
+    # endpoint = ""
+    users = 20
+    requests_per_user = 5
 
 
+    # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
+    # from scenery.core import TestsLoader
+    from scenery.manifest_parser import ManifestParser
+    from scenery.core import iter_on_takes_from_manifest
+    from collections import defaultdict
 
-    class LoadTestCase(StaticLiveServerTestCase):
+    folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
 
-        def setUp(self):
-            super().setUp()
-            self.tester = LoadTester(self.live_server_url)
-
-        def test_load(self):
-
-            # Run a load test against a specific endpoint
-            self.tester.run_load_test(
-                endpoint=endpoint, 
-                users=users,             
-                requests_per_user=requests_per_user  
-            )
-
-        
     django_runner = CustomDiscoverRunner(None)
-    # django_runner.test_runner.resultclass = CustomTestResult  
 
-    django_test = LoadTestCase("test_load")
 
-    suite = unittest.TestSuite()
-    suite.addTest(django_test)
-    result = django_runner.run_suite(suite)
+    only_url = args.only_url
+    only_case_id = args.only_case_id
+    only_scene_pos = args.only_scene_pos
 
-    endpoints = django_test.tester.data.keys()
-    logging.debug(f"{endpoints=}")
+    data = defaultdict(list)
 
-    for endpoint in endpoints:
+    for manifest_filename in iter_on_manifests(args):
 
-        success_times = [r['elapsed_time']*1000 for r in django_test.tester.data[endpoint] if r["success"]]
-        error_times = [r['elapsed_time']*1000 for r in django_test.tester.data[endpoint] if not r["success"]]
-        
-        total_requests = len(django_test.tester.data[endpoint])
+        logging.log(logging.INFO, f"{manifest_filename=}")
+
+
+        # Parse manifest
+        manifest = ManifestParser.parse_yaml(os.path.join(folder, manifest_filename))
+        ttype = manifest.testtype
+
+        # logging.debug(manifest)
+
+        for case_id, case, scene_pos, scene in iter_on_takes_from_manifest(
+            manifest, only_url, only_case_id, only_scene_pos
+        ):
+            # TODO mad: this should actually be done in iter_on_takes
+            take = scene.shoot(case)
+            # logging.debug(dir(take))
+            # logging.debug(take.url_name)
+            # logging.info(take.url)
+            # logging.info(take.method)
+            logging.debug(take)
+
+            class LoadTestCase(StaticLiveServerTestCase):
+
+                def setUp(self):
+                    super().setUp()
+                    self.tester = LoadTester(self.live_server_url)
+
+                def test_load(self):
+
+                    # Run a load test against a specific endpoint
+                    self.tester.run_load_test(
+                        endpoint=take.url, 
+                        method=take.method,
+                        data=take.data,
+                        headers=None,
+                        users=users,             
+                        requests_per_user=requests_per_user,
+                    )
+
+                
+            # django_runner.test_runner.resultclass = CustomTestResult  
+
+            django_test = LoadTestCase("test_load")
+
+            suite = unittest.TestSuite()
+            suite.addTest(django_test)
+            result = django_runner.run_suite(suite)
+
+            for key, val in django_test.tester.data.items():
+                data[key] += val
+
+            # break
+
+        # break
+
+
+
+
+    #####################
+    # OUTPUT
+    #####################
+
+    console = Console()
+
+    for endpoint, requests_results in data.items():
+
+        total_requests = len(requests_results)
         if total_requests == 0:
             continue
-            
+
+        success_times = [r['elapsed_time']*1000 for r in requests_results if r["success"]]
+        error_times = [r['elapsed_time']*1000 for r in requests_results if not r["success"]]
+        
         error_rate = (len(error_times) / total_requests) * 100 if total_requests > 0 else 0
         
         ep_analysis = {
@@ -297,18 +347,13 @@ def load_tests(args):
         
         histogram = scenery.cli.histogram(success_times)
 
-
-        # columns = Columns([table, histogram], equal=False, expand=True)
-        # console.print(Panel(columns, title=f"{endpoint=}"))
-        group = Group(table, histogram)
-        console.print(Panel(group, title=f"{endpoint=}"))
-
-    
+        histogram = Group(Text("\n"*1), histogram)
+        columns = Columns([table, histogram], equal=False, expand=True)
+        console.print(Panel(columns, title=f"{endpoint=}"))
+        # group = Group(table, histogram)
+        # console.print(Panel(group, title=f"{endpoint=}"))
 
         # TODO: message if response times too high ?
-        # TODO: 
-
-
 
 
     return True, {}

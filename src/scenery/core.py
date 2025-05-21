@@ -485,11 +485,11 @@ class TestsLoader:
     """
 
     folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
-    logger = logging.getLogger(__package__)
+    # logger = logging.getLogger(__package__)
     runner = get_runner(settings, test_runner_class="django.test.runner.DiscoverRunner")()
     loader: unittest.loader.TestLoader = runner.test_loader
 
-    def tests_from_manifest(
+    def integration_tests_from_manifest(
         self,
         filename: str,
         only_back: bool=False,
@@ -611,7 +611,7 @@ def process_manifest(manifest_filename: str, args: argparse.Namespace, driver: w
     loader = TestsLoader()
     runner = TestsRunner()
 
-    backend_suite, frontend_suite = loader.tests_from_manifest(
+    backend_suite, frontend_suite = loader.integration_tests_from_manifest(
         manifest_filename, 
         only_back=args.only_back, 
         only_front=args.only_front, 
