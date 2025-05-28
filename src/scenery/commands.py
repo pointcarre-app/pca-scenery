@@ -7,16 +7,13 @@ import logging
 from typing import Counter as CounterType
 import sys
 import sysconfig
-import statistics
 
-from rich.console import Console, Group
-from rich.columns import Columns
+from rich.console import Console
 from rich.rule import Rule
 from rich.panel import Panel
-from rich.text import Text
 
-import scenery.cli
 from scenery.common import summarize_test_result, interpret, iter_on_manifests
+import scenery.cli
 
 from rehearsal import CustomDiscoverRunner
 
@@ -287,73 +284,107 @@ def load_tests(args):
         # break
 
 
+    scenery.cli.report_load_tests(data)
+
+    return True, {}
 
 
-    #####################
-    # OUTPUT
-    #####################
-
-    console = Console()
-
-    for endpoint, requests_results in data.items():
-
-        total_requests = len(requests_results)
-        if total_requests == 0:
-            continue
-
-        success_times = [r['elapsed_time']*1000 for r in requests_results if r["success"]]
-        error_times = [r['elapsed_time']*1000 for r in requests_results if not r["success"]]
-        
-        error_rate = (len(error_times) / total_requests) * 100 if total_requests > 0 else 0
-        
-        ep_analysis = {
-            'total_requests': total_requests,
-            'successful_requests': len(success_times),
-            'failed_requests': len(error_times),
-            'error_rate': error_rate
-        }
 
 
-        # TODO mad: confirm with sel if success_times is the right one
-        
-        if success_times:
-            ep_analysis.update({
-                'avg_time': statistics.mean(success_times),
-                'min_time': min(success_times),
-                'max_time': max(success_times),
-                'median_time': statistics.median(success_times)
-            })
-            
-            if len(success_times) > 1:
-                ep_analysis['stdev_time'] = statistics.stdev(success_times)
-        
-        formatting = {
-            "error_rate": ("{:.2f}%", None),
-            "avg_time": ("{:.2f}ms", None),
-            "median_time": ("{:.2f}ms", None),
-            "min_time": ("{:.2f}ms", None),
-            "max_time": ("{:.2f}ms", None),
-            "stdev_time": ("{:.2f}ms", None),
-        }
-         
 
-        table = scenery.cli.table_from_dict(
-            ep_analysis, 
-            "Metric", 
-            "Value", 
-            "",
-            formatting,
-            )
-        
-        histogram = scenery.cli.histogram(success_times)
 
-        histogram = Group(Text("\n"*1), histogram)
-        columns = Columns([table, histogram], equal=False, expand=True)
-        console.print(Panel(columns, title=f"{endpoint=}"))
-        # group = Group(table, histogram)
-        # console.print(Panel(group, title=f"{endpoint=}"))
+def load_tests_prod(args):
 
-        # TODO: message if response times too high ?
 
+    import unittest
+
+    from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+
+    from scenery.load_test import LoadTester
+    from scenery.manifest import Take
+
+    # from scenery.core import TestsLoader, TestsRunner
+
+    # from rehearsal import CustomTestResult, CustomDiscoverRunner
+
+
+    # loader = TestsLoader()
+    # runner = TestsRunner()
+    # runner.runner.resultclass = CustomTestResult
+
+    # url = "http://localhost:8000"
+    # endpoint = ""
+    url = "https://pointcarre.app"
+    users = 1
+    requests_per_user = 5
+
+
+    # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
+    # from scenery.core import TestsLoader
+    from scenery.manifest_parser import ManifestParser
+    from collections import defaultdict
+    import http
+
+
+    django_runner = CustomDiscoverRunner(None)
+
+
+    data = defaultdict(list)
+
+    for endpoint in [
+        "/", 
+        "/v1/chapter/troiz/revisions-brevet-30j", 
+        "/v1/block/troiz/revisions-brevet-30j/2-01",
+        ]:
+
+        logging.log(logging.INFO, f"{url}{endpoint}")
+
+        for method in [http.HTTPMethod.GET, http.HTTPMethod.POST]:
+            if method != http.HTTPMethod.GET and endpoint in [
+                "/", 
+                "/v1/chapter/troiz/revisions-brevet-30j", 
+            ]:
+                continue
+
+            # take = Take(
+            #     method=http.HTTPMethod.GET,
+            #     # url=endpoint,
+            #     checks=[],
+            #     data={},
+            #     query_parameters={},
+            #     url_parameters={}
+            # )
+
+            # logging.debug(take)
+
+            class LoadTestCase(unittest.TestCase):
+
+                def setUp(self):
+                    super().setUp()
+                    self.tester = LoadTester(url)
+
+                def test_load(self):
+
+                    # Run a load test against a specific endpoint
+                    self.tester.run_load_test(
+                        endpoint=endpoint, 
+                        method=method,
+                        data={},
+                        headers=None,
+                        users=users,             
+                        requests_per_user=requests_per_user,
+                    )
+
+
+            django_test = LoadTestCase("test_load")
+
+            suite = unittest.TestSuite()
+            suite.addTest(django_test)
+            result = django_runner.run_suite(suite)
+
+            for key, val in django_test.tester.data.items():
+                data[key] += val
+
+    scenery.cli.report_load_tests(data)
 
     return True, {}
