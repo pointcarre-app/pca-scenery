@@ -5,9 +5,10 @@ import importlib
 import json
 import time
 from typing import Any, cast
-
+import requests
 from scenery.common import ResponseProtocol, DjangoTestCase, BackendDjangoTestCase, FrontendDjangoTestCase
 from scenery.manifest import Take, Check, DirectiveCommand, DomArgument
+import functools
 
 import bs4
 import django.http
@@ -113,18 +114,76 @@ class Checker:
         Raises:
             NotImplementedError: If the HTTP method specified in the take is not implemented.
         """
-        if take.method == http.HTTPMethod.GET:
-            response = django_testcase.client.get(
-                take.url,
-                take.data,
-            )
-        elif take.method == http.HTTPMethod.POST:
-            response = django_testcase.client.post(
-                take.url,
-                take.data,
-            )
+
+        # print("GOTCHA", take.base_url, take.url)
+
+        if not take.base_url:
+            if take.method == http.HTTPMethod.GET:
+                response = django_testcase.client.get(
+                    take.url,
+                    data=take.data,
+                )
+            elif take.method == http.HTTPMethod.POST:
+                response = django_testcase.client.post(
+                    take.url,
+                    take.data,
+                )
+            else:
+                raise NotImplementedError(take.method)
         else:
-            raise NotImplementedError(take.method)
+            print("ICIIIIIIIIIIIII", take.headers)
+            session = requests.Session()
+            response = session.get(take.base_url)
+            # Extract CSRF token from cookies
+            # csrf_token = session.cookies.get('csrftoken')
+            # logging.debug(f"method 1: {csrf_token=}")
+
+            # logging.info(f"{dir(response)=}")
+
+            # NOTE: dans pca tjrs dans le body, attribute hx-header
+            # and this not the same as in the session !!
+            # TODO: this should prbably go into a setup_worker function
+            soup = bs4.BeautifulSoup(response.content, "html.parser")
+            body = soup.find("body")
+            # logging.info(f"{body.attrs=}")
+            hx_headers = json.loads(body.get("hx-headers"))
+
+            csrf_token = hx_headers["X-CSRFToken"]
+            # logging.debug(f"{csrf_token=}")
+
+            take.headers["X-CSRFToken"] = csrf_token
+
+            print("LAAAAAAAAAAAAAAAAAAAA", take.headers)
+
+            if take.method == http.HTTPMethod.GET:
+                # response = requests.get(
+                response = session.get(
+                    take.base_url + take.url, 
+                    data=take.data,
+                    headers=take.headers,
+                )
+            if take.method == http.HTTPMethod.POST:
+                # response = requests.get(
+                response = session.post(
+                    take.base_url + take.url, 
+                    data=take.data,
+                    headers=take.headers,
+                )
+
+    # if take.data and "csrfmiddlewaretoken" not in take.data:
+    #     csrf_token = django_testcase.client.cookies.get("csrftoken", None)
+    #     if csrf_token:
+    #         take.data["csrfmiddlewaretoken"] = csrf_token.value
+    
+            # raise KeyboardInterrupt("GOTCHA")
+
+        # print("URL", take.base_url + take.url)
+        # print("HTTP RESPONSE", response)
+        # # print(dir(response))
+        # print(response.request)
+        # print(take.data)
+        # raise KeyboardInterrupt("GOTCHA")
+        
 
         # FIXME mad: this one is a bit puzzling to me
         # running mypy I get:
@@ -152,7 +211,7 @@ class Checker:
         Raises:
             ImportError: If the SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM module cannot be loaded.
             AttributeError: If a POST request handler method cannot be found in the Selenium module.
-
+"
         Notes:
             - For POST requests, the handler method name is derived from the URL name by
             replacing ':' with '_' and prefixing with 'post_'.
@@ -231,6 +290,7 @@ class Checker:
             response (ResponseProtocol): The HTTP response to check.
             args (int): The expected status code.
         """
+        print("STATUS CODE", response.status_code)
         django_testcase.assertEqual(
             response.status_code,
             args,

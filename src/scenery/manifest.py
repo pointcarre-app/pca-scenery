@@ -373,7 +373,7 @@ class Scene:
             case _:
                 raise NotImplementedError(f"Cannot substitute recursively '{x}' ('{type(x)}')")
 
-    def shoot(self, case: Case) -> "Take":
+    def shoot(self, case: Case, base_url: str = "", headers={}) -> "Take":
         """Return the Take resulting from the case applied to its scene."""
         return Take(
             method=self.method,
@@ -382,6 +382,8 @@ class Scene:
             data=self.substitute_recursively(self.data, case),
             url_parameters=self.substitute_recursively(self.url_parameters, case),
             checks=self.substitute_recursively(self.directives, case),
+            base_url=base_url,
+            headers=headers
         )
 
 
@@ -523,10 +525,12 @@ class Take:
 
     method: http.HTTPMethod
     url: str
+    base_url: str
     checks: list[Check]
     data: dict
     query_parameters: dict
     url_parameters: dict
+    headers: typing.Optional[dict] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.method = http.HTTPMethod(self.method)
