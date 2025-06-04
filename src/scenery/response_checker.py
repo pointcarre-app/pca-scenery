@@ -97,6 +97,8 @@ class Checker:
     # The next function takes the response protocola 
     # and potentially other arguments to perform checks
 
+    # TODO mad: should move to respective class as get_client_response
+
     @staticmethod
     def get_http_client_response(
         django_testcase: BackendDjangoTestCase, take: Take

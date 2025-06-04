@@ -153,7 +153,28 @@ class MethodBuilder:
 
         return test
     
+    @staticmethod
+    def build_backend_deployed_test_from_take(take: Take) -> Callable:
 
+        def test(django_testcase: BackendDjangoTestCase) -> None:
+            response = django_testcase.get_client_response(take)
+            print(f"{response.status_code=}")
+            # if not 200 <= response.status_code < 300:
+                # print(response.content.decode("utf-8"))
+            for i, check in enumerate(take.checks):
+                with django_testcase.subTest(f"directive {i}"):
+                    print(f"{check=}")
+                    if check.instruction in [DirectiveCommand.COUNT_INSTANCES, DirectiveCommand.FIELD_OF_INSTANCE]:
+                        continue
+                    Checker.exec_check(django_testcase, response, check)
+
+            # response = Checker.get_http_client_response(django_testcase, take)
+            # for i, check in enumerate(take.checks):
+            #     with django_testcase.subTest(f"directive {i}"):
+            #         Checker.exec_check(django_testcase, response, check)
+
+        return test
+    
     @staticmethod
     def build_frontend_test_from_take(take: Take) -> Callable:
         """Build a test method from a Take object for frontend testing.
