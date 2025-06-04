@@ -97,6 +97,8 @@ class Checker:
     # The next function takes the response protocola 
     # and potentially other arguments to perform checks
 
+    # TODO mad: should move to respective class as get_client_response
+
     @staticmethod
     def get_http_client_response(
         django_testcase: BackendDjangoTestCase, take: Take
@@ -207,6 +209,10 @@ class Checker:
             Checker.check_count_instances(django_testcase, response, check.args)
         elif check.instruction == DirectiveCommand.DOM_ELEMENT:
             Checker.check_dom(django_testcase, response, check.args)
+        elif check.instruction == DirectiveCommand.JSON:
+            Checker.check_json(django_testcase, response, check.args)
+        elif check.instruction == DirectiveCommand.FIELD_OF_INSTANCE:
+            Checker.check_field_of_instance(django_testcase, response, check.args)
         # elif check.instruction == scenery.manifest.DirectiveCommand.JS_VARIABLE:
         #     Checker.check_js_variable(django_testcase, response, check.args)
         # elif check.instruction == scenery.manifest.DirectiveCommand.JS_STRINGIFY:
@@ -401,8 +407,43 @@ class Checker:
                             f"Expected attribute '{attribute['name']}' to have value '{exepected_value_from_ff}', but got '{value_from_ff}'",
                         )
                 
-                
+    @staticmethod
+    def check_json(
+        django_testcase: DjangoTestCase,
+        response: ResponseProtocol,
+        args: dict,
+    ):
+        print(f"{response.json()=}")
+        django_testcase.assertIsInstance(response, django.http.JsonResponse)
+        data = response.json()
+        django_testcase.assertEqual(data[args["key"]], args["value"])
 
+
+    @staticmethod
+    def check_field_of_instance(
+        django_testcase: DjangoTestCase,
+        response: ResponseProtocol,
+        args: dict,
+    ) -> None:
+        
+
+        instances = list(args["find"]["model"].objects.all())
+        if len(instances) != 1:
+            django_testcase.fail(f"Checking the {args["field"]} field of {args["find"]["model"]} requires that there is a single instance in the db, but found {len(instances)}.")
+        
+        instance = instances[0]
+        field_value = getattr(instance, args["field"])
+        django_testcase.assertEqual(
+            field_value, 
+            args["value"],
+            f"{args["find"]["model"].__name__}.{args["field"]} = {field_value} but expected {args['value']}"
+        )
+
+        # django_testcase.assertEqual(
+        #     len(instances),
+        #     args["n"],
+        #     f"Expected {args['n']} instances of {args['model'].__name__}, but found {len(instances)}",
+        # )
 
 # NOTE mad: do not erase
     # def check_js_variable(self, django_testcase: DjangoFrontendTestCase, args: dict) -> None:
@@ -413,7 +454,6 @@ class Checker:
     #         args (dict): The arguments for the check.
     #     """
 
-    #     # raise Exception("GOTCHA")
     #     variable_name = args["name"]
     #     expected_value = args["value"]
     #     actual_value = django_testcase.driver.execute_script(

@@ -111,8 +111,10 @@ class DirectiveCommand(enum.Enum):
     REDIRECT_URL = "redirect_url"
     COUNT_INSTANCES = "count_instances"
     DOM_ELEMENT = "dom_element"
+    FIELD_OF_INSTANCE = "field_of_instance"
     # JS_VARIABLE = "js_variable"
     JS_STRINGIFY = "js_stringify"
+    JSON = "inspect_json"
 
 
 class DomArgument(enum.Enum):
@@ -256,6 +258,7 @@ class Directive:
 
     def __post_init__(self) -> None:
         """Format self.args."""
+
         match self.instruction, self.args:
             case DirectiveCommand.STATUS_CODE, int(n):
                 self.args = http.HTTPStatus(n)
@@ -288,6 +291,11 @@ class Directive:
                 self.args["model"] = app_config.get_model(s)
             case DirectiveCommand.COUNT_INSTANCES, Substituable():
                 pass
+            case DirectiveCommand.JSON, {"key": str(s), "value": _}: # 
+                pass
+            case DirectiveCommand.FIELD_OF_INSTANCE, {"find": {"model": str(model)}, "field": str(s), "value": _}: # 
+                app_config = django_apps.get_app_config(os.environ["SCENERY_TESTED_APP_NAME"])
+                self.args["find"]["model"] = app_config.get_model(model)
             case _:
                 raise ValueError(
                     f"Cannot interpret '{self.instruction}:({self.args})' as Directive"
@@ -462,14 +470,23 @@ class Check(Directive):
                 pass
             case DirectiveCommand.COUNT_INSTANCES, {"model": ModelBase(), "n": int(n)}:
                 # NOTE mad: Validate model is registered
+                # TODO mad: is this really needed?
                 app_config = django_apps.get_app_config(os.environ["SCENERY_TESTED_APP_NAME"])
                 app_config.get_model(self.args["model"].__name__)
             case DirectiveCommand.JS_STRINGIFY, _:
                 # TODO mad
                 pass
+            case DirectiveCommand.JSON, {"key": str(s), "value": _} :
+                pass
+            case DirectiveCommand.FIELD_OF_INSTANCE, {"find":{"model": ModelBase()}, "field": str(s), "value": _}:
+                # NOTE mad: Validate model is registered
+                # TODO mad: is this really needed?
+                app_config = django_apps.get_app_config(os.environ["SCENERY_TESTED_APP_NAME"])
+                app_config.get_model(self.args["find"]["model"].__name__)
+            
             case _:
                 raise ValueError(
-                    f"Cannot interpret '{self.instruction}:({self.args})' as Directive"
+                    f"Cannot interpret '{self.instruction}:({self.args})' as Check"
                 )
 
     @staticmethod
