@@ -2,7 +2,7 @@ import argparse
 from collections import Counter
 import importlib
 import os
-import logging
+# import logging
 # from typing import Any
 from typing import Counter as CounterType
 import sys
@@ -14,8 +14,8 @@ from rich.panel import Panel
 
 from scenery.common import summarize_test_result, interpret, iter_on_manifests
 import scenery.cli
+from scenery import console, logger
 
-from rehearsal import CustomDiscoverRunner
 
 
 ########################
@@ -56,7 +56,7 @@ def scenery_setup(args: argparse.Namespace) -> None:
     os.environ["SCENERY_MANIFESTS_FOLDER"] = settings.SCENERY_MANIFESTS_FOLDER
 
     emojy, msg, color, log_lvl = interpret(True)
-    logging.log(log_lvl, f"[{color}]scenery_setup {msg}[/{color}]")
+    logger.info("scenery set-up", style=color)
     
 
     return (
@@ -83,15 +83,15 @@ def django_setup(args: argparse.Namespace) -> int:
     import django
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", args.django_settings_module)
-    logging.debug(f"{os.environ.get('DJANGO_SETTINGS_MODULE')=}")
+    logger.debug(f"{os.environ.get('DJANGO_SETTINGS_MODULE')=}")
     django.setup()
 
     
-    from django.conf import settings as django_settings
-    logging.debug(f"{django_settings.INSTALLED_APPS=}")
+    # from django.conf import settings as django_settings
+    # logging.debug(f"{django_settings.INSTALLED_APPS=}")
 
     emojy, msg, color, log_lvl = interpret(True)
-    logging.log(log_lvl, f"[{color}]django_setup {msg}[/{color}]")
+    logger.log(log_lvl, "django set-up", style=color)
     
     return True, {}
 
@@ -137,7 +137,6 @@ def integration_tests(args):
     # OUTPUT
     #############
 
-    console = Console()
 
     panel_msg = ""
     panel_color = "green"
@@ -150,7 +149,7 @@ def integration_tests(args):
             msg = f"some backend tests {msg}"
             panel_color = "red"
         
-        logging.log(log_lvl, f"[{color}]{msg}[/{color}]")
+        logger.log(log_lvl, msg, style=color)
         panel_msg += f"{emojy} {msg}"
 
     
@@ -164,13 +163,13 @@ def integration_tests(args):
             msg = f"some frontend tests {msg}"
             panel_color = "red"
             
-        logging.log(log_lvl, f"[{color}]{msg}[/{color}]")
+        logger.log(log_lvl, msg, color)
         panel_msg += f"\n{emojy} {msg}"
 
 
     overall_success = overall_backend_success and overall_frontend_success
     emojy, msg, color, log_lvl = interpret(overall_success)
-    logging.log(log_lvl, f"[{color}]scenery {msg}[/{color}]")
+    logger.log(log_lvl, f"integration tests {msg}", style=color)
 
 
     console.print(Panel(
@@ -188,6 +187,7 @@ def integration_tests(args):
 
 def load_tests(args):
 
+    from rehearsal import CustomDiscoverRunner
 
     import unittest
 
@@ -229,25 +229,20 @@ def load_tests(args):
 
     for manifest_filename in iter_on_manifests(args):
 
-        logging.log(logging.INFO, f"{manifest_filename=}")
+        logger.info(f"{manifest_filename=}")
 
 
         # Parse manifest
         manifest = ManifestParser.parse_yaml(os.path.join(folder, manifest_filename))
         ttype = manifest.testtype
 
-        # logging.debug(manifest)
-
         for case_id, case, scene_pos, scene in iter_on_takes_from_manifest(
             manifest, only_url, only_case_id, only_scene_pos
         ):
             # TODO mad: this should actually be done in iter_on_takes
             take = scene.shoot(case)
-            # logging.debug(dir(take))
-            # logging.debug(take.url_name)
-            # logging.info(take.url)
-            # logging.info(take.method)
-            logging.debug(take)
+
+            logger.debug(take)
 
             class LoadTestCase(StaticLiveServerTestCase):
 
@@ -303,6 +298,9 @@ def load_tests_prod(args):
     from scenery.load_test import LoadTester
     from scenery.manifest import Take
 
+    from rehearsal import CustomDiscoverRunner
+
+
     # from scenery.core import TestsLoader, TestsRunner
 
     # from rehearsal import CustomTestResult, CustomDiscoverRunner
@@ -337,7 +335,7 @@ def load_tests_prod(args):
         "/v1/block/troiz/revisions-brevet-30j/2-01",
         ]:
 
-        logging.log(logging.INFO, f"{url}{endpoint}")
+        logger.info(f"{url}{endpoint}")
 
         for method in [http.HTTPMethod.GET, http.HTTPMethod.POST]:
             if method != http.HTTPMethod.GET and endpoint in [

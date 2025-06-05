@@ -151,6 +151,7 @@ class MethodBuilder:
                 with django_testcase.subTest(f"directive {i}"):
                     Checker.exec_check(django_testcase, response, check)
 
+
         return test
     
     @staticmethod

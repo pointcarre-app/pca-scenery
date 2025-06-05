@@ -1,11 +1,9 @@
 import argparse
-import logging
 import typing
 import statistics
 import collections
 
 from rich import box
-from rich.logging import RichHandler
 from rich.console import Console
 from rich.rule import Rule
 from rich.progress import Progress, BarColumn, TextColumn
@@ -17,6 +15,7 @@ from rich.console import Group
 from rich.panel import Panel
 
 import scenery.commands
+from scenery import logger, console
 
 
 
@@ -212,9 +211,8 @@ def command(func):
 
         command_label = func.__name__.replace("_", " ").capitalize()
 
-        console = Console()
         console.print(Rule(f"[section]{command_label}[/section]", style="cyan"))
-        logging.log(logging.INFO, f"starting {func.__name__}...")
+        logger.info(f"starting {func.__name__}...")
 
         success, out = func(*args)
         
@@ -338,17 +336,14 @@ def main():
     args = parse_args()
 
 
-    # Set up logging with Rich handler
-    logging.basicConfig(
-        level=args.log,
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True, markup=True)]
-    )
+
+    logger.debug(f"{args=}")
 
 
-    success, out = command(scenery.commands.scenery_setup)(args.scenery_settings_module)
-    success, out = command(scenery.commands.django_setup)(args.django_settings_module)
+
+    success, out = command(scenery.commands.scenery_setup)(args)
+
+    success, out = command(scenery.commands.django_setup)(args)
 
 
     if args.command == "integration":
@@ -358,8 +353,5 @@ def main():
 
 
 
-    # # out["metadata"] = {"args": args.__dict__}
-
-    # logging.info(f"{out=}")
-
+    # out["metadata"] = {"args": args.__dict__}
 

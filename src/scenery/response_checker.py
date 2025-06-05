@@ -6,6 +6,7 @@ import json
 import time
 from typing import Any, cast
 
+from  scenery import logger
 from scenery.common import ResponseProtocol, DjangoTestCase, BackendDjangoTestCase, FrontendDjangoTestCase
 from scenery.manifest import Take, Check, DirectiveCommand, DomArgument
 
@@ -219,6 +220,8 @@ class Checker:
         #     Checker.check_js_stringify(django_testcase, response, check.args)
         else:
             raise NotImplementedError(check)
+        
+        logger.debug(f"performed {check}")
 
     @staticmethod
     def check_status_code(

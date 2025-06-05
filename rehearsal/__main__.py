@@ -1,14 +1,8 @@
 import argparse
-import logging
 import unittest
-# import sys
-
 
 from rich.console import Console
 from rich.rule import Rule
-from rich.logging import RichHandler
-
-# import typing 
 
 from scenery.common import summarize_test_result
 
@@ -59,12 +53,6 @@ def main() -> int:
     #     # log="DEBUG"
     # )
 
-    logging.basicConfig(
-        level=args.log,
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True, markup=True)]
-    )
 
 
     import scenery.cli
@@ -83,7 +71,7 @@ def main() -> int:
 
     console.print(Rule("[section]REHEARSAL[/section]", style="yellow"))
 
-    # unit_success, unit_out = rehearsal_unitary_tests()
+    unit_success, unit_out = rehearsal_unitary_tests()
 
 
     # Dummy django app
@@ -105,28 +93,11 @@ def main() -> int:
         headless=True,
         log=args.log
         )
-    # scenery_success, scenery_out = scenery.cli.command(integration_tests)(args)
+    scenery_success, scenery_out = scenery.cli.command(integration_tests)(args)
     # load_success, load_out = scenery.cli.command(load_tests)(args)
-    load_success, load_out = scenery.cli.command(load_tests_prod)(args)
+    # load_success, load_out = scenery.cli.command(load_tests_prod)(args)
 
-    # ####################
-    # # OUTPUT
-    # ####################
 
-    # overall_success = scenery_exit_code == 0 and rehearsal_success
-    # exit_code = 1 - overall_success
-
-    # if overall_success:
-    #     log_lvl, msg, color = logging.INFO, "reharsal passed", "green1"
-    #     result_msg = "🟢 " + msg
-    # else:
-    #     log_lvl, msg, color = logging.ERROR, "reharsal failed", "bright_red"
-    #     result_msg = "❌ " + msg
-
-    # logging.log(log_lvl, f"[{color}]{msg}[/{color}]")
-
-    # console.print(Rule(result_msg.upper(), style=color))
-    # return exit_code
 
 
 if __name__ == "__main__":

@@ -17,6 +17,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 # from selenium.webdriver.chrome.service import Service
 
+from scenery import console, logger
+
 import yaml
 
 
@@ -183,13 +185,22 @@ def summarize_test_result(result: unittest.TestResult, test_label) -> tuple[bool
     for failed_test, traceback in result.failures:
         test_name = failed_test.id()
         emojy, msg, color, log_lvl = interpret(False)
-        logging.log(log_lvl, f"[{color}]{test_name} {msg}[/{color}]\n{traceback}")
+        # logger.log(log_lvl, f"[{color}]{test_name} {msg}[/{color}]\n{traceback}")
+        logger.log(log_lvl, f"{test_name} {msg}", style = color)
+        # console.print_exception(
+        #     exc_info=(None, None, traceback),
+        #     show_locals=True
+        # )
+        console.print(traceback)
 
 
     for failed_test, traceback in result.errors:
         test_name = failed_test.id()
         emojy, msg, color, log_lvl = interpret(False)
-        logging.log(log_lvl, f"[{color}]{test_name} {msg}[/{color}]\n{traceback}")
+        # logger.log(log_lvl, f"[{color}]{test_name} {msg}[/{color}]\n{traceback}")
+        logger.log(log_lvl, f"{test_name} {msg}", style = color)
+        console.print(traceback)
+
 
     success = True
     summary = serialize_unittest_result(result)
@@ -197,9 +208,9 @@ def summarize_test_result(result: unittest.TestResult, test_label) -> tuple[bool
         success = False
 
     emojy, msg, color, log_lvl = interpret(success)
-
-    msg = f"[{color}]{test_label} {msg}[/{color}]"
-    logging.log(log_lvl, msg)
+    # msg = f"[{color}]{test_label} {msg}[/{color}]"
+    # logging.log(log_lvl, msg)
+    logger.log(log_lvl, msg, style=color)
 
 
     return success, summary
@@ -211,6 +222,7 @@ def interpret(success):
     else:
         emojy, msg, color, log_lvl = "❌", "failed", "red", logging.ERROR
     return emojy, msg, color, log_lvl
+
 
 
 

@@ -150,6 +150,7 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+
 #####################################################
 # STUFF THAT DEPENDS FROM WHERE THE CALL IS MADE FROM
 #####################################################

@@ -1,9 +1,9 @@
 """Execute instructions used in `TestCase.setUp` and `TestCase.setUpTestData` provided in the manifest."""
 
 import importlib
-import logging
 import os
 
+from scenery import logger
 from scenery.common import DjangoTestCase
 from scenery.manifest import SetUpInstruction
 
@@ -44,4 +44,4 @@ class SetUpHandler:
         func = getattr(SetUpHandler.instructions_module, instruction.command)
         func(django_testcase, **instruction.args)
 
-        logging.debug(f"Applied {instruction}")
+        logger.debug(f"performed {instruction}")

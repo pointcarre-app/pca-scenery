@@ -1,12 +1,11 @@
 import io
 import os
-import logging
 from types import TracebackType
 import typing
 import unittest
 import pprint
 
-
+from scenery import logger
 from scenery.common import BackendDjangoTestCase, CustomDiscoverRunner, DjangoTestCase
 
 
@@ -37,7 +36,8 @@ class CustomTestResult(unittest.TestResult):
 class CustomTestCase(unittest.TestCase):
     """This class augment unittest.TestCase for logging puposes"""
 
-    logger: typing.ClassVar[logging.Logger]
+    # logger: typing.ClassVar[logging.Logger]
+    logger = logger
 
     @classmethod
     def log_db(cls) -> None:
@@ -47,21 +47,21 @@ class CustomTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.logger = logging.getLogger(__package__ + ".rehearsal")
-        cls.logger.debug(f"{cls.__module__}.{cls.__qualname__}.setUpClass")
+        # cls.logger = logging.getLogger(__package__ + ".rehearsal")
+        # cls.logger.debug(f"{cls.__module__}.{cls.__qualname__}.setUpClass")
         cls.log_db()
 
     @classmethod
     def tearDownClass(cls) -> None:
-        cls.logger.debug(f"{cls.__module__}.{cls.__qualname__}.tearDownClass")
+        # cls.logger.debug(f"{cls.__module__}.{cls.__qualname__}.tearDownClass")
         cls.log_db()
 
     def setUp(self) -> None:
-        self.logger.debug(f"{self.__module__}.{self.__class__.__qualname__}.setUp")
+        # self.logger.debug(f"{self.__module__}.{self.__class__.__qualname__}.setUp")
         self.log_db()
 
     def tearDown(self) -> None:
-        self.logger.debug(f"{self.__module__}.{self.__class__.__qualname__}.tearDown")
+        # self.logger.debug(f"{self.__module__}.{self.__class__.__qualname__}.tearDown")
         self.log_db()
 
 
@@ -81,7 +81,7 @@ class TestCaseOfBackendDjangoTestCase(CustomTestCase):
     django_loader: typing.ClassVar[unittest.TestLoader]
     django_runner: typing.ClassVar[CustomDiscoverRunner]
     django_stream: typing.ClassVar[io.StringIO]
-    django_logger: typing.ClassVar[logging.Logger]
+    # django_logger: typing.ClassVar[logging.Logger]
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -92,7 +92,7 @@ class TestCaseOfBackendDjangoTestCase(CustomTestCase):
         cls.django_runner = CustomDiscoverRunner(cls.django_stream)
         # FIXME: this does not pass type checking
         cls.django_runner.test_runner.resultclass = CustomTestResult  # type: ignore[assignment]
-        cls.django_logger = logging.getLogger(__package__ + ".rehearsal.django")
+        # cls.django_logger = logging.getLogger(__package__ + ".rehearsal.django")
         
     @classmethod
     def tearDownClass(cls) -> None:

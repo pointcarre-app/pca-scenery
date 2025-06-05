@@ -1,13 +1,13 @@
 """Build the tests from the Manifest, discover & run tests."""
 import argparse
-import io
+# import io
 import itertools
-import logging
 import os
 import unittest
 from typing import Iterable, Callable, Any, Tuple
 from functools import wraps
 import time
+import sys
 
 from scenery.manifest import Manifest, Case, Scene
 from scenery.method_builder import MethodBuilder
@@ -20,6 +20,7 @@ from django.test.utils import get_runner
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from urllib3.exceptions import MaxRetryError, NewConnectionError
+from rich.console import Console
 
 
 # DECORATORS
@@ -429,21 +430,23 @@ class TestsRunner:
 
     def __init__(self, failfast: bool=False) -> None:
         """Initialize the MetaTestRunner with a runner, logger, discoverer, and output stream."""
-        self.logger = logging.getLogger(__package__)
-        self.stream = io.StringIO()
-        # self.stream = sys.stdout
+        # self.logger = logging.getLogger(__package__)
+        
+        # self.stream = io.StringIO()
+        self.stream = sys.stdout
         self.runner = CustomDiscoverRunner(stream=self.stream, failfast=failfast)
 
         # TODO mad: this is PCA specific
-        app_logger = logging.getLogger("app.close_watch")
-        app_logger.propagate = False
+        # app_logger = logging.getLogger("app.close_watch")
+        # app_logger.propagate = False
 
     def __del__(self) -> None:
         """Clean up resources when the MetaTestRunner is deleted."""
         # TODO mad: a context manager would be ideal, let's wait v2
         # self.stream.close()
-        app_logger = logging.getLogger("app.close_watch")
-        app_logger.propagate = True
+        # print(self.stream.flush())
+        # app_logger = logging.getLogger("app.close_watch")
+        # app_logger.propagate = True
 
     def run(self, tests_discovered: unittest.TestSuite) -> unittest.TestResult:
         """
@@ -605,8 +608,9 @@ def process_manifest(manifest_filename: str, args: argparse.Namespace, driver: w
         - Uses TestsLoader and TestsRunner for test execution
         - Test results are summarized with verbosity level 0
     """
-    logging.log(logging.INFO, f"{manifest_filename=}")
-    # print(f"\n{manifest_name}", end=" ")
+    console = Console()
+    # logging.log(logging.INFO, f"{manifest_filename=}")
+    console.log(f"{manifest_filename=}")
 
     loader = TestsLoader()
     runner = TestsRunner()
