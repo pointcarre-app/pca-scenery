@@ -1,4 +1,5 @@
 """General functions and classes used by other modules."""
+
 import argparse
 from collections import Counter
 import os
@@ -26,17 +27,19 @@ import yaml
 # SELENIUM
 ###################
 
+
 def get_selenium_driver(headless: bool) -> webdriver.Chrome:
     """Return a Selenium WebDriver instance configured for Chrome."""
     chrome_options = Options()
     # NOTE mad: service does not play well with headless mode
     # service = Service(executable_path='/usr/bin/google-chrome')
     if headless:
-        chrome_options.add_argument("--headless=new")     # NOTE mad: For newer Chrome versions
+        chrome_options.add_argument("--headless=new")  # NOTE mad: For newer Chrome versions
         # chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions (Framework)
-    driver = webdriver.Chrome(options=chrome_options) #  service=service
+    driver = webdriver.Chrome(options=chrome_options)  #  service=service
     driver.implicitly_wait(10)
     return driver
+
 
 ###################
 # CLASSES
@@ -44,8 +47,10 @@ def get_selenium_driver(headless: bool) -> webdriver.Chrome:
 
 # TODO: clarify whether this here instead of core as I want to be able to import before scenery_setup
 
+
 class BackendDjangoTestCase(django.test.TestCase):
     """A Django TestCase for backend testing."""
+
 
 class FrontendDjangoTestCase(StaticLiveServerTestCase):
     """A Django TestCase for frontend testing."""
@@ -54,12 +59,12 @@ class FrontendDjangoTestCase(StaticLiveServerTestCase):
 
 
 DjangoTestCaseTypes = Union[BackendDjangoTestCase, FrontendDjangoTestCase]
-DjangoTestCase = TypeVar('DjangoTestCase', bound=DjangoTestCaseTypes)       
+DjangoTestCase = TypeVar("DjangoTestCase", bound=DjangoTestCaseTypes)
 
 
 class ResponseProtocol(typing.Protocol):
     """A protocol for HTTP responses, covering both basic Django http response and from Selenium Driver."""
-    
+
     @property
     def status_code(self) -> int:
         """The HTTP status code of the response."""
@@ -69,21 +74,19 @@ class ResponseProtocol(typing.Protocol):
         """The headers of the response."""
 
     @property
-    def content(self) -> typing.Any: 
+    def content(self) -> typing.Any:
         """The content of the response."""
 
     @property
-    def charset(self) -> str | None: 
+    def charset(self) -> str | None:
         """The charset of the response."""
 
-    def has_header(self, header_name: str) -> bool: 
+    def has_header(self, header_name: str) -> bool:
         """Check if the response has a specific header."""
-    
+
     def __getitem__(self, header_name: str) -> str: ...
 
     def __setitem__(self, header_name: str, value: str) -> None: ...
-
-
 
 
 ########
@@ -106,13 +109,10 @@ def read_yaml(filename: str) -> typing.Any:
     """
     with open(filename, "r") as f:
         return yaml.safe_load(f)
-    
+
 
 def iter_on_manifests(args: argparse.Namespace):
-
-
     for filename in os.listdir(os.environ["SCENERY_MANIFESTS_FOLDER"]):
-
         if args.only_manifest is not None and filename.replace(".yml", "") != args.only_manifest:
             continue
 
@@ -178,7 +178,6 @@ def serialize_unittest_result(result: unittest.TestResult) -> Counter:
     return Counter(d)
 
 
-
 def summarize_test_result(result: unittest.TestResult, test_label) -> tuple[bool, Counter]:
     """Return true if the tests all succeeded, false otherwise."""
 
@@ -186,37 +185,34 @@ def summarize_test_result(result: unittest.TestResult, test_label) -> tuple[bool
         test_name = failed_test.id()
         emojy, msg, color, log_lvl = interpret(False)
         # logger.log(log_lvl, f"[{color}]{test_name} {msg}[/{color}]\n{traceback}")
-        logger.log(log_lvl, f"{test_name} {msg}", style = color)
+        logger.log(log_lvl, f"{test_name} {msg}", style=color)
         # console.print_exception(
         #     exc_info=(None, None, traceback),
         #     show_locals=True
         # )
         console.print(traceback)
 
-
     for failed_test, traceback in result.errors:
         test_name = failed_test.id()
         emojy, msg, color, log_lvl = interpret(False)
         # logger.log(log_lvl, f"[{color}]{test_name} {msg}[/{color}]\n{traceback}")
-        logger.log(log_lvl, f"{test_name} {msg}", style = color)
+        logger.log(log_lvl, f"{test_name} {msg}", style=color)
         console.print(traceback)
-
 
     success = True
     summary = serialize_unittest_result(result)
     if summary["errors"] > 0 or summary["failures"] > 0:
         success = False
-    if summary['testsRun'] == 0:
+    if summary["testsRun"] == 0:
         pass
 
     else:
-        # Print test summary    
-        print(summary)
+        # Print test summary
+        # print(summary)
         emojy, msg, color, log_lvl = interpret(success)
         msg = f"{test_label} {msg}"
         # logging.log(log_lvl, msg)
         logger.log(log_lvl, msg, style=color)
-
 
     return success, summary
 
@@ -227,8 +223,6 @@ def interpret(success):
     else:
         emojy, msg, color, log_lvl = "❌", "failed", "red", logging.ERROR
     return emojy, msg, color, log_lvl
-
-
 
 
 ###################
@@ -264,9 +258,6 @@ def overwrite_get_runner_kwargs(
     return kwargs
 
 
-
-
-
 # NOTE mad: this is done to shut down the original stream
 class CustomDiscoverRunner(DjangoDiscoverRunner):
     """Custom test runner that allows for stream capture."""
@@ -274,7 +265,6 @@ class CustomDiscoverRunner(DjangoDiscoverRunner):
     def __init__(self, stream: io.StringIO, *args: typing.Any, **kwargs: typing.Any) -> None:
         super().__init__(*args, **kwargs)
         self.stream = stream
-
 
     # def __del__(self):
     #     print("HEHEHE")
