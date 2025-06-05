@@ -2,15 +2,14 @@ import argparse
 from collections import Counter
 import importlib
 import os
-# import logging
-# from typing import Any
 from typing import Counter as CounterType
 import sys
 import sysconfig
 
-from rich.console import Console
 from rich.rule import Rule
 from rich.panel import Panel
+from rich.columns import Columns
+from rich.console import Group
 
 from scenery.common import summarize_test_result, interpret, iter_on_manifests
 import scenery.cli
@@ -139,9 +138,12 @@ def integration_tests(args):
     # OUTPUT
     #############
 
+    # TODO: this should become a separate function
 
     panel_msg = ""
     panel_color = "green"
+
+    report_tables = []
 
     if not args.only_front:
         emojy, msg, color, log_lvl = interpret(overall_backend_success)
@@ -154,7 +156,8 @@ def integration_tests(args):
         logger.log(log_lvl, msg, style=color)
         panel_msg += f"{emojy} {msg}"
 
-    
+        report_tables.append(scenery.cli.table_from_dict(overall_backend_summary, "Backend", ""))
+
 
 
     if not args.only_back:
@@ -168,17 +171,27 @@ def integration_tests(args):
         logger.log(log_lvl, msg, color)
         panel_msg += f"\n{emojy} {msg}"
 
+        report_tables.append(scenery.cli.table_from_dict(overall_frontend_summary, "Frontend", ""))
+
+
 
     overall_success = overall_backend_success and overall_frontend_success
     emojy, msg, color, log_lvl = interpret(overall_success)
     logger.log(log_lvl, f"integration tests {msg}", style=color)
 
 
+    report_tables = Columns(report_tables, equal=False, expand=True)
+    panel_report = Group(panel_msg, report_tables)
+
+
     console.print(Panel(
-        panel_msg,
+        panel_report,
         title="Results",
         border_style=panel_color
     ))
+
+    # console.print(report_tables)
+
 
 
     console.print(Rule(f"{emojy} Integration tests {msg}", style=color))
