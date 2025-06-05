@@ -164,7 +164,7 @@ class MethodBuilder:
                 # print(response.content.decode("utf-8"))
             for i, check in enumerate(take.checks):
                 with django_testcase.subTest(f"directive {i}"):
-                    print(f"{check=}")
+                    # print(f"{check=}")
                     if check.instruction in [DirectiveCommand.COUNT_INSTANCES, DirectiveCommand.FIELD_OF_INSTANCE]:
                         continue
                     Checker.exec_check(django_testcase, response, check)

@@ -208,7 +208,7 @@ def summarize_test_result(result: unittest.TestResult, test_label) -> tuple[bool
         success = False
 
     emojy, msg, color, log_lvl = interpret(success)
-    # msg = f"[{color}]{test_label} {msg}[/{color}]"
+    msg = f"{test_label} {msg}"
     # logging.log(log_lvl, msg)
     logger.log(log_lvl, msg, style=color)
 

@@ -31,7 +31,7 @@ class SceneryLogger:
 
     def log(self, level, msg: str, style: str = None):
         if self.level <= level:
-            level_name = f"[{logging.getLevelName(level)}]"
+            level_name = f"{logging.getLevelName(level)}"
             level_name = f"{level_name:<10}"
             color = self.style_map[level]
             if color:

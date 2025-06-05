@@ -9,6 +9,7 @@ from functools import wraps
 import time
 import sys
 
+from scenery import logger
 from scenery.manifest import Manifest, Case, Scene
 from scenery.method_builder import MethodBuilder
 from scenery.manifest_parser import ManifestParser
@@ -531,11 +532,6 @@ class TestsLoader:
             - Empty test suites are returned for disabled test types
             - The driver initialization can occur here or be passed in from external code
         """
-        # NOTE mad: this is here to be able to load driver in two places
-        # See also scenery/__main__.py
-        # Probably not a great pattern but let's fix this later
-        if driver is None:
-            driver = get_selenium_driver(headless=headless)
 
         backend_suite, frontend_suite = unittest.TestSuite(), unittest.TestSuite()
 
@@ -560,6 +556,13 @@ class TestsLoader:
 
         # Create frontend test
         if not only_back and (ttype is None or ttype == "frontend"):
+
+            # NOTE mad: this is here to be able to load driver in two places
+            # See also scenery/__main__.py
+            # Probably not a great pattern but let's fix this later
+            if driver is None:
+                driver = get_selenium_driver(headless=headless)
+
             frontend_test_cls = MetaFrontTest(
                 f"{manifest_name}.frontend",
                 (FrontendDjangoTestCase,),
@@ -608,9 +611,8 @@ def process_manifest(manifest_filename: str, args: argparse.Namespace, driver: w
         - Uses TestsLoader and TestsRunner for test execution
         - Test results are summarized with verbosity level 0
     """
-    console = Console()
     # logging.log(logging.INFO, f"{manifest_filename=}")
-    console.log(f"{manifest_filename=}")
+    logger.info(f"{manifest_filename=}")
 
     loader = TestsLoader()
     runner = TestsRunner()
@@ -627,9 +629,11 @@ def process_manifest(manifest_filename: str, args: argparse.Namespace, driver: w
         headless=args.headless,
     )
 
+    backend_result, frontend_result = None, None
+    if not args.only_front:
+        backend_result = runner.run(backend_suite)
 
-    backend_result = runner.run(backend_suite)
-
-    frontend_result = runner.run(frontend_suite)
+    if not args.only_back:
+        frontend_result = runner.run(frontend_suite)
 
     return backend_result, frontend_result

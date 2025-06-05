@@ -123,13 +123,15 @@ def integration_tests(args):
     for filename in iter_on_manifests(args):
         
         backend_result, frontend_result = process_manifest(filename, args=args, driver=driver)
-        backend_success, backend_summary = summarize_test_result(backend_result, "backend")
-        frontend_success, frontend_summary = summarize_test_result(frontend_result, "frontend")
+        if backend_result:
+            backend_success, backend_summary = summarize_test_result(backend_result, "backend")
+            overall_backend_success &= backend_success
+            overall_backend_summary.update(backend_summary)
 
-        overall_backend_success &= backend_success
-        overall_frontend_success &= frontend_success
-        overall_frontend_summary.update(frontend_summary)
-        overall_backend_summary.update(backend_summary)
+        if frontend_result:
+            frontend_success, frontend_summary = summarize_test_result(frontend_result, "frontend")
+            overall_frontend_success &= frontend_success
+            overall_frontend_summary.update(frontend_summary)
 
         # results.append((filename, result))
 

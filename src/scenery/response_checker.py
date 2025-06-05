@@ -416,7 +416,7 @@ class Checker:
         response: ResponseProtocol,
         args: dict,
     ):
-        print(f"{response.json()=}")
+        # print(f"{response.json()=}")
         django_testcase.assertIsInstance(response, django.http.JsonResponse)
         data = response.json()
         django_testcase.assertEqual(data[args["key"]], args["value"])
