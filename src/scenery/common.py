@@ -206,11 +206,16 @@ def summarize_test_result(result: unittest.TestResult, test_label) -> tuple[bool
     summary = serialize_unittest_result(result)
     if summary["errors"] > 0 or summary["failures"] > 0:
         success = False
+    if summary['testsRun'] == 0:
+        pass
 
-    emojy, msg, color, log_lvl = interpret(success)
-    msg = f"{test_label} {msg}"
-    # logging.log(log_lvl, msg)
-    logger.log(log_lvl, msg, style=color)
+    else:
+        # Print test summary    
+        print(summary)
+        emojy, msg, color, log_lvl = interpret(success)
+        msg = f"{test_label} {msg}"
+        # logging.log(log_lvl, msg)
+        logger.log(log_lvl, msg, style=color)
 
 
     return success, summary
