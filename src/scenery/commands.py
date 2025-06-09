@@ -1,10 +1,12 @@
 import argparse
-from collections import Counter
+from collections import Counter, defaultdict
+import http
 import importlib
 import os
-from typing import Counter as CounterType
 import sys
 import sysconfig
+from typing import Counter as CounterType
+import unittest
 
 from rich.rule import Rule
 from rich.panel import Panel
@@ -251,12 +253,9 @@ def load_tests(args):
         manifest = ManifestParser.parse_yaml(os.path.join(folder, manifest_filename))
         ttype = manifest.testtype
 
-        for case_id, case, scene_pos, scene in iter_on_takes_from_manifest(
+        for case_id, scene_pos, take in iter_on_takes_from_manifest(
             manifest, only_url, only_case_id, only_scene_pos
         ):
-            # TODO mad: this should actually be done in iter_on_takes
-            take = scene.shoot(case)
-
             logger.debug(take)
 
             class LoadTestCase(StaticLiveServerTestCase):
@@ -306,12 +305,7 @@ def load_tests(args):
 def load_tests_prod(args):
 
 
-    import unittest
-
-    from django.contrib.staticfiles.testing import StaticLiveServerTestCase
-
     from scenery.load_test import LoadTester
-    from scenery.manifest import Take
 
     from rehearsal import CustomDiscoverRunner
 
@@ -334,9 +328,7 @@ def load_tests_prod(args):
 
     # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
     # from scenery.core import TestsLoader
-    from scenery.manifest_parser import ManifestParser
-    from collections import defaultdict
-    import http
+
 
 
     django_runner = CustomDiscoverRunner(None)

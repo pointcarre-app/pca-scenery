@@ -45,7 +45,8 @@ def get_selenium_driver(headless: bool) -> webdriver.Chrome:
 # CLASSES
 ###################
 
-# TODO: clarify whether this here instead of core as I want to be able to import before scenery_setup
+# TODO mad: clarify whether this here instead of core as 
+# I want to be able to import before scenery_setup
 
 
 class BackendDjangoTestCase(django.test.TestCase):
@@ -57,7 +58,27 @@ class FrontendDjangoTestCase(StaticLiveServerTestCase):
 
     driver: webdriver.Chrome
 
+import requests
 
+
+class RemoteBackendTestCase(unittest.TestCase):
+    mode = "staging"
+
+    # def setUp(self):
+        # self.session = requests.Session()
+        # self.
+        # self.headers = {}
+        # self.update_csrf()
+        # self.login(
+        #     user_email=os.environ[f"SCENERY_{self.mode.upper()}_USER_EMAIL"],
+        #     password=os.environ[f"SCENERY_{self.mode.upper()}_PASSWORD"],
+
+        # )
+        # self.update_csrf()
+
+
+
+# TODO mad: this will become SceneryTestCase
 DjangoTestCaseTypes = Union[BackendDjangoTestCase, FrontendDjangoTestCase]
 DjangoTestCase = TypeVar("DjangoTestCase", bound=DjangoTestCaseTypes)
 

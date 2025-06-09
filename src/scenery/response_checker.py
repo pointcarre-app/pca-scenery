@@ -7,7 +7,12 @@ import time
 from typing import Any, cast
 
 from  scenery import logger
-from scenery.common import ResponseProtocol, DjangoTestCase, BackendDjangoTestCase, FrontendDjangoTestCase
+from scenery.common import (
+    ResponseProtocol, 
+    DjangoTestCase, 
+    BackendDjangoTestCase, 
+    FrontendDjangoTestCase,
+    )
 from scenery.manifest import Take, Check, DirectiveCommand, DomArgument
 
 import bs4
@@ -93,15 +98,17 @@ class Checker:
     various checks on the responses, as specified in the test manifests.
     """
 
-    # NOTE mad: the first two functions take a Take 
+    # NOTE mad: the first functions take a Take 
     # as argument to retrieve the server respone
     # The next function takes the response protocola 
     # and potentially other arguments to perform checks
 
-    # TODO mad: should move to respective class as get_client_response
+    # TODO mad: should move to respective class as get_client_response ?
+    # NOTE mad: I am not sure this is so simple as right now I can't import stuff 
+    # from core before setting scenery up, and tpe checking would become tricky 
 
     @staticmethod
-    def get_http_client_response(
+    def get_django_client_response(
         django_testcase: BackendDjangoTestCase, take: Take
     ) -> django.http.HttpResponse:
         """Execute an HTTP request based on the given HttpTake object.
@@ -181,7 +188,27 @@ class Checker:
 
 
         return response 
-      
+    
+    @staticmethod
+    def get_http_response(remote_testcase, take):
+        if take.method == http.HTTPMethod.GET:
+            response = remote_testcase.session.get(
+                remote_testcase.base_url + take.url,
+                data=take.data,
+                headers=remote_testcase.headers,
+            )
+        elif take.method == http.HTTPMethod.POST:
+            print("MAKING A POST REQUEST")
+            response = remote_testcase.session.post(
+                remote_testcase.base_url + take.url,
+                take.data,
+                headers=remote_testcase.headers,
+            )
+        else:
+            raise NotImplementedError(take.method)
+
+        print(remote_testcase.base_url + take.url)
+        return response
 
     @staticmethod
     def exec_check(

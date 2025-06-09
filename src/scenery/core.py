@@ -1,13 +1,16 @@
 """Build the tests from the Manifest, discover & run tests."""
 import argparse
 # import io
-import itertools
-import os
-import unittest
-from typing import Iterable, Callable, Any, Tuple
 from functools import wraps
-import time
+import http
+import itertools
+import json
+import os
+import requests
 import sys
+from typing import Iterable, Callable, Any, Tuple
+import time
+import unittest
 
 from scenery import logger
 from scenery.manifest import Manifest, Case, Scene
@@ -18,86 +21,38 @@ from scenery.common import FrontendDjangoTestCase, BackendDjangoTestCase, Custom
 from django.conf import settings
 from django.test.utils import get_runner
 
+import bs4
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from urllib3.exceptions import MaxRetryError, NewConnectionError
-from rich.console import Console
 
 
 # DECORATORS
 ############
 
 
-def log_exec_bar(func: Callable) -> Any:
-    """Log the execution of a function with a progress bar."""
-    def wrapper(*args, **kwargs): # type: ignore 
-        # NOTE mad: this type ignore makes sense as we can take any function
-        out = func(*args, **kwargs)
-        # print(".", end="")
-        return out
-    # TODO mad: copy unittest style ca marche pas comme ca je crois
-    #     try:
-    #         out = func(*args, **kwargs)
-    #         print(".", end="")
-    #         return out
-    #     except AssertionError:
-    #         print("F", end="")
-    #         raise
-    #     except Exception:
-    #         print("E", end="")
-    #         raise
-    return wrapper
+# def log_exec_bar(func: Callable) -> Any:
+#     """Log the execution of a function with a progress bar."""
+#     def wrapper(*args, **kwargs): # type: ignore 
+#         # NOTE mad: this type ignore makes sense as we can take any function
+#         out = func(*args, **kwargs)
+#         # print(".", end="")
+#         return out
+#     # TODO mad: copy unittest style ca marche pas comme ca je crois
+#     #     try:
+#     #         out = func(*args, **kwargs)
+#     #         print(".", end="")
+#     #         return out
+#     #     except AssertionError:
+#     #         print("F", end="")
+#     #         raise
+#     #     except Exception:
+#     #         print("E", end="")
+#     #         raise
+#     return wrapper
 
 
 # TODO mad: screenshot on error
-# import datetime
-# def screenshot_on_error(driver):
-#     
-#     screenshot_dir = "scenery-screenshots"
-#     def decorator(func):
-#         @wraps(func)
-#         def wrapper(*args, **kwargs):
-
-#             # Create screenshots directory if it doesn't exist
-#             os.makedirs(screenshot_dir, exist_ok=True)
-
-#             try:
-#                 return func(*args, **kwargs)
-#             except Exception as e:
-#                 # Create more detailed filename
-#                 timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-#                 error_type = e.__class__.__name__
-#                 function_name = func.__name__
-
-#                 screenshot_name = os.path.join(
-#                     screenshot_dir,
-#                     f"{error_type}-{function_name}-{timestamp}.png"
-#                 )
-
-#                 driver.save_screenshot(screenshot_name)
-
-#                     # Get current URL and page source for debugging
-#                     # current_url = driver.current_url
-
-#     #                 # Log error context
-#     #                 print(f"""
-#     # Error occurred during test execution:
-#     # - Function: {function_name}
-#     # - Error Type: {error_type}
-#     # - Error Message: {str(e)}
-#     # - URL: {current_url}
-#     # - Screenshot: {screenshot_name}
-#     #                 """)
-
-#                 # except WebDriverException as screenshot_error:
-#                 #     print(f"Failed to capture error context: {screenshot_error}")
-
-#                 # Re-raise the original exception
-#                 raise e
-
-#         return wrapper
-
-#     return decorator
 
 
 def retry_on_timeout(retries: int=3, delay: int=5) -> Callable:
@@ -142,6 +97,7 @@ def retry_on_timeout(retries: int=3, delay: int=5) -> Callable:
 
 # NOTE mad: this code is used both in banckend and
 # frontend metaclasses
+# TODO: move this somewhere else, manifest ?
 
 def iter_on_takes_from_manifest(
         manifest: Manifest, 
@@ -159,13 +115,15 @@ def iter_on_takes_from_manifest(
             continue
         if only_url is not None and only_url != scene.url:
             continue
-        yield case_id, case, scene_pos, scene
+        # yield case_id, case, scene_pos, scene
+        take = scene.shoot(case)
+        yield case_id, scene_pos, take
+
 
 
 # BACKEND TEST
 
-
-class MetaBackTest(type):
+class MetaLocalBackendTest(type):
     """
     A metaclass for creating test classes dynamically based on a Manifest.
 
@@ -205,12 +163,11 @@ class MetaBackTest(type):
             # "setUpTestData": setUpTestData,
             "setUp": setUp,
         }
-        for case_id, case, scene_pos, scene in iter_on_takes_from_manifest(
+        for case_id, scene_pos, take in iter_on_takes_from_manifest(
             manifest, only_url, only_case_id, only_scene_pos
         ):
-            take = scene.shoot(case)
             test = MethodBuilder.build_backend_test_from_take(take)
-            test = log_exec_bar(test)
+            # test = log_exec_bar(test)
             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
@@ -221,7 +178,7 @@ class MetaBackTest(type):
 
 # FRONTEND TEST
 
-class MetaFrontTest(type):
+class MetaLocalFrontendTest(type):
     """A metaclass for creating frontend test classes dynamically based on a Manifest.
 
     This metaclass creates test methods for each combination of case and scene in the manifest,
@@ -270,14 +227,13 @@ class MetaFrontTest(type):
             "tearDownClass": tearDownClass,
         }
 
-        for case_id, case, scene_pos, scene in iter_on_takes_from_manifest(
+        for case_id, scene_pos, take in iter_on_takes_from_manifest(
             manifest, only_url, only_case_id, only_scene_pos
         ):
-            take = scene.shoot(case)
             test = MethodBuilder.build_frontend_test_from_take(take)
             test = retry_on_timeout(delay=timeout_waiting_time)(test)
             # test = screenshot_on_error(test)
-            test = log_exec_bar(test)
+            # test = log_exec_bar(test)
             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
@@ -287,132 +243,54 @@ class MetaFrontTest(type):
         # I just ignore here instead of casting which does not do the trick
 
 
-# DISCOVERER AND RUNNER
-#######################
-
-# TODO mad: this will disappear, as this approach is not compatible with parallelization
+class MetaRemoteBackendTest(type):
 
 
-# class TestsDiscoverer:
-#     """
-#     A class for discovering and loading test cases from manifest files.
+    def __new__(
+        cls,
+        clsname: str,
+        bases: tuple[type],
+        manifest: Manifest,
+        only_case_id: str | None = None,
+        only_scene_pos: str | None = None,
+        only_url: str | None = None,
+    ) -> type[DjangoTestCase]:
+        """Responsible for building the TestCase class.
 
-#     This class scans a directory for manifest files, creates test classes from these manifests,
-#     and loads the tests into test suites.
+        Args:
+            clsname (str): The name of the class being created.
+            bases (tuple): The base classes of the class being created.
+            manifest (Manifest): The manifest containing test cases and scenes.
 
-#     Attributes:
-#         logger (Logger): A logger instance for this class.
-#         runner (DiscoverRunner): A Django test runner instance.
-#         loader (TestLoader): A test loader instance from the runner.
-#     """
+        Returns:
+            type: A new test class with dynamically created test methods.
 
-#     def __init__(self) -> None:
-#         self.logger = logging.getLogger(__package__)
-#         self.runner = get_runner(settings, test_runner_class="django.test.runner.DiscoverRunner")()
-#         self.loader: unittest.loader.TestLoader = self.runner.test_loader
+        Raises:
+            ValueError: If the restrict argument is not in the correct format.
+        """
+        # NOTE mad: right now everything is in the setup
+        # TODO mad: setUpTestData and setUpClass
+        # setUpTestData = MethodBuilder.build_setUpTestData(manifest.set_up_test_data)
+        setUp = MethodBuilder.build_setUp(manifest.set_up)
 
-#     def discover(
-#         self,
-#         restrict_manifest_test: typing.Optional[str] = None,
-#         verbosity: int = 2,
-#         skip_back=False,
-#         skip_front=False,
-#         restrict_view=None,
-#         headless=True,
-#     ) -> list[tuple[str, unittest.TestSuite]]:
-#         """
-#         Discover and load tests from manifest files.
 
-#         Args:
-#             restrict (str, optional): A string to restrict which manifests and tests are loaded,
-#                                       in the format "manifest.case_id.scene_pos".
-#             verbosity (int, optional): The verbosity level for output. Defaults to 2.
 
-#         Returns:
-#             list: A list of tuples, each containing a test name and a TestSuite with a single test.
+        # Add SetupData and SetUp as methods of the Test class
+        cls_attrs = {
+            # "setUpTestData": setUpTestData,
+            "setUp": setUp,
+        }
+        for case_id, scene_pos, take in iter_on_takes_from_manifest(
+            manifest, only_url, only_case_id, only_scene_pos
+        ):
+            test = MethodBuilder.build_remote_backend_test_from_take(take)
+            # test = log_exec_bar(test)
+            cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
 
-#         Raises:
-#             ValueError: If the restrict argument is not in the correct format.
-#         """
-#         # TODO mad: this should take an iterable of files or of yaml string would be even better
+        test_cls = super().__new__(cls, clsname, bases, cls_attrs)
 
-#         # handle manifest/test restriction
-#         if restrict_manifest_test is not None:
-#             restrict_args = restrict_manifest_test.split(".")
-#             if len(restrict_args) == 1:
-#                 restrict_manifest, restrict_test = (
-#                     restrict_args[0],
-#                     None,
-#                 )
-#             elif len(restrict_args) == 2:
-#                 restrict_manifest, restrict_test = (restrict_args[0], restrict_args[1])
-#             elif len(restrict_args) == 3:
-#                 restrict_manifest, restrict_test = (
-#                     restrict_args[0],
-#                     restrict_args[1] + "." + restrict_args[2],
-#                 )
-#         else:
-#             restrict_manifest, restrict_test = None, None
-
-#         backend_parrallel_suites, frontend_parrallel_suites = [], []
-#         suite_cls: type[unittest.TestSuite] = self.runner.test_suite
-#         backend_suite, frontend_suite = suite_cls(), suite_cls()
-
-#         folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
-
-#         if verbosity > 0:
-#             print("Manifests discovered.")
-
-#         for filename in os.listdir(folder):
-#             manifest_name = filename.replace(".yml", "")
-
-#             # Handle manifest restriction
-#             if restrict_manifest_test is not None and restrict_manifest != manifest_name:
-#                 continue
-#             self.logger.debug(f"{folder}/{filename}")
-
-#             # Parse manifest
-#             manifest = ManifestParser.parse_yaml(os.path.join(folder, filename))
-#             ttype = manifest.testtype
-
-#             # Create backend test
-#             if not skip_back and (ttype is None or ttype == "backend"):
-#                 backend_test_cls = MetaBackTest(
-#                     f"{manifest_name}.backend",
-#                     (BackendDjangoTestCase,),
-#                     manifest,
-#                     restrict_test=restrict_test,
-#                     restrict_view=restrict_view,
-#                 )
-#                 backend_tests = self.loader.loadTestsFromTestCase(backend_test_cls)
-#                 # backend_parrallel_suites.append(backend_tests)
-#                 backend_suite.addTests(backend_tests)
-
-#             # Create frontend test
-#             if not skip_front and (ttype is None or ttype == "frontend"):
-#                 frontend_test_cls = MetaFrontTest(
-#                     f"{manifest_name}.frontend",
-#                     (FrontendDjangoTestCase,),
-#                     manifest,
-#                     restrict_test=restrict_test,
-#                     restrict_view=restrict_view,
-#                     headless=headless,
-#                 )
-#                 frontend_tests = self.loader.loadTestsFromTestCase(frontend_test_cls)
-#                 # frontend_parrallel_suites.append(frontend_tests)
-
-#                 # print(frontend_tests)
-#                 frontend_suite.addTests(frontend_tests)
-
-#         # msg = f"Resulting in {len(backend_suite._tests)} backend and {len(frontend_suite._tests)} frontend tests."
-#         n_backend_tests = sum(len(test_suite._tests) for test_suite in backend_parrallel_suites)
-#         n_fonrtend_tests = sum(len(test_suite._tests) for test_suite in frontend_parrallel_suites)
-#         msg = f"Resulting in {n_backend_tests} backend and {n_fonrtend_tests} frontend tests."
-
-#         if verbosity >= 1:
-#             print(f"{msg}\n")
-#         return backend_suite, frontend_suite
-#         # return backend_parrallel_suites, frontend_parrallel_suites
+        # print("coucou")
+        return test_cls
 
 
 class TestsRunner:
@@ -542,7 +420,7 @@ class TestsLoader:
 
         # Create backend test
         if not only_front and (ttype is None or ttype == "backend"):
-            backend_test_cls = MetaBackTest(
+            backend_test_cls = MetaLocalBackendTest(
                 f"{manifest_name}.backend",
                 (BackendDjangoTestCase,),
                 manifest,
@@ -563,7 +441,7 @@ class TestsLoader:
             if driver is None:
                 driver = get_selenium_driver(headless=headless)
 
-            frontend_test_cls = MetaFrontTest(
+            frontend_test_cls = MetaLocalFrontendTest(
                 f"{manifest_name}.frontend",
                 (FrontendDjangoTestCase,),
                 manifest,
@@ -637,3 +515,136 @@ def process_manifest(manifest_filename: str, args: argparse.Namespace, driver: w
         frontend_result = runner.run(frontend_suite)
 
     return backend_result, frontend_result
+
+
+
+
+
+
+# DISCOVERER AND RUNNER
+#######################
+
+# TODO mad: this will disappear, as this approach is not compatible with parallelization
+
+
+# class TestsDiscoverer:
+#     """
+#     A class for discovering and loading test cases from manifest files.
+
+#     This class scans a directory for manifest files, creates test classes from these manifests,
+#     and loads the tests into test suites.
+
+#     Attributes:
+#         logger (Logger): A logger instance for this class.
+#         runner (DiscoverRunner): A Django test runner instance.
+#         loader (TestLoader): A test loader instance from the runner.
+#     """
+
+#     def __init__(self) -> None:
+#         self.logger = logging.getLogger(__package__)
+#         self.runner = get_runner(settings, test_runner_class="django.test.runner.DiscoverRunner")()
+#         self.loader: unittest.loader.TestLoader = self.runner.test_loader
+
+#     def discover(
+#         self,
+#         restrict_manifest_test: typing.Optional[str] = None,
+#         verbosity: int = 2,
+#         skip_back=False,
+#         skip_front=False,
+#         restrict_view=None,
+#         headless=True,
+#     ) -> list[tuple[str, unittest.TestSuite]]:
+#         """
+#         Discover and load tests from manifest files.
+
+#         Args:
+#             restrict (str, optional): A string to restrict which manifests and tests are loaded,
+#                                       in the format "manifest.case_id.scene_pos".
+#             verbosity (int, optional): The verbosity level for output. Defaults to 2.
+
+#         Returns:
+#             list: A list of tuples, each containing a test name and a TestSuite with a single test.
+
+#         Raises:
+#             ValueError: If the restrict argument is not in the correct format.
+#         """
+#         # TODO mad: this should take an iterable of files or of yaml string would be even better
+
+#         # handle manifest/test restriction
+#         if restrict_manifest_test is not None:
+#             restrict_args = restrict_manifest_test.split(".")
+#             if len(restrict_args) == 1:
+#                 restrict_manifest, restrict_test = (
+#                     restrict_args[0],
+#                     None,
+#                 )
+#             elif len(restrict_args) == 2:
+#                 restrict_manifest, restrict_test = (restrict_args[0], restrict_args[1])
+#             elif len(restrict_args) == 3:
+#                 restrict_manifest, restrict_test = (
+#                     restrict_args[0],
+#                     restrict_args[1] + "." + restrict_args[2],
+#                 )
+#         else:
+#             restrict_manifest, restrict_test = None, None
+
+#         backend_parrallel_suites, frontend_parrallel_suites = [], []
+#         suite_cls: type[unittest.TestSuite] = self.runner.test_suite
+#         backend_suite, frontend_suite = suite_cls(), suite_cls()
+
+#         folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
+
+#         if verbosity > 0:
+#             print("Manifests discovered.")
+
+#         for filename in os.listdir(folder):
+#             manifest_name = filename.replace(".yml", "")
+
+#             # Handle manifest restriction
+#             if restrict_manifest_test is not None and restrict_manifest != manifest_name:
+#                 continue
+#             self.logger.debug(f"{folder}/{filename}")
+
+#             # Parse manifest
+#             manifest = ManifestParser.parse_yaml(os.path.join(folder, filename))
+#             ttype = manifest.testtype
+
+#             # Create backend test
+#             if not skip_back and (ttype is None or ttype == "backend"):
+#                 backend_test_cls = MetaBackTest(
+#                     f"{manifest_name}.backend",
+#                     (BackendDjangoTestCase,),
+#                     manifest,
+#                     restrict_test=restrict_test,
+#                     restrict_view=restrict_view,
+#                 )
+#                 backend_tests = self.loader.loadTestsFromTestCase(backend_test_cls)
+#                 # backend_parrallel_suites.append(backend_tests)
+#                 backend_suite.addTests(backend_tests)
+
+#             # Create frontend test
+#             if not skip_front and (ttype is None or ttype == "frontend"):
+#                 frontend_test_cls = MetaFrontTest(
+#                     f"{manifest_name}.frontend",
+#                     (FrontendDjangoTestCase,),
+#                     manifest,
+#                     restrict_test=restrict_test,
+#                     restrict_view=restrict_view,
+#                     headless=headless,
+#                 )
+#                 frontend_tests = self.loader.loadTestsFromTestCase(frontend_test_cls)
+#                 # frontend_parrallel_suites.append(frontend_tests)
+
+#                 # print(frontend_tests)
+#                 frontend_suite.addTests(frontend_tests)
+
+#         # msg = f"Resulting in {len(backend_suite._tests)} backend and {len(frontend_suite._tests)} frontend tests."
+#         n_backend_tests = sum(len(test_suite._tests) for test_suite in backend_parrallel_suites)
+#         n_fonrtend_tests = sum(len(test_suite._tests) for test_suite in frontend_parrallel_suites)
+#         msg = f"Resulting in {n_backend_tests} backend and {n_fonrtend_tests} frontend tests."
+
+#         if verbosity >= 1:
+#             print(f"{msg}\n")
+#         return backend_suite, frontend_suite
+#         # return backend_parrallel_suites, frontend_parrallel_suites
+
