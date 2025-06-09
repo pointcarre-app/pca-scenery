@@ -4,8 +4,14 @@ import importlib
 import os
 
 from scenery import logger
-from scenery.common import DjangoTestCase
+from scenery.common import DjangoTestCase, RemoteBackendTestCase
 from scenery.manifest import SetUpInstruction
+
+
+def local_execution_only(func):
+    """Simple decorator that marks function as executable"""
+    func._local_execution_only = True
+    return func
 
 class SetUpHandler:
     """Responsible for executing instructions used in `TestCase.setUp` and `TestCase.setUpTestData` provided in the manifest.
@@ -42,6 +48,10 @@ class SetUpHandler:
             AttributeError: If the specified setup function is not found in the imported module.
         """
         func = getattr(SetUpHandler.instructions_module, instruction.command)
-        func(django_testcase, **instruction.args)
 
-        logger.debug(f"performed {instruction}")
+        if isinstance(django_testcase, RemoteBackendTestCase) and hasattr(func, "_local_execution_only"):
+            pass
+        else:
+            logger.debug(instruction)
+            func(django_testcase, **instruction.args)
+

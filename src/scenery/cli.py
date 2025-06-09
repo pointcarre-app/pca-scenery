@@ -35,23 +35,14 @@ def parse_args():
 
     args = parser.parse_args()
 
-    if hasattr(args, "only_test"):
-        args.only_manifest, args.only_case_id, args.only_scene_pos = parse_arg_test_restriction(args.only_test)
+    if hasattr(args, "test"):
+        args.manifest, args.case_id, args.scene_pos = parse_arg_test_restriction(args.test)
 
 
     return args
 
 
 def add_common_arguments(parser: argparse.ArgumentParser):
-
-    # parser.add_argument(
-    #     "-v",
-    #     "--verbose",
-    #     dest="verbosity",
-    #     type=int,
-    #     default=2,
-    #     help="Verbose output",
-    # )
 
     parser.add_argument(
         "--log",
@@ -68,28 +59,21 @@ def add_common_arguments(parser: argparse.ArgumentParser):
         help="Location of scenery settings module",
     )
 
-    parser.add_argument(
-        "-ds",
-        "--django-settings",
-        dest="django_settings_module",
-        type=str,
-        default=None,
-        help="Location of django settings module",
-    )
 
 
-def parse_arg_test_restriction(only_test: str|None) -> typing.Tuple[str|None, str|None, str|None]:
-    """Parse the --only-test argument into a tuple of (manifest_name, case_id, scene_pos)."""
-    if only_test is not None:
-        only_args = only_test.split(".")
-        if len(only_args) == 1:
-            manifest_name, case_id, scene_pos = only_args[0], None, None
-        elif len(only_args) == 2:
-            manifest_name, case_id, scene_pos = only_args[0], only_args[1], None
-        elif len(only_args) == 3:
-            manifest_name, case_id, scene_pos = only_args[0], only_args[1], only_args[2]
+
+def parse_arg_test_restriction(test_name_pattern: str|None) -> typing.Tuple[str|None, str|None, str|None]:
+    """Parse the --test argument into a tuple of (manifest_name, case_id, scene_pos)."""
+    if test_name_pattern is not None:
+        split_pattern = test_name_pattern.split(".")
+        if len(split_pattern) == 1:
+            manifest_name, case_id, scene_pos = split_pattern[0], None, None
+        elif len(split_pattern) == 2:
+            manifest_name, case_id, scene_pos = split_pattern[0], split_pattern[1], None
+        elif len(split_pattern) == 3:
+            manifest_name, case_id, scene_pos = split_pattern[0], split_pattern[1], split_pattern[2]
         else:
-            raise ValueError(f"Wrong restrict argmuent {only_test}")
+            raise ValueError(f"Wrong restrict argmuent {test_name_pattern}")
         return manifest_name, case_id, scene_pos
     else:
         return None, None, None
@@ -103,14 +87,28 @@ def parse_integration_args(subparser: argparse._SubParsersAction) -> argparse.Na
 
 
     parser.add_argument(
-        "--only-test",
+        "--mode",
+        choices=["dev", "local", "staging", "prod"],
+    )
+
+    parser.add_argument(
+        "-ds",
+        "--django-settings",
+        dest="django_settings_module",
+        type=str,
+        default=None,
+        help="Location of django settings module",
+    )
+
+    parser.add_argument(
+        "--test",
         nargs="?",
         default=None,
         help="Optional test restriction <manifest>.<case>.<scene>",
     )
 
     parser.add_argument(
-        "--only-url",
+        "--url",
         nargs="?",
         default=None,
         help="Optional url restriction",
@@ -124,9 +122,10 @@ def parse_integration_args(subparser: argparse._SubParsersAction) -> argparse.Na
     )
 
     parser.add_argument('--failfast', action='store_true')
-    parser.add_argument('--only-back', action='store_true')
-    parser.add_argument('--only-front', action='store_true')
+    parser.add_argument('--back', action='store_true')
+    parser.add_argument('--front', action='store_true')
     parser.add_argument('--headless', action='store_true')
+
 
 
 
@@ -343,6 +342,7 @@ def main():
 
     success, out = command(scenery.commands.scenery_setup)(args)
 
+    # if args.mode == "dev":
     success, out = command(scenery.commands.django_setup)(args)
 
 

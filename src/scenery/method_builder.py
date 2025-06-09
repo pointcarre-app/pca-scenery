@@ -22,6 +22,8 @@ from selenium import webdriver
 ################
 
 
+
+
 class MethodBuilder:
     """A utility class for building test methods dynamically based on manifest data.
 
@@ -137,15 +139,13 @@ class MethodBuilder:
 
         def setUp(django_testcase: DjangoTestCase) -> None:
 
-            print("SETUP")
+
             if isinstance(django_testcase, RemoteBackendTestCase):
                 django_testcase.session = requests.Session()
                 django_testcase.headers = {}
                 django_testcase.base_url = os.environ[f"SCENERY_{django_testcase.mode.upper()}_URL"]
 
             for instruction in instructions:
-                from scenery import logger
-                logger.info(instruction)
                 SetUpHandler.exec_set_up_instruction(django_testcase, instruction)
 
         return setUp
@@ -180,6 +180,8 @@ class MethodBuilder:
     @staticmethod
     def build_remote_backend_test_from_take(take: Take) -> Callable:
         def test(remote_testcase: RemoteBackendTestCase) -> None:
+
+            print("##########", remote_testcase)
             response = Checker.get_http_response(remote_testcase, take)
             # if not 200 <= response.status_code < 300:
             # print(response.content.decode("utf-8"))

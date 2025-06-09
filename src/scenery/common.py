@@ -58,11 +58,11 @@ class FrontendDjangoTestCase(StaticLiveServerTestCase):
 
     driver: webdriver.Chrome
 
-import requests
 
 
 class RemoteBackendTestCase(unittest.TestCase):
-    mode = "staging"
+    # mode = "staging"
+    mode = ...
 
     # def setUp(self):
         # self.session = requests.Session()
@@ -134,7 +134,7 @@ def read_yaml(filename: str) -> typing.Any:
 
 def iter_on_manifests(args: argparse.Namespace):
     for filename in os.listdir(os.environ["SCENERY_MANIFESTS_FOLDER"]):
-        if args.only_manifest is not None and filename.replace(".yml", "") != args.only_manifest:
+        if args.manifest is not None and filename.replace(".yml", "") != args.manifest:
             continue
 
         yield filename

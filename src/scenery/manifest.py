@@ -9,11 +9,13 @@ from urllib.parse import urlparse
 import re
 import typing
 
-from django.apps import apps as django_apps
-from django.urls import reverse
 from django.utils.http import urlencode
 from django.urls.exceptions import NoReverseMatch
 from django.db.models.base import ModelBase
+
+from django.apps import apps as django_apps
+from django.urls import reverse 
+
 
 
 #############################
@@ -287,6 +289,7 @@ class Directive:
             case DirectiveCommand.REDIRECT_URL, Substituable():
                 pass
             case DirectiveCommand.COUNT_INSTANCES, {"model": str(s), "n": int(n)}:
+                # if os.environ.get("DJANGO_SETTINGS_MODULE"):
                 app_config = django_apps.get_app_config(os.environ["SCENERY_TESTED_APP_NAME"])
                 self.args["model"] = app_config.get_model(s)
             case DirectiveCommand.COUNT_INSTANCES, Substituable():
@@ -294,6 +297,7 @@ class Directive:
             case DirectiveCommand.JSON, {"key": str(s), "value": _}: # 
                 pass
             case DirectiveCommand.FIELD_OF_INSTANCE, {"find": {"model": str(model)}, "field": str(s), "value": _}: # 
+                # if os.environ.get("DJANGO_SETTINGS_MODULE"):
                 app_config = django_apps.get_app_config(os.environ["SCENERY_TESTED_APP_NAME"])
                 self.args["find"]["model"] = app_config.get_model(model)
             case _:

@@ -5,7 +5,6 @@ import importlib
 import os
 import sys
 import sysconfig
-from typing import Counter as CounterType
 import unittest
 
 from rich.rule import Rule
@@ -98,6 +97,109 @@ def django_setup(args: argparse.Namespace) -> int:
 
 
 
+# def integration_tests(args):
+#     """
+#     Execute the main functionality of the scenery test runner.
+
+#     Returns:
+#         exit_code (int): Exit code indicating success (0) or failure (1)
+#     """
+
+
+#     # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
+#     from scenery.core import process_manifest
+
+
+#     # FIXME mad: this is here to be able to load driver in two places
+#     # See also core.TestsLoader.tests_from_manifest.
+#     # Probably not a great pattern but let's fix this later
+#     # driver = get_selenium_driver(headless=args.headless)
+#     driver = None
+
+#     overall_backend_success, overall_frontend_success = True, True
+#     overall_backend_summary: CounterType[str] = Counter()
+#     overall_frontend_summary: CounterType[str] = Counter()
+
+#     for filename in iter_on_manifests(args):
+        
+#         backend_result, frontend_result = process_manifest(filename, args=args, driver=driver)
+#         if backend_result:
+#             backend_success, backend_summary = summarize_test_result(backend_result, "backend")
+#             overall_backend_success &= backend_success
+#             overall_backend_summary.update(backend_summary)
+
+#         if frontend_result:
+#             frontend_success, frontend_summary = summarize_test_result(frontend_result, "frontend")
+#             overall_frontend_success &= frontend_success
+#             overall_frontend_summary.update(frontend_summary)
+
+#         # results.append((filename, result))
+
+#     #############
+#     # OUTPUT
+#     #############
+
+#     # TODO: this should become a separate function
+
+#     panel_msg = ""
+#     panel_color = "green"
+
+#     report_tables = []
+
+#     if not args.only_front:
+#         emojy, msg, color, log_lvl = interpret(overall_backend_success)
+#         if overall_backend_success:
+#             msg = f"all backend tests {msg}"
+#         else:
+#             msg = f"some backend tests {msg}"
+#             panel_color = "red"
+        
+#         logger.log(log_lvl, msg, style=color)
+#         panel_msg += f"{emojy} {msg}"
+
+#         report_tables.append(scenery.cli.table_from_dict(overall_backend_summary, "Backend", ""))
+
+
+
+#     if not args.only_back:
+#         emojy, msg, color, log_lvl = interpret(overall_frontend_success)
+#         if overall_frontend_success:
+#             msg = f"all frontend tests {msg}"
+#         else:
+#             msg = f"some frontend tests {msg}"
+#             panel_color = "red"
+            
+#         logger.log(log_lvl, msg, color)
+#         panel_msg += f"\n{emojy} {msg}"
+
+#         report_tables.append(scenery.cli.table_from_dict(overall_frontend_summary, "Frontend", ""))
+
+
+
+#     overall_success = overall_backend_success and overall_frontend_success
+#     emojy, msg, color, log_lvl = interpret(overall_success)
+#     logger.log(log_lvl, f"integration tests {msg}", style=color)
+
+
+#     report_tables = Columns(report_tables, equal=False, expand=True)
+#     panel_report = Group(panel_msg, report_tables)
+
+
+#     console.print(Panel(
+#         panel_report,
+#         title="Results",
+#         border_style=panel_color
+#     ))
+
+#     # console.print(report_tables)
+
+
+
+#     console.print(Rule(f"{emojy} Integration tests {msg}", style=color))
+
+#     return overall_success, {}
+
+
 def integration_tests(args):
     """
     Execute the main functionality of the scenery test runner.
@@ -108,7 +210,7 @@ def integration_tests(args):
 
 
     # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
-    from scenery.core import process_manifest
+    from scenery.core import process_manifest_as_integration_test
 
 
     # FIXME mad: this is here to be able to load driver in two places
@@ -117,89 +219,155 @@ def integration_tests(args):
     # driver = get_selenium_driver(headless=args.headless)
     driver = None
 
-    overall_backend_success, overall_frontend_success = True, True
-    overall_backend_summary: CounterType[str] = Counter()
-    overall_frontend_summary: CounterType[str] = Counter()
+    report_data = {
+        "dev_backend": [],
+        "dev_frontend": [],
+        "remote_backend": [],
+        "remote_frontend": []
+    }
+
+    # dev_backend_report_data, dev_frontend_report_data, remote_backend_data, remote_frontend_data = [], [], [], []
 
     for filename in iter_on_manifests(args):
         
-        backend_result, frontend_result = process_manifest(filename, args=args, driver=driver)
-        if backend_result:
-            backend_success, backend_summary = summarize_test_result(backend_result, "backend")
-            overall_backend_success &= backend_success
-            overall_backend_summary.update(backend_summary)
+        # dev_backend_result, dev_frontend_result, remote_backend_result, remote_frontend_result = process_manifest_as_integration_test(filename, args=args, driver=driver)
+        results = process_manifest_as_integration_test(filename, args=args, driver=driver)
 
-        if frontend_result:
-            frontend_success, frontend_summary = summarize_test_result(frontend_result, "frontend")
-            overall_frontend_success &= frontend_success
-            overall_frontend_summary.update(frontend_summary)
+        for key, val in results.items():
+            if val:
+                success, summary = summarize_test_result(val, key.replace("_", "-"))
+                report_data[key].append((success, summary))
+            # dev_backend_report_data.append()
 
-        # results.append((filename, result))
+        # if results["dev_frontend"]:
+        #     dev_frontend_success, dev_frontend_summary = summarize_test_result(dev_frontend_result, "frontend")
+        #     report_data["dev_frontend"].append((dev_frontend_success, dev_frontend_summary))
+        
+        # if results["remote_backend"]:
+        #     remote_backend_success, remote_backend_summary = summarize_test_result(remote_backend_result, "backend")
+        #     report_data["dev_backend"].append((remote_backend_success, dev_backend_summary))
+        #     # dev_backend_report_data.append()
+            
+        # if results["remote_frontend"]:
+        #     remote_frontend_success, remote_frontend_summary = summarize_test_result(remote_frontend_result, "frontend")
+        #     report_data["dev_frontend"].append((remote_frontend_success, remote_frontend_summary))
 
-    #############
-    # OUTPUT
-    #############
+    success = report(report_data)
+    return success, {}
 
-    # TODO: this should become a separate function
+
+
+
+def report(report_data):
+
+    # TODO: new names for overall_
+
 
     panel_msg = ""
     panel_color = "green"
-
     report_tables = []
 
-    if not args.only_front:
-        emojy, msg, color, log_lvl = interpret(overall_backend_success)
-        if overall_backend_success:
-            msg = f"all backend tests {msg}"
-        else:
-            msg = f"some backend tests {msg}"
-            panel_color = "red"
-        
-        logger.log(log_lvl, msg, style=color)
-        panel_msg += f"{emojy} {msg}"
+    command_success = True
 
-        report_tables.append(scenery.cli.table_from_dict(overall_backend_summary, "Backend", ""))
+    for key, val in report_data.items():
 
+        overall_success = True
+        overall_summary = Counter()
 
-
-    if not args.only_back:
-        emojy, msg, color, log_lvl = interpret(overall_frontend_success)
-        if overall_frontend_success:
-            msg = f"all frontend tests {msg}"
-        else:
-            msg = f"some frontend tests {msg}"
-            panel_color = "red"
+        for success, summary in val:
             
-        logger.log(log_lvl, msg, color)
-        panel_msg += f"\n{emojy} {msg}"
+            overall_success &= success
+            overall_summary.update(summary)
+            # print("SUCCESS=", success, overall_success, command_success)
 
-        report_tables.append(scenery.cli.table_from_dict(overall_frontend_summary, "Frontend", ""))
+        if val:
+            emojy, msg, color, log_lvl = interpret(overall_success)
+
+            if overall_success:
+                msg = f"all backend tests {msg}"
+            else:
+                msg = f"some backend tests {msg}"
+                panel_color = "red"
+
+            logger.log(log_lvl, msg, style=color)
+            panel_msg += f"{emojy} {msg}"
+            report_tables.append(scenery.cli.table_from_dict(overall_summary, key, ""))
+
+            command_success &= overall_success
 
 
 
-    overall_success = overall_backend_success and overall_frontend_success
-    emojy, msg, color, log_lvl = interpret(overall_success)
+    # overall_backend_success, overall_frontend_success = True, True
+    # overall_backend_summary, overall_frontend_summary = Counter(), Counter()
+
+
+
+
+    # BACKEND
+    ########################
+
+    # for backend_success, backend_summary in backend_report_data:
+    #     overall_backend_success &= backend_success
+    #     overall_backend_summary.update(backend_summary)
+
+    # if backend_report_data:
+    #     emojy, msg, color, log_lvl = interpret(overall_backend_success)
+    #     if overall_backend_success:
+    #         msg = f"all backend tests {msg}"
+    #     else:
+    #         msg = f"some backend tests {msg}"
+    #         panel_color = "red"
+
+    #     logger.log(log_lvl, msg, style=color)
+    #     panel_msg += f"{emojy} {msg}"
+
+    #     report_tables.append(scenery.cli.table_from_dict(overall_backend_summary, "Backend", ""))
+
+    # FRONTEND
+    ########################
+
+    # for frontend_success, frontend_summary in frontend_report_data:
+    #     overall_frontend_success &= frontend_success
+    #     overall_frontend_summary.update(frontend_summary)
+
+    # if frontend_report_data:
+    #     emojy, msg, color, log_lvl = interpret(overall_frontend_success)
+    #     if overall_frontend_success:
+    #         msg = f"all frontend tests {msg}"
+    #     else:
+    #         msg = f"some frontend tests {msg}"
+    #         panel_color = "red"
+
+    #     logger.log(log_lvl, msg, style=color)
+    #     panel_msg += f"\n{emojy} {msg}"
+
+    #     report_tables.append(scenery.cli.table_from_dict(overall_frontend_summary, "Frontend", ""))
+
+    # OVERALL
+    #########################
+
+    # overall_success = overall_backend_success and overall_frontend_success
+    emojy, msg, color, log_lvl = interpret(command_success)
     logger.log(log_lvl, f"integration tests {msg}", style=color)
 
+    # console.print(Panel(panel_msg, title="Results", border_style=panel_color))
+    # report_tables = Columns(report_tables, equal=False, expand=True)
+    # console.print(report_tables)
 
     report_tables = Columns(report_tables, equal=False, expand=True)
     panel_report = Group(panel_msg, report_tables)
 
-
-    console.print(Panel(
-        panel_report,
-        title="Results",
-        border_style=panel_color
-    ))
-
-    # console.print(report_tables)
-
-
+    console.print(Panel(panel_report, title="Results", border_style=panel_color))
 
     console.print(Rule(f"{emojy} Integration tests {msg}", style=color))
 
-    return overall_success, {}
+    return command_success
 
+
+
+################################################
+################### DRAFT ######################
+################################################
 
 
 def load_tests(args):
@@ -238,9 +406,9 @@ def load_tests(args):
     django_runner = CustomDiscoverRunner(None)
 
 
-    only_url = args.only_url
-    only_case_id = args.only_case_id
-    only_scene_pos = args.only_scene_pos
+    only_url = args.url
+    only_case_id = args.case_id
+    only_scene_pos = args.scene_pos
 
     data = defaultdict(list)
 

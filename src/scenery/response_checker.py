@@ -123,6 +123,10 @@ class Checker:
         Raises:
             NotImplementedError: If the HTTP method specified in the take is not implemented.
         """
+
+
+        logger.info(f'{take.method}:{take.url}')
+
         if take.method == http.HTTPMethod.GET:
             response = django_testcase.client.get(
                 take.url,
@@ -172,6 +176,9 @@ class Checker:
         # Get the correct url form the FrontendDjangoTestCase
         url = django_testcase.live_server_url + take.url
 
+        logger.info(f'{take.method}:{url}')
+
+
         response = SeleniumResponse(django_testcase.driver)
 
         # TODO: should be a class attribute or something, maybe module could be loaded at the beggining
@@ -191,6 +198,13 @@ class Checker:
     
     @staticmethod
     def get_http_response(remote_testcase, take):
+
+        from scenery.common import RemoteBackendTestCase
+
+        print("###########", type(remote_testcase), isinstance(remote_testcase, RemoteBackendTestCase))
+
+        logger.info(f'{take.method}:{remote_testcase.base_url + take.url}')
+
         if take.method == http.HTTPMethod.GET:
             response = remote_testcase.session.get(
                 remote_testcase.base_url + take.url,
@@ -198,7 +212,6 @@ class Checker:
                 headers=remote_testcase.headers,
             )
         elif take.method == http.HTTPMethod.POST:
-            print("MAKING A POST REQUEST")
             response = remote_testcase.session.post(
                 remote_testcase.base_url + take.url,
                 take.data,
@@ -207,7 +220,6 @@ class Checker:
         else:
             raise NotImplementedError(take.method)
 
-        print(remote_testcase.base_url + take.url)
         return response
 
     @staticmethod

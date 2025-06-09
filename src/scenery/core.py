@@ -1,12 +1,8 @@
 """Build the tests from the Manifest, discover & run tests."""
 import argparse
-# import io
 from functools import wraps
-import http
 import itertools
-import json
 import os
-import requests
 import sys
 from typing import Iterable, Callable, Any, Tuple
 import time
@@ -16,7 +12,7 @@ from scenery import logger
 from scenery.manifest import Manifest, Case, Scene
 from scenery.method_builder import MethodBuilder
 from scenery.manifest_parser import ManifestParser
-from scenery.common import FrontendDjangoTestCase, BackendDjangoTestCase, CustomDiscoverRunner, DjangoTestCase, get_selenium_driver
+from scenery.common import FrontendDjangoTestCase, BackendDjangoTestCase, RemoteBackendTestCase, CustomDiscoverRunner, DjangoTestCase, get_selenium_driver
 
 from django.conf import settings
 from django.test.utils import get_runner
@@ -123,7 +119,7 @@ def iter_on_takes_from_manifest(
 
 # BACKEND TEST
 
-class MetaLocalBackendTest(type):
+class MetaDevBackendTest(type):
     """
     A metaclass for creating test classes dynamically based on a Manifest.
 
@@ -374,8 +370,9 @@ class TestsLoader:
     def integration_tests_from_manifest(
         self,
         filename: str,
-        only_back: bool=False,
-        only_front: bool=False,
+        mode: str,
+        back: bool=False,
+        front: bool=False,
         only_url: str | None=None,
         timeout_waiting_time: int=5,
         only_case_id: str | None=None,
@@ -411,17 +408,22 @@ class TestsLoader:
             - The driver initialization can occur here or be passed in from external code
         """
 
-        backend_suite, frontend_suite = unittest.TestSuite(), unittest.TestSuite()
+        dev_backend_suite, dev_frontend_suite = unittest.TestSuite(), unittest.TestSuite()
+        remote_backend_suite, remote_frontend_suite = unittest.TestSuite(), unittest.TestSuite()
 
         # Parse manifest
+        # TODO: there should be a separation between reading file and parsing
         manifest = ManifestParser.parse_yaml(os.path.join(self.folder, filename))
         ttype = manifest.testtype
         manifest_name = filename.replace(".yml", "")
 
-        # Create backend test
-        if not only_front and (ttype is None or ttype == "backend"):
-            backend_test_cls = MetaLocalBackendTest(
-                f"{manifest_name}.backend",
+        # NOTE mad: manifests can indicate they are not to be ran in some mode
+        back &= (ttype is None or ttype == "backend")
+        front &=  (ttype is None or ttype == "frontend")
+
+        if back and mode == "dev":
+            cls = MetaDevBackendTest(
+                f"{manifest_name}.dev.backend",
                 (BackendDjangoTestCase,),
                 manifest,
                 only_case_id=only_case_id,
@@ -429,19 +431,33 @@ class TestsLoader:
                 only_url=only_url,
             )
             # FIXME mad: type hinting mislead by metaclasses
-            backend_tests = self.loader.loadTestsFromTestCase(backend_test_cls) # type: ignore[arg-type]
-            backend_suite.addTests(backend_tests)
+            tests = self.loader.loadTestsFromTestCase(cls) # type: ignore[arg-type]
+            dev_backend_suite.addTests(tests)
+
+        if back and mode in ["local", "staging", "prod"]:
+            cls = MetaRemoteBackendTest(
+                f"{manifest_name}.backend",
+                (RemoteBackendTestCase,),
+                manifest,
+                only_case_id=only_case_id,
+                only_scene_pos=only_scene_pos,
+                only_url=only_url,
+            )
+            # TODO mad: really not sure this is the right place
+            cls.mode = mode
+            tests = self.loader.loadTestsFromTestCase(cls) 
+            remote_backend_suite.addTests(tests)
 
         # Create frontend test
-        if not only_back and (ttype is None or ttype == "frontend"):
+        if front and mode == "dev":
 
             # NOTE mad: this is here to be able to load driver in two places
             # See also scenery/__main__.py
-            # Probably not a great pattern but let's fix this later
+            # Probably not a great pattern but let's FIXME this later
             if driver is None:
                 driver = get_selenium_driver(headless=headless)
 
-            frontend_test_cls = MetaLocalFrontendTest(
+            cls = MetaLocalFrontendTest(
                 f"{manifest_name}.frontend",
                 (FrontendDjangoTestCase,),
                 manifest,
@@ -453,13 +469,18 @@ class TestsLoader:
                 # headless=True,
             )
             # FIXME mad: type hinting mislead by metaclasses
-            frontend_tests = self.loader.loadTestsFromTestCase(frontend_test_cls) # type: ignore[arg-type]
-            frontend_suite.addTests(frontend_tests)
+            tests = self.loader.loadTestsFromTestCase(cls) # type: ignore[arg-type]
+            dev_frontend_suite.addTests(tests)
 
-        return backend_suite, frontend_suite
+        if front and mode in ["local", "staging", "prod"]:
+            # TODO mad
+            ...
 
 
-def process_manifest(manifest_filename: str, args: argparse.Namespace, driver: webdriver.Chrome | None) -> Tuple[bool, dict, bool, dict]:
+        return dev_backend_suite, dev_frontend_suite, remote_backend_suite, remote_frontend_suite
+
+
+def process_manifest_as_integration_test(manifest_filename: str, args: argparse.Namespace, driver: webdriver.Chrome | None) -> Tuple[bool, dict, bool, dict]:
     """Process a test manifest file and executes both backend and frontend tests.
 
     Takes a manifest file and command line arguments to run the specified tests,
@@ -489,32 +510,47 @@ def process_manifest(manifest_filename: str, args: argparse.Namespace, driver: w
         - Uses TestsLoader and TestsRunner for test execution
         - Test results are summarized with verbosity level 0
     """
+
     # logging.log(logging.INFO, f"{manifest_filename=}")
     logger.info(f"{manifest_filename=}")
 
     loader = TestsLoader()
     runner = TestsRunner()
 
-    backend_suite, frontend_suite = loader.integration_tests_from_manifest(
+    dev_backend_suite, dev_frontend_suite, remote_backend_suite, remote_frontend_suite = loader.integration_tests_from_manifest(
         manifest_filename, 
-        only_back=args.only_back, 
-        only_front=args.only_front, 
-        only_url=args.only_url, 
-        only_case_id=args.only_case_id, 
-        only_scene_pos=args.only_scene_pos, 
+        mode=args.mode,
+        back=args.back, 
+        front=args.front, 
+        only_url=args.url, 
+        only_case_id=args.case_id, 
+        only_scene_pos=args.scene_pos, 
         timeout_waiting_time=args.timeout_waiting_time, 
         driver = driver,
         headless=args.headless,
     )
 
-    backend_result, frontend_result = None, None
-    if not args.only_front:
-        backend_result = runner.run(backend_suite)
+    results = {
+        "dev_backend": None,
+        "dev_frontend": None,
+        "remote_backend": None,
+        "remote_frontend": None,
+    }
 
-    if not args.only_back:
-        frontend_result = runner.run(frontend_suite)
+    # dev_backend_result, dev_frontend_result, remote_backend_result, remote_frontend_result = None, None, None, None
+    if args.back and args.mode == "dev":
+        results["dev_backend"] = runner.run(dev_backend_suite)
 
-    return backend_result, frontend_result
+    if args.back and args.mode in ["local", "staging", "prod"]:
+        results["remote_backend"] = runner.run(remote_backend_suite)
+
+    if args.front and args.mode == "dev":
+        results["dev_frontend"] = runner.run(dev_frontend_suite)
+
+    # if args.front and args.mode in ["local", "staging", "prod"]:
+    #     remote_frontend_result = runner.run(dev_frontend_suite)
+
+    return results
 
 
 
