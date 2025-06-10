@@ -2,6 +2,7 @@ import argparse
 import typing
 import statistics
 import collections
+import logging
 
 from rich import box
 from rich.console import Console
@@ -16,6 +17,7 @@ from rich.panel import Panel
 
 import scenery.commands
 from scenery import logger, console
+from scenery.common import interpret
 
 
 
@@ -38,17 +40,14 @@ def parse_args():
     if hasattr(args, "test"):
         args.manifest, args.case_id, args.scene_pos = parse_arg_test_restriction(args.test)
 
+    print("SET LEVEL TO", args.log)
+    logger.level = logging._nameToLevel[args.log]
+
 
     return args
 
 
 def add_common_arguments(parser: argparse.ArgumentParser):
-
-    parser.add_argument(
-        "--log",
-        default="INFO",
-        help="Logging level"
-    )
 
     parser.add_argument(
         "-s",
@@ -57,38 +56,6 @@ def add_common_arguments(parser: argparse.ArgumentParser):
         type=str,
         default="scenery_settings",
         help="Location of scenery settings module",
-    )
-
-
-
-
-def parse_arg_test_restriction(test_name_pattern: str|None) -> typing.Tuple[str|None, str|None, str|None]:
-    """Parse the --test argument into a tuple of (manifest_name, case_id, scene_pos)."""
-    if test_name_pattern is not None:
-        split_pattern = test_name_pattern.split(".")
-        if len(split_pattern) == 1:
-            manifest_name, case_id, scene_pos = split_pattern[0], None, None
-        elif len(split_pattern) == 2:
-            manifest_name, case_id, scene_pos = split_pattern[0], split_pattern[1], None
-        elif len(split_pattern) == 3:
-            manifest_name, case_id, scene_pos = split_pattern[0], split_pattern[1], split_pattern[2]
-        else:
-            raise ValueError(f"Wrong restrict argmuent {test_name_pattern}")
-        return manifest_name, case_id, scene_pos
-    else:
-        return None, None, None
-
-
-def parse_integration_args(subparser: argparse._SubParsersAction) -> argparse.Namespace:
-    """Parse command line arguments."""
-
-    parser = subparser.add_parser('integration', help='Integration tests')
-    add_common_arguments(parser)
-
-
-    parser.add_argument(
-        "--mode",
-        choices=["dev", "local", "staging", "prod"],
     )
 
     parser.add_argument(
@@ -115,6 +82,42 @@ def parse_integration_args(subparser: argparse._SubParsersAction) -> argparse.Na
     )
 
     parser.add_argument(
+        "--log",
+        nargs="?",
+        default="INFO",
+        help="Log level",
+    )
+
+
+def parse_arg_test_restriction(test_name_pattern: str|None) -> typing.Tuple[str|None, str|None, str|None]:
+    """Parse the --test argument into a tuple of (manifest_name, case_id, scene_pos)."""
+    if test_name_pattern is not None:
+        split_pattern = test_name_pattern.split(".")
+        if len(split_pattern) == 1:
+            manifest_name, case_id, scene_pos = split_pattern[0], None, None
+        elif len(split_pattern) == 2:
+            manifest_name, case_id, scene_pos = split_pattern[0], split_pattern[1], None
+        elif len(split_pattern) == 3:
+            manifest_name, case_id, scene_pos = split_pattern[0], split_pattern[1], split_pattern[2]
+        else:
+            raise ValueError(f"Wrong restrict argmuent {test_name_pattern}")
+        return manifest_name, case_id, scene_pos
+    else:
+        return None, None, None
+
+
+def parse_integration_args(subparser: argparse._SubParsersAction) -> argparse.Namespace:
+    """Parse command line arguments."""
+
+    parser = subparser.add_parser('integration', help='Integration tests')
+    add_common_arguments(parser)
+
+    parser.add_argument(
+        "--mode",
+        choices=["dev", "local", "staging", "prod"],
+    )
+
+    parser.add_argument(
         "--timeout",
         dest="timeout_waiting_time",
         type=int,
@@ -135,7 +138,15 @@ def parse_load_args(subparser: argparse._SubParsersAction):
     parser = subparser.add_parser('load', help='Load tests')
     add_common_arguments(parser)
 
-    # TODO
+
+    parser.add_argument(
+        "--mode",
+        choices=["local", "staging", "prod"],
+    )
+
+    parser.add_argument('-u', '--users', type=int)
+    parser.add_argument('-r', '--requests', type=int)
+
 
 
 #################
@@ -170,15 +181,29 @@ def histogram(x):
     """Display a histogram leveraging Rich progress bars and return a renderable object"""
     # Calculate histogram data
     min_val, max_val = min(x), max(x)
-    bins = 10  # Number of bins
-    range_val = max_val - min_val
-    bin_width = range_val / bins if range_val > 0 else 0.001
+    # bins = 10  # Number of bins
+    # range_val = max_val - min_val
+    # bin_width = range_val / bins if range_val > 0 else 0.001
     
+    bins = [
+        (0, 50), 
+        (50, 100), 
+        (100, 200),
+        (100, 300),
+        (300, 500),
+        (500, 750),
+        (750, 1000),
+        (1000, 2000),
+        (2000, 3000),
+        (3000, max(max_val, 4000))]
+
     histogram_data = []
-    for i in range(bins):
-        bin_start = min_val + i * bin_width
-        bin_end = min_val + (i + 1) * bin_width
-        bin_count = sum(1 for t in x if bin_start <= t < bin_end or (i == bins-1 and t == bin_end))
+    # for i in range(bins):
+        # bin_start = min_val + i * bin_width
+        # bin_end = min_val + (i + 1) * bin_width
+    for i, (bin_start, bin_end) in enumerate(bins):
+        bin_count = sum(1 for t in x if bin_start <= t < bin_end or (i == len(bins)-1 and t == bin_end))
+        # bin_count = sum(1 for t in x if bin_start <= t < bin_end or (i == bins-1 and t == bin_end))
         histogram_data.append((bin_start, bin_end, bin_count))
     
     max_count = sum(count for _, _, count in histogram_data) if histogram_data else 0
@@ -208,13 +233,16 @@ def histogram(x):
 def command(func):
     def wrapper(*args):
 
+        print("KIKOU")
+
         command_label = func.__name__.replace("_", " ").capitalize()
 
         console.print(Rule(f"[section]{command_label}[/section]", style="cyan"))
         logger.info(f"starting {func.__name__}...")
 
         success, out = func(*args)
-        
+
+        # TODO mad: add interpretation        
         return success, out
 
     return wrapper
@@ -225,7 +253,57 @@ def command(func):
 ##################
 
 
-def report_load_tests(data: dict):
+def report_integration(data):
+
+    # TODO mad: better names for overall_*
+
+    panel_msg = ""
+    panel_color = "green"
+    report_tables = []
+
+    command_success = True
+
+    for key, val in data.items():
+
+        overall_success = True
+        overall_summary = collections.Counter()
+
+        for success, summary in val:
+            
+            overall_success &= success
+            overall_summary.update(summary)
+
+        if val:
+            emojy, msg, color, log_lvl = interpret(overall_success)
+
+            if overall_success:
+                msg = f"all backend tests {msg}"
+            else:
+                msg = f"some backend tests {msg}"
+                panel_color = "red"
+
+            logger.log(log_lvl, msg, style=color)
+            panel_msg += f"{emojy} {msg}"
+            report_tables.append(scenery.cli.table_from_dict(overall_summary, key, ""))
+
+            command_success &= overall_success
+
+    emojy, msg, color, log_lvl = interpret(command_success)
+    logger.log(log_lvl, f"integration tests {msg}", style=color)
+
+    report_tables = Columns(report_tables, equal=False, expand=True)
+    panel_report = Group(panel_msg, report_tables)
+
+    console.print(Panel(panel_report, title="Results", border_style=panel_color))
+
+    console.print(Rule(f"{emojy} Integration tests {msg}", style=color))
+
+    return command_success
+
+
+
+
+def report_load(data: dict):
 
     #####################
     # OUTPUT
@@ -260,14 +338,15 @@ def report_load_tests(data: dict):
         # TODO mad: confirm with sel if success_times is the right one
         
         if success_times:
-            # quantiles = statistics.quantiles(success_times, n=100)
-            quantiles = statistics.quantiles(success_times, n=4)
+            quantiles = statistics.quantiles(success_times, n=100)
+            # quantiles = statistics.quantiles(success_times, n=4)
 
             ep_analysis.update({
                 'min_time': min(success_times),
                 'p50': statistics.median(success_times),
-                # 'p90': quantiles[90-1],
-                # 'p99': quantiles[99-1],
+                'p90': quantiles[90-1],
+                'p95': quantiles[95-1],
+                '[bold]p99[/bold]': quantiles[99-1],
                 'max': max(success_times),
 
             })
@@ -280,7 +359,8 @@ def report_load_tests(data: dict):
             "min_time": ("{:.2f}ms", None),
             "p50": ("{:.2f}ms", None),
             "p90": ("{:.2f}ms", None),
-            "p99": ("{:.2f}ms", None),
+            "p95": ("{:.2f}ms", None),
+            "[bold]p99[/bold]": ("[bold]{:.2f}ms[/bold]", None),
             "max": ("{:.2f}ms", None),
             "stdev": ("{:.2f}ms", None),
         }
@@ -336,7 +416,7 @@ def main():
 
 
 
-    logger.debug(f"{args=}")
+    logger.debug(args)
 
 
 

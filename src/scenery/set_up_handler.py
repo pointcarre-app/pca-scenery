@@ -4,7 +4,7 @@ import importlib
 import os
 
 from scenery import logger
-from scenery.common import DjangoTestCase, RemoteBackendTestCase
+from scenery.common import DjangoTestCase, RemoteBackendTestCase, LoadTestCase
 from scenery.manifest import SetUpInstruction
 
 
@@ -49,7 +49,8 @@ class SetUpHandler:
         """
         func = getattr(SetUpHandler.instructions_module, instruction.command)
 
-        if isinstance(django_testcase, RemoteBackendTestCase) and hasattr(func, "_local_execution_only"):
+
+        if isinstance(django_testcase, (RemoteBackendTestCase, LoadTestCase)) and hasattr(func, "_local_execution_only"):
             pass
         else:
             logger.debug(instruction)

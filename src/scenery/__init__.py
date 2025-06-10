@@ -47,6 +47,9 @@ class SceneryLogger:
 
     def warning(self, msg, style=None):
         self.log(logging.WARNING, msg, style)
+
+    def error(self, msg, style=None):
+        self.log(logging.ERROR, msg, style)
         
 console = Console()
 logger = SceneryLogger(logging.INFO)

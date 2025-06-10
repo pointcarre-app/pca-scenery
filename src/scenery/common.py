@@ -58,23 +58,24 @@ class FrontendDjangoTestCase(StaticLiveServerTestCase):
 
     driver: webdriver.Chrome
 
-
-
 class RemoteBackendTestCase(unittest.TestCase):
-    # mode = "staging"
-    mode = ...
+    mode: str
+
+
+class LoadTestCase(unittest.TestCase):
+    mode: str
 
     # def setUp(self):
-        # self.session = requests.Session()
-        # self.
-        # self.headers = {}
-        # self.update_csrf()
-        # self.login(
-        #     user_email=os.environ[f"SCENERY_{self.mode.upper()}_USER_EMAIL"],
-        #     password=os.environ[f"SCENERY_{self.mode.upper()}_PASSWORD"],
+    #     self.session = requests.Session()
+    #     self.
+    #     self.headers = {}
+    #     self.update_csrf()
+    #     self.login(
+    #         user_email=os.environ[f"SCENERY_{self.mode.upper()}_USER_EMAIL"],
+    #         password=os.environ[f"SCENERY_{self.mode.upper()}_PASSWORD"],
 
-        # )
-        # self.update_csrf()
+    #     )
+    #     self.update_csrf()
 
 
 
@@ -228,11 +229,8 @@ def summarize_test_result(result: unittest.TestResult, test_label) -> tuple[bool
         pass
 
     else:
-        # Print test summary
-        # print(summary)
         emojy, msg, color, log_lvl = interpret(success)
         msg = f"{test_label} {msg}"
-        # logging.log(log_lvl, msg)
         logger.log(log_lvl, msg, style=color)
 
     return success, summary
@@ -288,7 +286,7 @@ class CustomDiscoverRunner(DjangoDiscoverRunner):
         self.stream = stream
 
     # def __del__(self):
-    #     print("HEHEHE")
+    #     print("HERE")
     #     print(self.stream.getvalue())
 
     def get_test_runner_kwargs(self) -> dict[str, typing.Any]:

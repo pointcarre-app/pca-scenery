@@ -11,6 +11,7 @@ from scenery.common import (
     BackendDjangoTestCase,
     FrontendDjangoTestCase,
     RemoteBackendTestCase,
+    LoadTestCase,
     get_selenium_driver,
 )
 # from scenery.core import RemoteBackendTestCase
@@ -120,7 +121,6 @@ class MethodBuilder:
         return classmethod(tearDownClass)
     
 
-
     @staticmethod
     def build_setUp(
         instructions: list[SetUpInstruction]
@@ -140,11 +140,10 @@ class MethodBuilder:
         def setUp(django_testcase: DjangoTestCase) -> None:
 
 
-            if isinstance(django_testcase, RemoteBackendTestCase):
+            if isinstance(django_testcase, (RemoteBackendTestCase, LoadTestCase)):
                 django_testcase.session = requests.Session()
                 django_testcase.headers = {}
                 django_testcase.base_url = os.environ[f"SCENERY_{django_testcase.mode.upper()}_URL"]
-
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase, instruction)
 
@@ -178,31 +177,6 @@ class MethodBuilder:
         return test
 
     @staticmethod
-    def build_remote_backend_test_from_take(take: Take) -> Callable:
-        def test(remote_testcase: RemoteBackendTestCase) -> None:
-
-            print("##########", remote_testcase)
-            response = Checker.get_http_response(remote_testcase, take)
-            # if not 200 <= response.status_code < 300:
-            # print(response.content.decode("utf-8"))
-            for i, check in enumerate(take.checks):
-                with remote_testcase.subTest(f"directive {i}"):
-                    # print(f"{check=}")
-                    if check.instruction in [
-                        DirectiveCommand.COUNT_INSTANCES,
-                        DirectiveCommand.FIELD_OF_INSTANCE,
-                    ]:
-                        continue
-                    Checker.exec_check(remote_testcase, response, check)
-
-            # response = Checker.get_http_client_response(django_testcase, take)
-            # for i, check in enumerate(take.checks):
-            #     with django_testcase.subTest(f"directive {i}"):
-            #         Checker.exec_check(django_testcase, response, check)
-
-        return test
-
-    @staticmethod
     def build_frontend_test_from_take(take: Take) -> Callable:
         """Build a test method from a Take object for frontend testing.
 
@@ -226,5 +200,33 @@ class MethodBuilder:
                     continue
                 with django_testcase.subTest(f"directive {i}"):
                     Checker.exec_check(django_testcase, response, check)
+
+        return test
+
+    @staticmethod
+    def build_remote_backend_test_from_take(take: Take) -> Callable:
+        def test(remote_testcase: RemoteBackendTestCase) -> None:
+
+            response = Checker.get_http_response(remote_testcase, take)
+
+            for i, check in enumerate(take.checks):
+                with remote_testcase.subTest(f"directive {i}"):
+                    # print(f"{check=}")
+                    if check.instruction in [
+                        DirectiveCommand.COUNT_INSTANCES,
+                        DirectiveCommand.FIELD_OF_INSTANCE,
+                    ]:
+                        continue
+                    Checker.exec_check(remote_testcase, response, check)
+
+
+        return test
+
+    @staticmethod
+    def build_remote_load_test_from_take(take: Take) -> Callable:
+        def test(remote_testcase: RemoteBackendTestCase) -> None:
+
+            response = Checker.get_http_response(remote_testcase, take)
+
 
         return test

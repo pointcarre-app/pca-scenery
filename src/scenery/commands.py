@@ -7,14 +7,10 @@ import sys
 import sysconfig
 import unittest
 
-from rich.rule import Rule
-from rich.panel import Panel
-from rich.columns import Columns
-from rich.console import Group
 
 from scenery.common import summarize_test_result, interpret, iter_on_manifests
 import scenery.cli
-from scenery import console, logger
+from scenery import logger
 
 
 
@@ -96,110 +92,6 @@ def django_setup(args: argparse.Namespace) -> int:
     return True, {}
 
 
-
-# def integration_tests(args):
-#     """
-#     Execute the main functionality of the scenery test runner.
-
-#     Returns:
-#         exit_code (int): Exit code indicating success (0) or failure (1)
-#     """
-
-
-#     # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
-#     from scenery.core import process_manifest
-
-
-#     # FIXME mad: this is here to be able to load driver in two places
-#     # See also core.TestsLoader.tests_from_manifest.
-#     # Probably not a great pattern but let's fix this later
-#     # driver = get_selenium_driver(headless=args.headless)
-#     driver = None
-
-#     overall_backend_success, overall_frontend_success = True, True
-#     overall_backend_summary: CounterType[str] = Counter()
-#     overall_frontend_summary: CounterType[str] = Counter()
-
-#     for filename in iter_on_manifests(args):
-        
-#         backend_result, frontend_result = process_manifest(filename, args=args, driver=driver)
-#         if backend_result:
-#             backend_success, backend_summary = summarize_test_result(backend_result, "backend")
-#             overall_backend_success &= backend_success
-#             overall_backend_summary.update(backend_summary)
-
-#         if frontend_result:
-#             frontend_success, frontend_summary = summarize_test_result(frontend_result, "frontend")
-#             overall_frontend_success &= frontend_success
-#             overall_frontend_summary.update(frontend_summary)
-
-#         # results.append((filename, result))
-
-#     #############
-#     # OUTPUT
-#     #############
-
-#     # TODO: this should become a separate function
-
-#     panel_msg = ""
-#     panel_color = "green"
-
-#     report_tables = []
-
-#     if not args.only_front:
-#         emojy, msg, color, log_lvl = interpret(overall_backend_success)
-#         if overall_backend_success:
-#             msg = f"all backend tests {msg}"
-#         else:
-#             msg = f"some backend tests {msg}"
-#             panel_color = "red"
-        
-#         logger.log(log_lvl, msg, style=color)
-#         panel_msg += f"{emojy} {msg}"
-
-#         report_tables.append(scenery.cli.table_from_dict(overall_backend_summary, "Backend", ""))
-
-
-
-#     if not args.only_back:
-#         emojy, msg, color, log_lvl = interpret(overall_frontend_success)
-#         if overall_frontend_success:
-#             msg = f"all frontend tests {msg}"
-#         else:
-#             msg = f"some frontend tests {msg}"
-#             panel_color = "red"
-            
-#         logger.log(log_lvl, msg, color)
-#         panel_msg += f"\n{emojy} {msg}"
-
-#         report_tables.append(scenery.cli.table_from_dict(overall_frontend_summary, "Frontend", ""))
-
-
-
-#     overall_success = overall_backend_success and overall_frontend_success
-#     emojy, msg, color, log_lvl = interpret(overall_success)
-#     logger.log(log_lvl, f"integration tests {msg}", style=color)
-
-
-#     report_tables = Columns(report_tables, equal=False, expand=True)
-#     panel_report = Group(panel_msg, report_tables)
-
-
-#     console.print(Panel(
-#         panel_report,
-#         title="Results",
-#         border_style=panel_color
-#     ))
-
-#     # console.print(report_tables)
-
-
-
-#     console.print(Rule(f"{emojy} Integration tests {msg}", style=color))
-
-#     return overall_success, {}
-
-
 def integration_tests(args):
     """
     Execute the main functionality of the scenery test runner.
@@ -226,142 +118,48 @@ def integration_tests(args):
         "remote_frontend": []
     }
 
-    # dev_backend_report_data, dev_frontend_report_data, remote_backend_data, remote_frontend_data = [], [], [], []
 
     for filename in iter_on_manifests(args):
         
-        # dev_backend_result, dev_frontend_result, remote_backend_result, remote_frontend_result = process_manifest_as_integration_test(filename, args=args, driver=driver)
         results = process_manifest_as_integration_test(filename, args=args, driver=driver)
 
         for key, val in results.items():
             if val:
                 success, summary = summarize_test_result(val, key.replace("_", "-"))
                 report_data[key].append((success, summary))
-            # dev_backend_report_data.append()
 
-        # if results["dev_frontend"]:
-        #     dev_frontend_success, dev_frontend_summary = summarize_test_result(dev_frontend_result, "frontend")
-        #     report_data["dev_frontend"].append((dev_frontend_success, dev_frontend_summary))
-        
-        # if results["remote_backend"]:
-        #     remote_backend_success, remote_backend_summary = summarize_test_result(remote_backend_result, "backend")
-        #     report_data["dev_backend"].append((remote_backend_success, dev_backend_summary))
-        #     # dev_backend_report_data.append()
-            
-        # if results["remote_frontend"]:
-        #     remote_frontend_success, remote_frontend_summary = summarize_test_result(remote_frontend_result, "frontend")
-        #     report_data["dev_frontend"].append((remote_frontend_success, remote_frontend_summary))
+    success = scenery.cli.report_integration(report_data)
 
-    success = report(report_data)
     return success, {}
 
 
+def load_tests(args):
 
 
-def report(report_data):
-
-    # TODO: new names for overall_
-
-
-    panel_msg = ""
-    panel_color = "green"
-    report_tables = []
-
-    command_success = True
-
-    for key, val in report_data.items():
-
-        overall_success = True
-        overall_summary = Counter()
-
-        for success, summary in val:
-            
-            overall_success &= success
-            overall_summary.update(summary)
-            # print("SUCCESS=", success, overall_success, command_success)
-
-        if val:
-            emojy, msg, color, log_lvl = interpret(overall_success)
-
-            if overall_success:
-                msg = f"all backend tests {msg}"
-            else:
-                msg = f"some backend tests {msg}"
-                panel_color = "red"
-
-            logger.log(log_lvl, msg, style=color)
-            panel_msg += f"{emojy} {msg}"
-            report_tables.append(scenery.cli.table_from_dict(overall_summary, key, ""))
-
-            command_success &= overall_success
+    # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
+    from scenery.core import process_manifest_as_load_test
 
 
-
-    # overall_backend_success, overall_frontend_success = True, True
-    # overall_backend_summary, overall_frontend_summary = Counter(), Counter()
-
+    report_data = {
+    }
 
 
+    for filename in iter_on_manifests(args):
+        
+        results = process_manifest_as_load_test(filename, args=args)
 
-    # BACKEND
-    ########################
+        # for key, val in results.items():
+        #     if val:
+        #         success, summary = summarize_test_result(val, key.replace("_", "-"))
+        #         report_data[key].append((success, summary))
 
-    # for backend_success, backend_summary in backend_report_data:
-    #     overall_backend_success &= backend_success
-    #     overall_backend_summary.update(backend_summary)
+        success = scenery.cli.report_load(results)
+        report_data.update(results)
+    # success = scenery.cli.report_load(report_data)
 
-    # if backend_report_data:
-    #     emojy, msg, color, log_lvl = interpret(overall_backend_success)
-    #     if overall_backend_success:
-    #         msg = f"all backend tests {msg}"
-    #     else:
-    #         msg = f"some backend tests {msg}"
-    #         panel_color = "red"
+    return success, {}
 
-    #     logger.log(log_lvl, msg, style=color)
-    #     panel_msg += f"{emojy} {msg}"
 
-    #     report_tables.append(scenery.cli.table_from_dict(overall_backend_summary, "Backend", ""))
-
-    # FRONTEND
-    ########################
-
-    # for frontend_success, frontend_summary in frontend_report_data:
-    #     overall_frontend_success &= frontend_success
-    #     overall_frontend_summary.update(frontend_summary)
-
-    # if frontend_report_data:
-    #     emojy, msg, color, log_lvl = interpret(overall_frontend_success)
-    #     if overall_frontend_success:
-    #         msg = f"all frontend tests {msg}"
-    #     else:
-    #         msg = f"some frontend tests {msg}"
-    #         panel_color = "red"
-
-    #     logger.log(log_lvl, msg, style=color)
-    #     panel_msg += f"\n{emojy} {msg}"
-
-    #     report_tables.append(scenery.cli.table_from_dict(overall_frontend_summary, "Frontend", ""))
-
-    # OVERALL
-    #########################
-
-    # overall_success = overall_backend_success and overall_frontend_success
-    emojy, msg, color, log_lvl = interpret(command_success)
-    logger.log(log_lvl, f"integration tests {msg}", style=color)
-
-    # console.print(Panel(panel_msg, title="Results", border_style=panel_color))
-    # report_tables = Columns(report_tables, equal=False, expand=True)
-    # console.print(report_tables)
-
-    report_tables = Columns(report_tables, equal=False, expand=True)
-    panel_report = Group(panel_msg, report_tables)
-
-    console.print(Panel(panel_report, title="Results", border_style=panel_color))
-
-    console.print(Rule(f"{emojy} Integration tests {msg}", style=color))
-
-    return command_success
 
 
 
@@ -370,100 +168,100 @@ def report(report_data):
 ################################################
 
 
-def load_tests(args):
+# def load_tests(args):
 
-    from rehearsal import CustomDiscoverRunner
+#     from rehearsal import CustomDiscoverRunner
 
-    import unittest
+#     import unittest
 
-    from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+#     from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 
-    from scenery.load_test import LoadTester
+#     from scenery.load_test import LoadTester
 
-    # from scenery.core import TestsLoader, TestsRunner
+#     # from scenery.core import TestsLoader, TestsRunner
 
-    # from rehearsal import CustomTestResult, CustomDiscoverRunner
-
-
-    # loader = TestsLoader()
-    # runner = TestsRunner()
-    # runner.runner.resultclass = CustomTestResult
-
-    # url = "http://localhost:8000"
-    # endpoint = ""
-    users = 20
-    requests_per_user = 5
+#     # from rehearsal import CustomTestResult, CustomDiscoverRunner
 
 
-    # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
-    # from scenery.core import TestsLoader
-    from scenery.manifest_parser import ManifestParser
-    from scenery.core import iter_on_takes_from_manifest
-    from collections import defaultdict
+#     # loader = TestsLoader()
+#     # runner = TestsRunner()
+#     # runner.runner.resultclass = CustomTestResult
 
-    folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
-
-    django_runner = CustomDiscoverRunner(None)
-
-
-    only_url = args.url
-    only_case_id = args.case_id
-    only_scene_pos = args.scene_pos
-
-    data = defaultdict(list)
-
-    for manifest_filename in iter_on_manifests(args):
-
-        logger.info(f"{manifest_filename=}")
+#     # url = "http://localhost:8000"
+#     # endpoint = ""
+#     users = 20
+#     requests_per_user = 5
 
 
-        # Parse manifest
-        manifest = ManifestParser.parse_yaml(os.path.join(folder, manifest_filename))
-        ttype = manifest.testtype
+#     # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
+#     # from scenery.core import TestsLoader
+#     from scenery.manifest_parser import ManifestParser
+#     from scenery.core import iter_on_takes_from_manifest
+#     from collections import defaultdict
 
-        for case_id, scene_pos, take in iter_on_takes_from_manifest(
-            manifest, only_url, only_case_id, only_scene_pos
-        ):
-            logger.debug(take)
+#     folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
 
-            class LoadTestCase(StaticLiveServerTestCase):
+#     django_runner = CustomDiscoverRunner(None)
 
-                def setUp(self):
-                    super().setUp()
-                    self.tester = LoadTester(self.live_server_url)
 
-                def test_load(self):
+#     only_url = args.url
+#     only_case_id = args.case_id
+#     only_scene_pos = args.scene_pos
 
-                    # Run a load test against a specific endpoint
-                    self.tester.run_load_test(
-                        endpoint=take.url, 
-                        method=take.method,
-                        data=take.data,
-                        headers=None,
-                        users=users,             
-                        requests_per_user=requests_per_user,
-                    )
+#     data = defaultdict(list)
+
+#     for manifest_filename in iter_on_manifests(args):
+
+#         logger.info(f"{manifest_filename=}")
+
+
+#         # Parse manifest
+#         manifest = ManifestParser.parse_yaml(os.path.join(folder, manifest_filename))
+#         ttype = manifest.testtype
+
+#         for case_id, scene_pos, take in iter_on_takes_from_manifest(
+#             manifest, only_url, only_case_id, only_scene_pos
+#         ):
+#             logger.debug(take)
+
+#             class LoadTestCase(StaticLiveServerTestCase):
+
+#                 def setUp(self):
+#                     super().setUp()
+#                     self.tester = LoadTester(self.live_server_url)
+
+#                 def test_load(self):
+
+#                     # Run a load test against a specific endpoint
+#                     self.tester.run_load_test(
+#                         endpoint=take.url, 
+#                         method=take.method,
+#                         data=take.data,
+#                         headers=None,
+#                         users=users,             
+#                         requests_per_user=requests_per_user,
+#                     )
 
                 
-            # django_runner.test_runner.resultclass = CustomTestResult  
+#             # django_runner.test_runner.resultclass = CustomTestResult  
 
-            django_test = LoadTestCase("test_load")
+#             django_test = LoadTestCase("test_load")
 
-            suite = unittest.TestSuite()
-            suite.addTest(django_test)
-            result = django_runner.run_suite(suite)
+#             suite = unittest.TestSuite()
+#             suite.addTest(django_test)
+#             result = django_runner.run_suite(suite)
 
-            for key, val in django_test.tester.data.items():
-                data[key] += val
+#             for key, val in django_test.tester.data.items():
+#                 data[key] += val
 
-            # break
+#             # break
 
-        # break
+#         # break
 
 
-    scenery.cli.report_load_tests(data)
+#     scenery.cli.report_load_tests(data)
 
-    return True, {}
+#     return True, {}
 
 
 
@@ -558,6 +356,6 @@ def load_tests_prod(args):
             for key, val in django_test.tester.data.items():
                 data[key] += val
 
-    scenery.cli.report_load_tests(data)
+    scenery.cli.report_load(data)
 
     return True, {}

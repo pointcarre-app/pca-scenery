@@ -125,7 +125,7 @@ class Checker:
         """
 
 
-        logger.info(f'{take.method}:{take.url}')
+        logger.debug(f'{take.method}:{take.url}')
 
         if take.method == http.HTTPMethod.GET:
             response = django_testcase.client.get(
@@ -176,7 +176,7 @@ class Checker:
         # Get the correct url form the FrontendDjangoTestCase
         url = django_testcase.live_server_url + take.url
 
-        logger.info(f'{take.method}:{url}')
+        logger.debug(f'{take.method}:{url}')
 
 
         response = SeleniumResponse(django_testcase.driver)
@@ -199,11 +199,7 @@ class Checker:
     @staticmethod
     def get_http_response(remote_testcase, take):
 
-        from scenery.common import RemoteBackendTestCase
-
-        print("###########", type(remote_testcase), isinstance(remote_testcase, RemoteBackendTestCase))
-
-        logger.info(f'{take.method}:{remote_testcase.base_url + take.url}')
+        # logger.debug(f'{take.method}:{remote_testcase.base_url + take.url}')
 
         if take.method == http.HTTPMethod.GET:
             response = remote_testcase.session.get(
@@ -241,6 +237,9 @@ class Checker:
         Raises:
             NotImplementedError: If the check instruction is not implemented.
         """
+
+        logger.debug(check)
+
         if check.instruction == DirectiveCommand.STATUS_CODE:
             Checker.check_status_code(django_testcase, response, check.args)
         elif check.instruction == DirectiveCommand.REDIRECT_URL:
@@ -260,7 +259,6 @@ class Checker:
         else:
             raise NotImplementedError(check)
         
-        logger.debug(f"performed {check}")
 
     @staticmethod
     def check_status_code(

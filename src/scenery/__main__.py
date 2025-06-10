@@ -11,8 +11,6 @@ if __name__ == "__main__":
 
     import scenery.cli
 
-    print("ICI")
-
 
     exit_code = scenery.cli.main()
     sys.exit(exit_code)
