@@ -7,7 +7,7 @@ import typing
 from scenery.response_checker import Checker
 import scenery.manifest
 from scenery.manifest_parser import ManifestParser
-from scenery.core import MetaLocalFrontendTest
+from scenery.core import MetaDevFrontendTest
 from scenery.method_builder import MethodBuilder
 import rehearsal
 from rehearsal.django_project.some_app.models import SomeModel
@@ -894,7 +894,7 @@ class TestSelenium(unittest.TestCase):
             "manifest_origin": "origin",
         }
         manifest = ManifestParser.parse_dict(d)
-        frontend_test_cls = MetaLocalFrontendTest(
+        frontend_test_cls = MetaDevFrontendTest(
                 "some_manifest.frontend",
                 (FrontendDjangoTestCase,),
                 manifest,
@@ -946,7 +946,7 @@ class TestSelenium(unittest.TestCase):
         manifest = ManifestParser.parse_dict(d)
 
         # Create first test class instance and check initial cache
-        frontend_test_cls = MetaLocalFrontendTest(
+        frontend_test_cls = MetaDevFrontendTest(
                 "some_manifest.frontend",
                 (FrontendDjangoTestCase,),
                 manifest,

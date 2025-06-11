@@ -3,6 +3,7 @@ import os
 import requests
 from typing import Callable
 
+from scenery import logger
 from scenery.manifest import SetUpInstruction, Take, DirectiveCommand
 from scenery.response_checker import Checker
 from scenery.set_up_handler import SetUpHandler
@@ -78,6 +79,8 @@ class MethodBuilder:
         """
 
         def setUpClass(django_testcase_cls: type[DjangoTestCase]) -> None:
+            # logger.debug(f"{django_testcase_cls}.setUpClass")
+            logger.debug(setUpClass)
             super(django_testcase_cls, django_testcase_cls).setUpClass()  # type: ignore[misc]
 
             if issubclass(django_testcase_cls, FrontendDjangoTestCase):
@@ -136,14 +139,16 @@ class MethodBuilder:
         Returns:
             function: An instance method that can be added to a Django test case.
         """
-
         def setUp(django_testcase: DjangoTestCase) -> None:
 
+            logger.debug(setUp)
 
-            if isinstance(django_testcase, (RemoteBackendTestCase, LoadTestCase)):
+            if isinstance(django_testcase, (RemoteBackendTestCase, LoadTestCase,)):
                 django_testcase.session = requests.Session()
                 django_testcase.headers = {}
                 django_testcase.base_url = os.environ[f"SCENERY_{django_testcase.mode.upper()}_URL"]
+            if isinstance(django_testcase, (FrontendDjangoTestCase,)):
+                django_testcase.session = requests.Session()
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase, instruction)
 
@@ -169,6 +174,9 @@ class MethodBuilder:
         """
 
         def test(django_testcase: BackendDjangoTestCase) -> None:
+
+            logger.debug(test)
+
             response = Checker.get_django_client_response(django_testcase, take)
             for i, check in enumerate(take.checks):
                 with django_testcase.subTest(f"directive {i}"):
@@ -193,6 +201,9 @@ class MethodBuilder:
         """
 
         def test(django_testcase: FrontendDjangoTestCase) -> None:
+
+            logger.debug(test)
+
             response = Checker.get_selenium_response(django_testcase, take)
 
             for i, check in enumerate(take.checks):
@@ -206,6 +217,8 @@ class MethodBuilder:
     @staticmethod
     def build_remote_backend_test_from_take(take: Take) -> Callable:
         def test(remote_testcase: RemoteBackendTestCase) -> None:
+
+            logger.debug(test)
 
             response = Checker.get_http_response(remote_testcase, take)
 

@@ -8,6 +8,7 @@ from typing import Any
 from urllib.parse import urlparse
 import re
 import typing
+import itertools
 
 from django.utils.http import urlencode
 from django.urls.exceptions import NoReverseMatch
@@ -26,7 +27,8 @@ from django.urls import reverse
 class RawManifestDict(typing.TypedDict, total=False):
     """The type of dict which can appear in the yamls."""
 
-    set_up_test_data: typing.Sequence[dict]
+    # set_up_test_data: typing.Sequence[dict]
+    set_up_class: typing.Sequence[dict]
     set_up: typing.Sequence[dict]
     case: dict
     cases: dict[str, dict]
@@ -413,7 +415,7 @@ class Manifest:
             Create a Manifest instance from a formatted dictionary.
     """
 
-    set_up_test_data: list[SetUpInstruction]
+    set_up_class: list[SetUpInstruction]
     set_up: list[SetUpInstruction]
     scenes: list[Scene]
     cases: dict[str, Case]
@@ -427,7 +429,7 @@ class Manifest:
             [
                 SetUpInstruction.from_object(instruction)
                 for instruction in d[
-                    "set_up_test_data"
+                    "set_up_class"
                 ]  # d[ManifestFormattedDictKeys.set_up_test_data]
             ],
             [
@@ -447,6 +449,24 @@ class Manifest:
             d["manifest_origin"],
             d.get("testtype")
         )
+    
+    def iter_on_takes(
+        self, 
+        only_url: str | None, 
+        only_case_id: str | None, 
+        only_scene_pos: str | None
+    ) -> typing.Iterable[typing.Tuple[str, Case, int, Scene]]:
+        for (case_id, case), (scene_pos, scene) in itertools.product(
+            self.cases.items(), enumerate(self.scenes)
+        ):
+            if only_case_id is not None and case_id != only_case_id:
+                continue
+            elif only_scene_pos is not None and str(scene_pos) != only_scene_pos:
+                continue
+            if only_url is not None and only_url != scene.url:
+                continue
+            take = scene.shoot(case)
+            yield case_id, scene_pos, take
 
 
 ########################

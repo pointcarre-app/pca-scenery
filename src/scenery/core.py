@@ -1,32 +1,30 @@
 """Build the tests from the Manifest, discover & run tests."""
+
 import argparse
 from functools import wraps
-import itertools
 import os
 import sys
-from typing import Iterable, Callable, Any, Tuple
+from typing import Callable, Tuple
 import time
 import unittest
-import threading
 
 from scenery import logger
-from scenery.manifest import Manifest, Case, Scene
+from scenery.manifest import Manifest
 from scenery.method_builder import MethodBuilder
 from scenery.manifest_parser import ManifestParser
 from scenery.common import (
-    FrontendDjangoTestCase, 
-    BackendDjangoTestCase, 
-    RemoteBackendTestCase, 
+    FrontendDjangoTestCase,
+    BackendDjangoTestCase,
+    RemoteBackendTestCase,
     LoadTestCase,
-    CustomDiscoverRunner, 
-    DjangoTestCase, 
+    CustomDiscoverRunner,
+    DjangoTestCase,
     get_selenium_driver,
-    )
+)
 
 from django.conf import settings
 from django.test.utils import get_runner
 
-import bs4
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from urllib3.exceptions import MaxRetryError, NewConnectionError
@@ -36,11 +34,11 @@ from urllib3.exceptions import MaxRetryError, NewConnectionError
 ############
 
 
-
 # TODO mad: screenshot on error
+# TODO: move this somewhere else, selenium utils
 
 
-def retry_on_timeout(retries: int=3, delay: int=5) -> Callable:
+def retry_on_timeout(retries: int = 3, delay: int = 5) -> Callable:
     """Retry a function on specific timeout-related exceptions.
 
     This decorator will attempt to execute the decorated function multiple times if it encounters
@@ -60,13 +58,19 @@ def retry_on_timeout(retries: int=3, delay: int=5) -> Callable:
         NewConnectionError: If all retry attempts fail with connection errors.
         ConnectionRefusedError: If all retry attempts fail with connection refused.
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def wrapper(*args, **kwargs): # type: ignore # NOTE mad: as log_exec_bbar, this makes sense for a decorated function
+        def wrapper(*args, **kwargs):  # type: ignore # NOTE mad: as log_exec_bbar, this makes sense for a decorated function
             for attempt in range(retries):
                 try:
                     return func(*args, **kwargs)
-                except (TimeoutException, MaxRetryError, NewConnectionError, ConnectionRefusedError):
+                except (
+                    TimeoutException,
+                    MaxRetryError,
+                    NewConnectionError,
+                    ConnectionRefusedError,
+                ):
                     if attempt == retries - 1:
                         raise
                     time.sleep(delay)
@@ -80,31 +84,68 @@ def retry_on_timeout(retries: int=3, delay: int=5) -> Callable:
 # METACLASSES
 #############
 
-# NOTE mad: this code is used both in banckend and
-# frontend metaclasses
-# TODO: move this somewhere else, manifest ?
 
-def iter_on_takes_from_manifest(
-        manifest: Manifest, 
-        only_url: str | None, 
-        only_case_id: str | None, 
-        only_scene_pos: str | None
-    ) -> Iterable[Tuple[str, Case, int, Scene]]:
-    """Iterate over takes from the manifest based on the provided filters."""
-    for (case_id, case), (scene_pos, scene) in itertools.product(
-        manifest.cases.items(), enumerate(manifest.scenes)
-    ):
-        if only_case_id is not None and case_id != only_case_id:
-            continue
-        elif only_scene_pos is not None and str(scene_pos) != only_scene_pos:
-            continue
-        if only_url is not None and only_url != scene.url:
-            continue
-        # yield case_id, case, scene_pos, scene
-        take = scene.shoot(case)
-        yield case_id, scene_pos, take
+# class MetaTest(type):
+#     """
+#     A metaclass for creating test classes dynamically based on a Manifest.
 
+#     This metaclass creates test methods for each combination of case and scene in the manifest,
+#     and adds setup methods to the test class.
+#     """
 
+#     def __new__(
+#         cls,
+#         clsname: str,
+#         bases: tuple[type],
+#         manifest: Manifest,
+#         only_case_id: str | None = None,
+#         only_scene_pos: str | None = None,
+#         only_url: str | None = None,
+#     ) -> type[DjangoTestCase]:
+#         """Responsible for building the TestCase class.
+
+#         Args:
+#             clsname (str): The name of the class being created.
+#             bases (tuple): The base classes of the class being created.
+#             manifest (Manifest): The manifest containing test cases and scenes.
+
+#         Returns:
+#             type: A new test class with dynamically created test methods.
+
+#         Raises:
+#             ValueError: If the restrict argument is not in the correct format.
+#         """
+#         # TODO mad: setUpTestData
+#         if bases == (BackendDjangoTestCase,):
+#             driver = None
+#         else:
+#             raise NotImplementedError
+#         setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_class, driver)
+#         setUp = MethodBuilder.build_setUp(manifest.set_up)
+
+#         cls_attrs = {
+#             "setUpClass": setUpClass,
+#             "setUp": setUp,
+#         }
+#         for case_id, scene_pos, take in manifest.iter_on_takes(
+#             only_url,
+#             only_case_id,
+#             only_scene_pos,
+#         ):
+#             if bases == (BackendDjangoTestCase,):
+#                 test = MethodBuilder.build_backend_test_from_take(take)
+#             elif bases == (FrontendDjangoTestCase,):
+#                 test = MethodBuilder.build_frontend_test_from_take(take)
+#             elif bases == (RemoteBackendTestCase,):
+#                 test = MethodBuilder.build_remote_backend_test_from_take(take)
+#             else:
+#                 raise NotImplementedError
+#             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
+
+#         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
+#         return test_cls  # type: ignore [return-value]
+#         # FIXME mad: In member "__new__" of class "MetaBackTest":
+#         # src/scenery/core.py:195:16: error: Incompatible return value type (got "MetaBackTest", expected "type[DjangoTestCase]")
 
 
 class MetaDevBackendTest(type):
@@ -137,18 +178,20 @@ class MetaDevBackendTest(type):
         Raises:
             ValueError: If the restrict argument is not in the correct format.
         """
-        # NOTE mad: right now everything is in the setup
-        # TODO mad: setUpTestData and setUpClass
+        # TODO mad: setUpTestData
         # setUpTestData = MethodBuilder.build_setUpTestData(manifest.set_up_test_data)
+        setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_class, None)
         setUp = MethodBuilder.build_setUp(manifest.set_up)
 
         # Add SetupData and SetUp as methods of the Test class
         cls_attrs = {
-            # "setUpTestData": setUpTestData,
+            "setUpClass": setUpClass,
             "setUp": setUp,
         }
-        for case_id, scene_pos, take in iter_on_takes_from_manifest(
-            manifest, only_url, only_case_id, only_scene_pos
+        for case_id, scene_pos, take in manifest.iter_on_takes(
+            only_url,
+            only_case_id,
+            only_scene_pos,
         ):
             test = MethodBuilder.build_backend_test_from_take(take)
             # test = log_exec_bar(test)
@@ -156,12 +199,11 @@ class MetaDevBackendTest(type):
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
         return test_cls  # type: ignore [return-value]
-        # FIXME mad: In member "__new__" of class "MetaBackTest": 
+        # FIXME mad: In member "__new__" of class "MetaBackTest":
         # src/scenery/core.py:195:16: error: Incompatible return value type (got "MetaBackTest", expected "type[DjangoTestCase]")
 
 
-
-class MetaLocalFrontendTest(type):
+class MetaDevFrontendTest(type):
     """A metaclass for creating frontend test classes dynamically based on a Manifest.
 
     This metaclass creates test methods for each combination of case and scene in the manifest,
@@ -178,10 +220,10 @@ class MetaLocalFrontendTest(type):
         only_case_id: str | None = None,
         only_scene_pos: str | None = None,
         only_url: str | None = None,
-        timeout_waiting_time: int=5,
+        timeout_waiting_time: int = 5,
     ) -> type[FrontendDjangoTestCase]:
         """Responsible for building the TestCase class.
-        
+
         Args:
             clsname (str): The name of the class being created.
             bases (tuple): The base classes of the class being created.
@@ -198,10 +240,9 @@ class MetaLocalFrontendTest(type):
         Raises:
             ValueError: If the restrict arguments are not in the correct format.
         """
-        setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_test_data, driver)
+        setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_class, driver)
         setUp = MethodBuilder.build_setUp(manifest.set_up)
         tearDownClass = MethodBuilder.build_tearDownClass()
-
 
         # NOTE mad: setUpClass and tearDownClass are important for the driver
         cls_attrs = {
@@ -210,25 +251,25 @@ class MetaLocalFrontendTest(type):
             "tearDownClass": tearDownClass,
         }
 
-        for case_id, scene_pos, take in iter_on_takes_from_manifest(
-            manifest, only_url, only_case_id, only_scene_pos
+        for case_id, scene_pos, take in manifest.iter_on_takes(
+            only_url,
+            only_case_id,
+            only_scene_pos,
         ):
             test = MethodBuilder.build_frontend_test_from_take(take)
-            test = retry_on_timeout(delay=timeout_waiting_time)(test)
+            # test = retry_on_timeout(delay=timeout_waiting_time)(test)
             # test = screenshot_on_error(test)
             # test = log_exec_bar(test)
             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
-        
-        return test_cls # type: ignore[return-value]
+
+        return test_cls  # type: ignore[return-value]
         # FIXME mad: mypy is struggling with the metaclass,
         # I just ignore here instead of casting which does not do the trick
 
 
 class MetaRemoteBackendTest(type):
-
-
     def __new__(
         cls,
         clsname: str,
@@ -254,17 +295,19 @@ class MetaRemoteBackendTest(type):
         # NOTE mad: right now everything is in the setup
         # TODO mad: setUpTestData and setUpClass
         # setUpTestData = MethodBuilder.build_setUpTestData(manifest.set_up_test_data)
+        setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_class, None)
         setUp = MethodBuilder.build_setUp(manifest.set_up)
-
-
 
         # Add SetupData and SetUp as methods of the Test class
         cls_attrs = {
             # "setUpTestData": setUpTestData,
+            "setUpClass": setUpClass,
             "setUp": setUp,
         }
-        for case_id, scene_pos, take in iter_on_takes_from_manifest(
-            manifest, only_url, only_case_id, only_scene_pos
+        for case_id, scene_pos, take in manifest.iter_on_takes(
+            only_url,
+            only_case_id,
+            only_scene_pos,
         ):
             test = MethodBuilder.build_remote_backend_test_from_take(take)
             # test = log_exec_bar(test)
@@ -289,10 +332,10 @@ class TestsRunner:
         stream (StringIO): A string buffer for capturing test output.
     """
 
-    def __init__(self, failfast: bool=False) -> None:
+    def __init__(self, failfast: bool = False) -> None:
         """Initialize the MetaTestRunner with a runner, logger, discoverer, and output stream."""
         # self.logger = logging.getLogger(__package__)
-        
+
         # self.stream = io.StringIO()
         self.stream = sys.stdout
         self.runner = CustomDiscoverRunner(stream=self.stream, failfast=failfast)
@@ -325,7 +368,7 @@ class TestsRunner:
         """
         # TODO mad: could this just disappear?
         results = self.runner.run_suite(tests_discovered)
-        return results 
+        return results
 
 
 # TEST LOADER
@@ -359,14 +402,14 @@ class TestsDiscoverer:
         self,
         filename: str,
         mode: str,
-        back: bool=False,
-        front: bool=False,
-        only_url: str | None=None,
-        timeout_waiting_time: int=5,
-        only_case_id: str | None=None,
-        only_scene_pos: str | None=None,
+        back: bool = False,
+        front: bool = False,
+        only_url: str | None = None,
+        timeout_waiting_time: int = 5,
+        only_case_id: str | None = None,
+        only_scene_pos: str | None = None,
         driver: webdriver.Chrome | None = None,
-        headless: bool=True,
+        headless: bool = True,
     ) -> Tuple[unittest.TestSuite, unittest.TestSuite]:
         """Creates test suites from a manifest file for both backend and frontend testing.
 
@@ -401,16 +444,17 @@ class TestsDiscoverer:
 
         # Parse manifest
         # TODO: there should be a separation between reading file and parsing
-        manifest = ManifestParser.parse_yaml(os.path.join(self.folder, filename))
+        manifest = ManifestParser.parse_yaml_from_file(os.path.join(self.folder, filename))
         ttype = manifest.testtype
         manifest_name = filename.replace(".yml", "")
 
         # NOTE mad: manifests can indicate they are not to be ran in some mode
-        back &= (ttype is None or ttype == "backend")
-        front &=  (ttype is None or ttype == "frontend")
+        back &= ttype is None or ttype == "backend"
+        front &= ttype is None or ttype == "frontend"
 
         if back and mode == "dev":
             cls = MetaDevBackendTest(
+                # cls = MetaTest(
                 f"{manifest_name}.dev.backend",
                 (BackendDjangoTestCase,),
                 manifest,
@@ -418,13 +462,14 @@ class TestsDiscoverer:
                 only_scene_pos=only_scene_pos,
                 only_url=only_url,
             )
+            # print("$$$$$$$$$$", type(cls))
             # FIXME mad: type hinting mislead by metaclasses
-            tests = self.loader.loadTestsFromTestCase(cls) # type: ignore[arg-type]
+            tests = self.loader.loadTestsFromTestCase(cls)  # type: ignore[arg-type]
             dev_backend_suite.addTests(tests)
 
         if back and mode in ["local", "staging", "prod"]:
             cls = MetaRemoteBackendTest(
-                f"{manifest_name}.backend",
+                f"{manifest_name}.remote.backend",
                 (RemoteBackendTestCase,),
                 manifest,
                 only_case_id=only_case_id,
@@ -433,20 +478,19 @@ class TestsDiscoverer:
             )
             # TODO mad: really not sure this is the right place
             cls.mode = mode
-            tests = self.loader.loadTestsFromTestCase(cls) 
+            tests = self.loader.loadTestsFromTestCase(cls)
             remote_backend_suite.addTests(tests)
 
         # Create frontend test
         if front and mode == "dev":
-
             # NOTE mad: this is here to be able to load driver in two places
             # See also scenery/__main__.py
             # Probably not a great pattern but let's FIXME this later
             if driver is None:
                 driver = get_selenium_driver(headless=headless)
 
-            cls = MetaLocalFrontendTest(
-                f"{manifest_name}.frontend",
+            cls = MetaDevFrontendTest(
+                f"{manifest_name}.dev.frontend",
                 (FrontendDjangoTestCase,),
                 manifest,
                 only_case_id=only_case_id,
@@ -457,16 +501,13 @@ class TestsDiscoverer:
                 # headless=True,
             )
             # FIXME mad: type hinting mislead by metaclasses
-            tests = self.loader.loadTestsFromTestCase(cls) # type: ignore[arg-type]
+            tests = self.loader.loadTestsFromTestCase(cls)  # type: ignore[arg-type]
             dev_frontend_suite.addTests(tests)
 
         if front and mode in ["local", "staging", "prod"]:
-            # TODO mad
-            ...
-
+            raise NotImplementedError
 
         return dev_backend_suite, dev_frontend_suite, remote_backend_suite, remote_frontend_suite
-
 
     def load_tests_from_manifest(
         self,
@@ -474,31 +515,29 @@ class TestsDiscoverer:
         mode: str,
         users: int,
         requests_per_user: int,
-        only_url: str | None=None,
-        timeout_waiting_time: int=5,
-        only_case_id: str | None=None,
-        only_scene_pos: str | None=None,
+        only_url: str | None = None,
+        timeout_waiting_time: int = 5,
+        only_case_id: str | None = None,
+        only_scene_pos: str | None = None,
     ):
-        
         from .load_test import LoadTester
         import threading
         import collections
-
 
         test_suite = unittest.TestSuite()
 
         # Parse manifest
         # TODO: there should be a separation between reading file and parsing
-        manifest = ManifestParser.parse_yaml(os.path.join(self.folder, filename))
+        manifest = ManifestParser.parse_yaml_from_file(os.path.join(self.folder, filename))
         manifest_name = filename.replace(".yml", "")
 
-        for case_id, scene_pos, take in iter_on_takes_from_manifest(
-            manifest, only_url, only_case_id, only_scene_pos
+        for case_id, scene_pos, take in manifest.iter_on_takes(
+            only_url,
+            only_case_id,
+            only_scene_pos,
         ):
 
             class _LoadTestCase(LoadTestCase):
-
-
                 def setUp(self):
                     # super().setUp()
                     # self.tester = LoadTester(self.base_url)
@@ -512,7 +551,6 @@ class TestsDiscoverer:
                     setUp(self)
 
                 def test(self):
-
                     # logging.info(f"{ramp_up=}")
                     logger.info(f"{users=}")
                     logger.info(f"{requests_per_user=}")
@@ -525,26 +563,21 @@ class TestsDiscoverer:
                     for i in range(users):
                         thread = threading.Thread(
                             target=self.tester._worker_task,
-                            args=(self, take, requests_per_user)
+                            args=(self, take, requests_per_user),
                             # args=(self.session, take.url, take.method, take.data, self.headers, requests_per_user)
                         )
                         threads.append(thread)
-                        
+
                         # Optional: implement ramp-up by staggering thread starts
                         thread.start()
                         # if ramp_up > 0 and users > 1:
                         #     time.sleep(ramp_up / (users - 1))
-                    
+
                     # Wait for all threads to complete
                     for thread in threads:
                         thread.join()
-                        
 
-
-
-
-        # setUp = MethodBuilder.build_setUp(manifest.set_up)
-
+            # setUp = MethodBuilder.build_setUp(manifest.set_up)
 
             # cls = MetaRemoteBackendTest(
             #     f"{manifest_name}.backend",
@@ -557,14 +590,15 @@ class TestsDiscoverer:
             # # TODO mad: really not sure this is the right place
             # cls.mode = mode
             cls = _LoadTestCase
-            tests = self.loader.loadTestsFromTestCase(cls) 
+            tests = self.loader.loadTestsFromTestCase(cls)
             test_suite.addTests(tests)
 
         return test_suite
 
 
-
-def process_manifest_as_integration_test(manifest_filename: str, args: argparse.Namespace, driver: webdriver.Chrome | None) -> Tuple[bool, dict, bool, dict]:
+def process_manifest_as_integration_test(
+    manifest_filename: str, args: argparse.Namespace, driver: webdriver.Chrome | None
+) -> Tuple[bool, dict, bool, dict]:
     """Process a test manifest file and executes both backend and frontend tests.
 
     Takes a manifest file and command line arguments to run the specified tests,
@@ -601,17 +635,19 @@ def process_manifest_as_integration_test(manifest_filename: str, args: argparse.
     loader = TestsDiscoverer()
     runner = TestsRunner()
 
-    dev_backend_suite, dev_frontend_suite, remote_backend_suite, remote_frontend_suite = loader.integration_tests_from_manifest(
-        manifest_filename, 
-        mode=args.mode,
-        back=args.back, 
-        front=args.front, 
-        only_url=args.url, 
-        only_case_id=args.case_id, 
-        only_scene_pos=args.scene_pos, 
-        timeout_waiting_time=args.timeout_waiting_time, 
-        driver = driver,
-        headless=args.headless,
+    dev_backend_suite, dev_frontend_suite, remote_backend_suite, remote_frontend_suite = (
+        loader.integration_tests_from_manifest(
+            manifest_filename,
+            mode=args.mode,
+            back=args.back,
+            front=args.front,
+            only_url=args.url,
+            only_case_id=args.case_id,
+            only_scene_pos=args.scene_pos,
+            timeout_waiting_time=args.timeout_waiting_time,
+            driver=driver,
+            headless=args.headless,
+        )
     )
 
     results = {
@@ -637,8 +673,9 @@ def process_manifest_as_integration_test(manifest_filename: str, args: argparse.
     return results
 
 
-def process_manifest_as_load_test(manifest_filename: str, args: argparse.Namespace) -> Tuple[bool, dict, bool, dict]:
-
+def process_manifest_as_load_test(
+    manifest_filename: str, args: argparse.Namespace
+) -> Tuple[bool, dict, bool, dict]:
     results = {}
 
     logger.info(f"{manifest_filename=}")
@@ -647,29 +684,23 @@ def process_manifest_as_load_test(manifest_filename: str, args: argparse.Namespa
     runner = TestsRunner()
 
     tests_suite = loader.load_tests_from_manifest(
-        manifest_filename, 
+        manifest_filename,
         mode=args.mode,
-        only_url=args.url, 
-        only_case_id=args.case_id, 
-        only_scene_pos=args.scene_pos, 
+        only_url=args.url,
+        only_case_id=args.case_id,
+        only_scene_pos=args.scene_pos,
         users=args.users,
         requests_per_user=args.requests,
     )
 
     for test in tests_suite:
         test_result = runner.run(test)
-        assert len(test_result.errors)  == 0
+        assert len(test_result.errors) == 0
         results.update(test.tester.data)
-
 
     # results = {
     # }
 
     # results["load"] = runner.run(tests_suite)
 
-
     return results
-
-
-
-

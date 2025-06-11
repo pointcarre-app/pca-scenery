@@ -79,7 +79,7 @@ class ManifestParser:
             dict: A formatted dictionary with all expected keys.
         """
         return {
-            "set_up_test_data": d.get("set_up_test_data", []),
+            "set_up_class": d.get("set_up_class", []),
             "set_up": d.get("set_up", []),
             "scenes": ManifestParser._format_dict_scenes(d),
             "cases": ManifestParser._format_dict_cases(d),
@@ -177,7 +177,8 @@ class ManifestParser:
             raise ConstructorError
 
     @staticmethod
-    def read_manifest_yaml(filename: str) -> Any:
+    # def read_manifest_yaml(filename: str) -> Any:
+    def read_manifest_yaml(stream) -> Any:
         """
         Read a YAML manifest file with custom tags.
 
@@ -196,13 +197,15 @@ class ManifestParser:
         Loader.add_constructor("!case", ManifestParser._yaml_constructor_case)
         Loader.add_constructor("!common-item", ManifestParser._yaml_constructor_common_item)
 
-        with open(filename) as f:
-            content = yaml.load(f, Loader)
+        # with open(filename) as f:
+        #     content = yaml.load(f, Loader)
 
+        content = yaml.load(stream, Loader)
+        ManifestParser.validate_yaml(content)
         return content
 
     @staticmethod
-    def parse_yaml(filename: str) -> scenery.manifest.Manifest:
+    def parse_yaml_from_file(filename) -> scenery.manifest.Manifest:
         """
         Parse a YAML manifest file into a Manifest object.
 
@@ -214,7 +217,8 @@ class ManifestParser:
         Returns:
             scenery.manifest.Manifest: A Manifest object created from the YAML file.
         """
-        d = ManifestParser.read_manifest_yaml(filename)
-        ManifestParser.validate_yaml(d)
+        with open(filename) as f:
+            d = ManifestParser.read_manifest_yaml(f)
         d["manifest_origin"] = d.get("manifest_origin", filename)
         return ManifestParser.parse_dict(d)
+

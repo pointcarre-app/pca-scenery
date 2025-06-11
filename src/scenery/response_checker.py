@@ -125,7 +125,11 @@ class Checker:
         """
 
 
-        logger.debug(f'{take.method}:{take.url}')
+        logger.debug(Checker.get_django_client_response)
+        logger.debug(f"{take.url=}")
+        logger.debug(f"{take.method=}")
+        if take.data:
+            logger.debug(take.data)
 
         if take.method == http.HTTPMethod.GET:
             response = django_testcase.client.get(
@@ -173,10 +177,19 @@ class Checker:
             - The Selenium module path must be specified in the SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM
             environment variable.
         """
+
+        # print("WAITING")
+
         # Get the correct url form the FrontendDjangoTestCase
         url = django_testcase.live_server_url + take.url
 
-        logger.debug(f'{take.method}:{url}')
+
+
+        logger.debug(Checker.get_selenium_response)
+        logger.debug(f"{url=}")
+        logger.debug(f"{take.method=}")
+        if take.data:
+            logger.debug(take.data)
 
 
         response = SeleniumResponse(django_testcase.driver)
@@ -193,17 +206,25 @@ class Checker:
             post_method = getattr(selenium_module, method_name)
             post_method(django_testcase, url, take.data)
 
+        # time.sleep(1000)
+
 
         return response 
     
     @staticmethod
     def get_http_response(remote_testcase, take):
 
-        # logger.debug(f'{take.method}:{remote_testcase.base_url + take.url}')
+        url = remote_testcase.base_url + take.url
+
+        logger.debug(Checker.get_http_response)
+        logger.debug(f"{url=}")
+        logger.debug(f"{take.method=}")
+        if take.data:
+            logger.debug(take.data)
 
         if take.method == http.HTTPMethod.GET:
             response = remote_testcase.session.get(
-                remote_testcase.base_url + take.url,
+                url,
                 data=take.data,
                 headers=remote_testcase.headers,
             )

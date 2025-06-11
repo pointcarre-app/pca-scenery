@@ -277,12 +277,14 @@ def report_integration(data):
             emojy, msg, color, log_lvl = interpret(overall_success)
 
             if overall_success:
-                msg = f"all backend tests {msg}"
+                msg = f"all {key} tests {msg}"
             else:
-                msg = f"some backend tests {msg}"
+                msg = f"some {key} tests {msg}"
                 panel_color = "red"
 
             logger.log(log_lvl, msg, style=color)
+            if panel_msg != "":
+                panel_msg += "\n"
             panel_msg += f"{emojy} {msg}"
             report_tables.append(scenery.cli.table_from_dict(overall_summary, key, ""))
 
