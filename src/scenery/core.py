@@ -13,8 +13,8 @@ from scenery.manifest import Manifest
 from scenery.method_builder import MethodBuilder
 from scenery.manifest_parser import ManifestParser
 from scenery.common import (
-    FrontendDjangoTestCase,
-    BackendDjangoTestCase,
+    DjangoFrontendTestCase,
+    DjangoBackendTestCase,
     RemoteBackendTestCase,
     LoadTestCase,
     CustomDiscoverRunner,
@@ -85,70 +85,7 @@ def retry_on_timeout(retries: int = 3, delay: int = 5) -> Callable:
 #############
 
 
-# class MetaTest(type):
-#     """
-#     A metaclass for creating test classes dynamically based on a Manifest.
-
-#     This metaclass creates test methods for each combination of case and scene in the manifest,
-#     and adds setup methods to the test class.
-#     """
-
-#     def __new__(
-#         cls,
-#         clsname: str,
-#         bases: tuple[type],
-#         manifest: Manifest,
-#         only_case_id: str | None = None,
-#         only_scene_pos: str | None = None,
-#         only_url: str | None = None,
-#     ) -> type[DjangoTestCase]:
-#         """Responsible for building the TestCase class.
-
-#         Args:
-#             clsname (str): The name of the class being created.
-#             bases (tuple): The base classes of the class being created.
-#             manifest (Manifest): The manifest containing test cases and scenes.
-
-#         Returns:
-#             type: A new test class with dynamically created test methods.
-
-#         Raises:
-#             ValueError: If the restrict argument is not in the correct format.
-#         """
-#         # TODO mad: setUpTestData
-#         if bases == (BackendDjangoTestCase,):
-#             driver = None
-#         else:
-#             raise NotImplementedError
-#         setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_class, driver)
-#         setUp = MethodBuilder.build_setUp(manifest.set_up)
-
-#         cls_attrs = {
-#             "setUpClass": setUpClass,
-#             "setUp": setUp,
-#         }
-#         for case_id, scene_pos, take in manifest.iter_on_takes(
-#             only_url,
-#             only_case_id,
-#             only_scene_pos,
-#         ):
-#             if bases == (BackendDjangoTestCase,):
-#                 test = MethodBuilder.build_backend_test_from_take(take)
-#             elif bases == (FrontendDjangoTestCase,):
-#                 test = MethodBuilder.build_frontend_test_from_take(take)
-#             elif bases == (RemoteBackendTestCase,):
-#                 test = MethodBuilder.build_remote_backend_test_from_take(take)
-#             else:
-#                 raise NotImplementedError
-#             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
-
-#         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
-#         return test_cls  # type: ignore [return-value]
-#         # FIXME mad: In member "__new__" of class "MetaBackTest":
-#         # src/scenery/core.py:195:16: error: Incompatible return value type (got "MetaBackTest", expected "type[DjangoTestCase]")
-
-
-class MetaDevBackendTest(type):
+class MetaTest(type):
     """
     A metaclass for creating test classes dynamically based on a Manifest.
 
@@ -164,6 +101,7 @@ class MetaDevBackendTest(type):
         only_case_id: str | None = None,
         only_scene_pos: str | None = None,
         only_url: str | None = None,
+        driver=None,
     ) -> type[DjangoTestCase]:
         """Responsible for building the TestCase class.
 
@@ -178,23 +116,40 @@ class MetaDevBackendTest(type):
         Raises:
             ValueError: If the restrict argument is not in the correct format.
         """
+
+        # Build setUp and tearDown functions
+        ####################################
+
         # TODO mad: setUpTestData
-        # setUpTestData = MethodBuilder.build_setUpTestData(manifest.set_up_test_data)
-        setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_class, None)
+        setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_class, driver)
         setUp = MethodBuilder.build_setUp(manifest.set_up)
 
-        # Add SetupData and SetUp as methods of the Test class
         cls_attrs = {
             "setUpClass": setUpClass,
             "setUp": setUp,
         }
+
+        if bases == (DjangoFrontendTestCase,):
+            # NOTE mad: used to close the driver
+            tearDownClass = MethodBuilder.build_tearDownClass()
+            cls_attrs["tearDownClass"] = tearDownClass
+        
+        # Add test_* functions
+        ####################################
+
         for case_id, scene_pos, take in manifest.iter_on_takes(
             only_url,
             only_case_id,
             only_scene_pos,
         ):
-            test = MethodBuilder.build_backend_test_from_take(take)
-            # test = log_exec_bar(test)
+            if bases == (DjangoBackendTestCase,):
+                test = MethodBuilder.build_dev_backend_test(take)
+            elif bases == (DjangoFrontendTestCase,):
+                test = MethodBuilder.build_dev_frontend_test(take)
+            elif bases == (RemoteBackendTestCase,):
+                test = MethodBuilder.build_remote_backend_test(take)
+            else:
+                raise NotImplementedError
             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
 
         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
@@ -202,120 +157,6 @@ class MetaDevBackendTest(type):
         # FIXME mad: In member "__new__" of class "MetaBackTest":
         # src/scenery/core.py:195:16: error: Incompatible return value type (got "MetaBackTest", expected "type[DjangoTestCase]")
 
-
-class MetaDevFrontendTest(type):
-    """A metaclass for creating frontend test classes dynamically based on a Manifest.
-
-    This metaclass creates test methods for each combination of case and scene in the manifest,
-    and adds setup and teardown methods to the test class. It specifically handles frontend testing
-    setup including web driver configuration.
-    """
-
-    def __new__(
-        cls,
-        clsname: str,
-        bases: tuple[type],
-        manifest: Manifest,
-        driver: webdriver.Chrome,
-        only_case_id: str | None = None,
-        only_scene_pos: str | None = None,
-        only_url: str | None = None,
-        timeout_waiting_time: int = 5,
-    ) -> type[FrontendDjangoTestCase]:
-        """Responsible for building the TestCase class.
-
-        Args:
-            clsname (str): The name of the class being created.
-            bases (tuple): The base classes of the class being created.
-            manifest (Manifest): The manifest containing test cases and scenes.
-            driver (webdriver.Chrome): Chrome webdriver instance for frontend testing.
-            only_case_id (str, optional): Restrict tests to a specific case ID.
-            only_scene_pos (str, optional): Restrict tests to a specific scene position.
-            only_url (str, optional): Restrict tests to a specific view.
-            timeout_waiting_time (int, optional): Time in seconds to wait before timeout. Defaults to 5.
-
-        Returns:
-            type: A new test class with dynamically created frontend test methods.
-
-        Raises:
-            ValueError: If the restrict arguments are not in the correct format.
-        """
-        setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_class, driver)
-        setUp = MethodBuilder.build_setUp(manifest.set_up)
-        tearDownClass = MethodBuilder.build_tearDownClass()
-
-        # NOTE mad: setUpClass and tearDownClass are important for the driver
-        cls_attrs = {
-            "setUpClass": setUpClass,
-            "setUp": setUp,
-            "tearDownClass": tearDownClass,
-        }
-
-        for case_id, scene_pos, take in manifest.iter_on_takes(
-            only_url,
-            only_case_id,
-            only_scene_pos,
-        ):
-            test = MethodBuilder.build_frontend_test_from_take(take)
-            # test = retry_on_timeout(delay=timeout_waiting_time)(test)
-            # test = screenshot_on_error(test)
-            # test = log_exec_bar(test)
-            cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
-
-        test_cls = super().__new__(cls, clsname, bases, cls_attrs)
-
-        return test_cls  # type: ignore[return-value]
-        # FIXME mad: mypy is struggling with the metaclass,
-        # I just ignore here instead of casting which does not do the trick
-
-
-class MetaRemoteBackendTest(type):
-    def __new__(
-        cls,
-        clsname: str,
-        bases: tuple[type],
-        manifest: Manifest,
-        only_case_id: str | None = None,
-        only_scene_pos: str | None = None,
-        only_url: str | None = None,
-    ) -> type[DjangoTestCase]:
-        """Responsible for building the TestCase class.
-
-        Args:
-            clsname (str): The name of the class being created.
-            bases (tuple): The base classes of the class being created.
-            manifest (Manifest): The manifest containing test cases and scenes.
-
-        Returns:
-            type: A new test class with dynamically created test methods.
-
-        Raises:
-            ValueError: If the restrict argument is not in the correct format.
-        """
-        # NOTE mad: right now everything is in the setup
-        # TODO mad: setUpTestData and setUpClass
-        # setUpTestData = MethodBuilder.build_setUpTestData(manifest.set_up_test_data)
-        setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_class, None)
-        setUp = MethodBuilder.build_setUp(manifest.set_up)
-
-        # Add SetupData and SetUp as methods of the Test class
-        cls_attrs = {
-            # "setUpTestData": setUpTestData,
-            "setUpClass": setUpClass,
-            "setUp": setUp,
-        }
-        for case_id, scene_pos, take in manifest.iter_on_takes(
-            only_url,
-            only_case_id,
-            only_scene_pos,
-        ):
-            test = MethodBuilder.build_remote_backend_test_from_take(take)
-            # test = log_exec_bar(test)
-            cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
-
-        test_cls = super().__new__(cls, clsname, bases, cls_attrs)
-
-        return test_cls
 
 
 class TestsRunner:
@@ -453,10 +294,10 @@ class TestsDiscoverer:
         front &= ttype is None or ttype == "frontend"
 
         if back and mode == "dev":
-            cls = MetaDevBackendTest(
-                # cls = MetaTest(
+            # cls = MetaDevBackendTest(
+            cls = MetaTest(
                 f"{manifest_name}.dev.backend",
-                (BackendDjangoTestCase,),
+                (DjangoBackendTestCase,),
                 manifest,
                 only_case_id=only_case_id,
                 only_scene_pos=only_scene_pos,
@@ -468,7 +309,8 @@ class TestsDiscoverer:
             dev_backend_suite.addTests(tests)
 
         if back and mode in ["local", "staging", "prod"]:
-            cls = MetaRemoteBackendTest(
+            cls = MetaTest(
+            # cls = MetaRemoteBackendTest(
                 f"{manifest_name}.remote.backend",
                 (RemoteBackendTestCase,),
                 manifest,
@@ -489,9 +331,9 @@ class TestsDiscoverer:
             if driver is None:
                 driver = get_selenium_driver(headless=headless)
 
-            cls = MetaDevFrontendTest(
+            cls = MetaTest(
                 f"{manifest_name}.dev.frontend",
-                (FrontendDjangoTestCase,),
+                (DjangoFrontendTestCase,),
                 manifest,
                 only_case_id=only_case_id,
                 only_scene_pos=only_scene_pos,
@@ -704,3 +546,179 @@ def process_manifest_as_load_test(
     # results["load"] = runner.run(tests_suite)
 
     return results
+
+
+
+###################################################################################
+# TRASH
+
+
+# class MetaDevBackendTest(type):
+#     """
+#     A metaclass for creating test classes dynamically based on a Manifest.
+
+#     This metaclass creates test methods for each combination of case and scene in the manifest,
+#     and adds setup methods to the test class.
+#     """
+
+#     def __new__(
+#         cls,
+#         clsname: str,
+#         bases: tuple[type],
+#         manifest: Manifest,
+#         only_case_id: str | None = None,
+#         only_scene_pos: str | None = None,
+#         only_url: str | None = None,
+#     ) -> type[DjangoTestCase]:
+#         """Responsible for building the TestCase class.
+
+#         Args:
+#             clsname (str): The name of the class being created.
+#             bases (tuple): The base classes of the class being created.
+#             manifest (Manifest): The manifest containing test cases and scenes.
+
+#         Returns:
+#             type: A new test class with dynamically created test methods.
+
+#         Raises:
+#             ValueError: If the restrict argument is not in the correct format.
+#         """
+#         # TODO mad: setUpTestData
+#         # setUpTestData = MethodBuilder.build_setUpTestData(manifest.set_up_test_data)
+#         setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_class, None)
+#         setUp = MethodBuilder.build_setUp(manifest.set_up)
+
+#         # Add SetupData and SetUp as methods of the Test class
+#         cls_attrs = {
+#             "setUpClass": setUpClass,
+#             "setUp": setUp,
+#         }
+#         for case_id, scene_pos, take in manifest.iter_on_takes(
+#             only_url,
+#             only_case_id,
+#             only_scene_pos,
+#         ):
+#             test = MethodBuilder.build_dev_backend_test(take)
+#             # test = log_exec_bar(test)
+#             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
+
+#         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
+#         return test_cls  # type: ignore [return-value]
+#         # FIXME mad: In member "__new__" of class "MetaBackTest":
+#         # src/scenery/core.py:195:16: error: Incompatible return value type (got "MetaBackTest", expected "type[DjangoTestCase]")
+
+
+# class MetaDevFrontendTest(type):
+#     """A metaclass for creating frontend test classes dynamically based on a Manifest.
+
+#     This metaclass creates test methods for each combination of case and scene in the manifest,
+#     and adds setup and teardown methods to the test class. It specifically handles frontend testing
+#     setup including web driver configuration.
+#     """
+
+#     def __new__(
+#         cls,
+#         clsname: str,
+#         bases: tuple[type],
+#         manifest: Manifest,
+#         driver: webdriver.Chrome,
+#         only_case_id: str | None = None,
+#         only_scene_pos: str | None = None,
+#         only_url: str | None = None,
+#         timeout_waiting_time: int = 5,
+#     ) -> type[FrontendDjangoTestCase]:
+#         """Responsible for building the TestCase class.
+
+#         Args:
+#             clsname (str): The name of the class being created.
+#             bases (tuple): The base classes of the class being created.
+#             manifest (Manifest): The manifest containing test cases and scenes.
+#             driver (webdriver.Chrome): Chrome webdriver instance for frontend testing.
+#             only_case_id (str, optional): Restrict tests to a specific case ID.
+#             only_scene_pos (str, optional): Restrict tests to a specific scene position.
+#             only_url (str, optional): Restrict tests to a specific view.
+#             timeout_waiting_time (int, optional): Time in seconds to wait before timeout. Defaults to 5.
+
+#         Returns:
+#             type: A new test class with dynamically created frontend test methods.
+
+#         Raises:
+#             ValueError: If the restrict arguments are not in the correct format.
+#         """
+#         setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_class, driver)
+#         setUp = MethodBuilder.build_setUp(manifest.set_up)
+#         tearDownClass = MethodBuilder.build_tearDownClass()
+
+#         # NOTE mad: setUpClass and tearDownClass are important for the driver
+#         cls_attrs = {
+#             "setUpClass": setUpClass,
+#             "setUp": setUp,
+#             "tearDownClass": tearDownClass,
+#         }
+
+#         for case_id, scene_pos, take in manifest.iter_on_takes(
+#             only_url,
+#             only_case_id,
+#             only_scene_pos,
+#         ):
+#             test = MethodBuilder.build_dev_frontend_test(take)
+#             # test = retry_on_timeout(delay=timeout_waiting_time)(test)
+#             # test = screenshot_on_error(test)
+#             # test = log_exec_bar(test)
+#             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
+
+#         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
+
+#         return test_cls  # type: ignore[return-value]
+#         # FIXME mad: mypy is struggling with the metaclass,
+#         # I just ignore here instead of casting which does not do the trick
+
+
+# class MetaRemoteBackendTest(type):
+#     def __new__(
+#         cls,
+#         clsname: str,
+#         bases: tuple[type],
+#         manifest: Manifest,
+#         only_case_id: str | None = None,
+#         only_scene_pos: str | None = None,
+#         only_url: str | None = None,
+#     ) -> type[DjangoTestCase]:
+#         """Responsible for building the TestCase class.
+
+#         Args:
+#             clsname (str): The name of the class being created.
+#             bases (tuple): The base classes of the class being created.
+#             manifest (Manifest): The manifest containing test cases and scenes.
+
+#         Returns:
+#             type: A new test class with dynamically created test methods.
+
+#         Raises:
+#             ValueError: If the restrict argument is not in the correct format.
+#         """
+#         # NOTE mad: right now everything is in the setup
+#         # TODO mad: setUpTestData and setUpClass
+#         # setUpTestData = MethodBuilder.build_setUpTestData(manifest.set_up_test_data)
+#         setUpClass = MethodBuilder.build_setUpClass(manifest.set_up_class, None)
+#         setUp = MethodBuilder.build_setUp(manifest.set_up)
+
+#         # Add SetupData and SetUp as methods of the Test class
+#         cls_attrs = {
+#             # "setUpTestData": setUpTestData,
+#             "setUpClass": setUpClass,
+#             "setUp": setUp,
+#         }
+#         for case_id, scene_pos, take in manifest.iter_on_takes(
+#             only_url,
+#             only_case_id,
+#             only_scene_pos,
+#         ):
+#             test = MethodBuilder.build_remote_backend_test(take)
+#             # test = log_exec_bar(test)
+#             cls_attrs.update({f"test_case_{case_id}_scene_{scene_pos}": test})
+
+#         test_cls = super().__new__(cls, clsname, bases, cls_attrs)
+
+#         return test_cls
+

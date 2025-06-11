@@ -57,6 +57,7 @@ logger = SceneryLogger(logging.INFO)
 
 
 
+# NOTE mad: do not erase
 
 # def show_root_logger_config():
 #     """Show detailed configuration of the root logger only."""

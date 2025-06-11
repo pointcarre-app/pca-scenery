@@ -10,8 +10,8 @@ from  scenery import logger
 from scenery.common import (
     ResponseProtocol, 
     DjangoTestCase, 
-    BackendDjangoTestCase, 
-    FrontendDjangoTestCase,
+    DjangoBackendTestCase, 
+    DjangoFrontendTestCase,
     )
 from scenery.manifest import Take, Check, DirectiveCommand, DomArgument
 
@@ -109,7 +109,7 @@ class Checker:
 
     @staticmethod
     def get_django_client_response(
-        django_testcase: BackendDjangoTestCase, take: Take
+        django_testcase: DjangoBackendTestCase, take: Take
     ) -> django.http.HttpResponse:
         """Execute an HTTP request based on the given HttpTake object.
 
@@ -151,7 +151,7 @@ class Checker:
     
     @staticmethod
     def get_selenium_response(
-        django_testcase: FrontendDjangoTestCase, take: Take
+        django_testcase: DjangoFrontendTestCase, take: Take
     ) -> SeleniumResponse:
         """Create a SeleniumResponse by executing a request through Selenium WebDriver.
 
@@ -450,7 +450,7 @@ class Checker:
                 if exepected_value_from_ff := attribute.get("json_stringify"):
 
                     # print("GOING HERE", dom_element[attribute["name"]])
-                    if isinstance(django_testcase, FrontendDjangoTestCase):
+                    if isinstance(django_testcase, DjangoFrontendTestCase):
                         value_from_ff = django_testcase.driver.execute_script( # type: ignore[no-untyped-call]
                         f"return JSON.stringify({dom_element[attribute['name']]})"
                     )

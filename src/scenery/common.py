@@ -49,11 +49,11 @@ def get_selenium_driver(headless: bool) -> webdriver.Chrome:
 # I want to be able to import before scenery_setup
 
 
-class BackendDjangoTestCase(django.test.TestCase):
+class DjangoBackendTestCase(django.test.TestCase):
     """A Django TestCase for backend testing."""
 
 
-class FrontendDjangoTestCase(StaticLiveServerTestCase):
+class DjangoFrontendTestCase(StaticLiveServerTestCase):
     """A Django TestCase for frontend testing."""
 
     driver: webdriver.Chrome
@@ -80,7 +80,7 @@ class LoadTestCase(unittest.TestCase):
 
 
 # TODO mad: this will become SceneryTestCase
-DjangoTestCaseTypes = Union[BackendDjangoTestCase, FrontendDjangoTestCase]
+DjangoTestCaseTypes = Union[DjangoBackendTestCase, DjangoFrontendTestCase]
 DjangoTestCase = TypeVar("DjangoTestCase", bound=DjangoTestCaseTypes)
 
 

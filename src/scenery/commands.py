@@ -36,7 +36,7 @@ def scenery_setup(args: argparse.Namespace) -> None:
         ImportError: If the settings module cannot be imported.
     """
 
-    # TODO mad: we choose convention over verification here
+    # NOTE mad: we choose convention over verification here
     # settings = importlib.import_module("rehearsal.scenery_settings")
     # if setting_module == "rehearsal.scenery_settings":
     sys.path.append(os.path.join('.'))
@@ -83,8 +83,8 @@ def django_setup(args: argparse.Namespace) -> int:
     django.setup()
 
     
-    # from django.conf import settings as django_settings
-    # logging.debug(f"{django_settings.INSTALLED_APPS=}")
+    from django.conf import settings as django_settings
+    logger.debug(f"{django_settings.INSTALLED_APPS=}")
 
     emojy, msg, color, log_lvl = interpret(True)
     logger.log(log_lvl, "django set-up", style=color)
@@ -139,23 +139,14 @@ def load_tests(args):
     # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
     from scenery.core import process_manifest_as_load_test
 
+    success = True
+    report_data = {}
 
-    report_data = {
-    }
-
-
-    for filename in iter_on_manifests(args):
-        
+    for filename in iter_on_manifests(args):        
         results = process_manifest_as_load_test(filename, args=args)
-
-        # for key, val in results.items():
-        #     if val:
-        #         success, summary = summarize_test_result(val, key.replace("_", "-"))
-        #         report_data[key].append((success, summary))
-
-        success = scenery.cli.report_load(results)
+        file_level_success = scenery.cli.report_load(results)
         report_data.update(results)
-    # success = scenery.cli.report_load(report_data)
+        success &= file_level_success
 
     return success, {}
 
@@ -268,94 +259,94 @@ def load_tests(args):
 
 
 
-def load_tests_prod(args):
+# def load_tests_prod(args):
 
 
-    from scenery.load_test import LoadTester
+#     from scenery.load_test import LoadTester
 
-    from rehearsal import CustomDiscoverRunner
-
-
-    # from scenery.core import TestsLoader, TestsRunner
-
-    # from rehearsal import CustomTestResult, CustomDiscoverRunner
+#     from rehearsal import CustomDiscoverRunner
 
 
-    # loader = TestsLoader()
-    # runner = TestsRunner()
-    # runner.runner.resultclass = CustomTestResult
+#     # from scenery.core import TestsLoader, TestsRunner
 
-    # url = "http://localhost:8000"
-    # endpoint = ""
-    url = "https://pointcarre.app"
-    users = 1
-    requests_per_user = 5
+#     # from rehearsal import CustomTestResult, CustomDiscoverRunner
 
 
-    # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
-    # from scenery.core import TestsLoader
+#     # loader = TestsLoader()
+#     # runner = TestsRunner()
+#     # runner.runner.resultclass = CustomTestResult
+
+#     # url = "http://localhost:8000"
+#     # endpoint = ""
+#     url = "https://pointcarre.app"
+#     users = 1
+#     requests_per_user = 5
+
+
+#     # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
+#     # from scenery.core import TestsLoader
 
 
 
-    django_runner = CustomDiscoverRunner(None)
+#     django_runner = CustomDiscoverRunner(None)
 
 
-    data = defaultdict(list)
+#     data = defaultdict(list)
 
-    for endpoint in [
-        "/", 
-        "/v1/chapter/troiz/revisions-brevet-30j", 
-        "/v1/block/troiz/revisions-brevet-30j/2-01",
-        ]:
+#     for endpoint in [
+#         "/", 
+#         "/v1/chapter/troiz/revisions-brevet-30j", 
+#         "/v1/block/troiz/revisions-brevet-30j/2-01",
+#         ]:
 
-        logger.info(f"{url}{endpoint}")
+#         logger.info(f"{url}{endpoint}")
 
-        for method in [http.HTTPMethod.GET, http.HTTPMethod.POST]:
-            if method != http.HTTPMethod.GET and endpoint in [
-                "/", 
-                "/v1/chapter/troiz/revisions-brevet-30j", 
-            ]:
-                continue
+#         for method in [http.HTTPMethod.GET, http.HTTPMethod.POST]:
+#             if method != http.HTTPMethod.GET and endpoint in [
+#                 "/", 
+#                 "/v1/chapter/troiz/revisions-brevet-30j", 
+#             ]:
+#                 continue
 
-            # take = Take(
-            #     method=http.HTTPMethod.GET,
-            #     # url=endpoint,
-            #     checks=[],
-            #     data={},
-            #     query_parameters={},
-            #     url_parameters={}
-            # )
+#             # take = Take(
+#             #     method=http.HTTPMethod.GET,
+#             #     # url=endpoint,
+#             #     checks=[],
+#             #     data={},
+#             #     query_parameters={},
+#             #     url_parameters={}
+#             # )
 
-            # logging.debug(take)
+#             # logging.debug(take)
 
-            class LoadTestCase(unittest.TestCase):
+#             class LoadTestCase(unittest.TestCase):
 
-                def setUp(self):
-                    super().setUp()
-                    self.tester = LoadTester(url)
+#                 def setUp(self):
+#                     super().setUp()
+#                     self.tester = LoadTester(url)
 
-                def test_load(self):
+#                 def test_load(self):
 
-                    # Run a load test against a specific endpoint
-                    self.tester.run_load_test(
-                        endpoint=endpoint, 
-                        method=method,
-                        data={},
-                        headers=None,
-                        users=users,             
-                        requests_per_user=requests_per_user,
-                    )
+#                     # Run a load test against a specific endpoint
+#                     self.tester.run_load_test(
+#                         endpoint=endpoint, 
+#                         method=method,
+#                         data={},
+#                         headers=None,
+#                         users=users,             
+#                         requests_per_user=requests_per_user,
+#                     )
 
 
-            django_test = LoadTestCase("test_load")
+#             django_test = LoadTestCase("test_load")
 
-            suite = unittest.TestSuite()
-            suite.addTest(django_test)
-            result = django_runner.run_suite(suite)
+#             suite = unittest.TestSuite()
+#             suite.addTest(django_test)
+#             result = django_runner.run_suite(suite)
 
-            for key, val in django_test.tester.data.items():
-                data[key] += val
+#             for key, val in django_test.tester.data.items():
+#                 data[key] += val
 
-    scenery.cli.report_load(data)
+#     scenery.cli.report_load(data)
 
-    return True, {}
+#     return True, {}

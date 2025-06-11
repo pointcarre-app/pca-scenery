@@ -9,13 +9,12 @@ from scenery.response_checker import Checker
 from scenery.set_up_handler import SetUpHandler
 from scenery.common import (
     DjangoTestCase,
-    BackendDjangoTestCase,
-    FrontendDjangoTestCase,
+    DjangoBackendTestCase,
+    DjangoFrontendTestCase,
     RemoteBackendTestCase,
     LoadTestCase,
     get_selenium_driver,
 )
-# from scenery.core import RemoteBackendTestCase
 
 from selenium import webdriver
 
@@ -83,7 +82,7 @@ class MethodBuilder:
             logger.debug(setUpClass)
             super(django_testcase_cls, django_testcase_cls).setUpClass()  # type: ignore[misc]
 
-            if issubclass(django_testcase_cls, FrontendDjangoTestCase):
+            if issubclass(django_testcase_cls, DjangoFrontendTestCase):
                 if driver is None:
                     django_testcase_cls.driver = get_selenium_driver(headless)
                 else:
@@ -117,7 +116,7 @@ class MethodBuilder:
         """
 
         def tearDownClass(django_testcase_cls: type[DjangoTestCase]) -> None:
-            if issubclass(django_testcase_cls, FrontendDjangoTestCase):
+            if issubclass(django_testcase_cls, DjangoFrontendTestCase):
                 django_testcase_cls.driver.quit()
             super(django_testcase_cls, django_testcase_cls).tearDownClass()  # type: ignore[misc]
 
@@ -147,7 +146,7 @@ class MethodBuilder:
                 django_testcase.session = requests.Session()
                 django_testcase.headers = {}
                 django_testcase.base_url = os.environ[f"SCENERY_{django_testcase.mode.upper()}_URL"]
-            if isinstance(django_testcase, (FrontendDjangoTestCase,)):
+            if isinstance(django_testcase, (DjangoFrontendTestCase,)):
                 django_testcase.session = requests.Session()
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(django_testcase, instruction)
@@ -158,7 +157,7 @@ class MethodBuilder:
     # TODO: all three functions could be one, with prpoer if else
 
     @staticmethod
-    def build_backend_test_from_take(take: Take) -> Callable:
+    def build_dev_backend_test(take: Take) -> Callable:
         """Build a test method from an Take object.
 
         This method creates a test function that sends an HTTP request
@@ -173,7 +172,7 @@ class MethodBuilder:
             function: A test method that can be added to a Django test case.
         """
 
-        def test(django_testcase: BackendDjangoTestCase) -> None:
+        def test(django_testcase: DjangoBackendTestCase) -> None:
 
             logger.debug(test)
 
@@ -185,7 +184,7 @@ class MethodBuilder:
         return test
 
     @staticmethod
-    def build_frontend_test_from_take(take: Take) -> Callable:
+    def build_dev_frontend_test(take: Take) -> Callable:
         """Build a test method from a Take object for frontend testing.
 
         This method creates a test function that uses Selenium
@@ -200,7 +199,7 @@ class MethodBuilder:
             function: A test method that can be added to a Django test case.
         """
 
-        def test(django_testcase: FrontendDjangoTestCase) -> None:
+        def test(django_testcase: DjangoFrontendTestCase) -> None:
 
             logger.debug(test)
 
@@ -215,7 +214,7 @@ class MethodBuilder:
         return test
 
     @staticmethod
-    def build_remote_backend_test_from_take(take: Take) -> Callable:
+    def build_remote_backend_test(take: Take) -> Callable:
         def test(remote_testcase: RemoteBackendTestCase) -> None:
 
             logger.debug(test)

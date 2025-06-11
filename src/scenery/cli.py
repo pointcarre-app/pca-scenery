@@ -30,19 +30,18 @@ from scenery.common import interpret
 def parse_args():
     """Parse command line arguments with subcommands."""
     parser = argparse.ArgumentParser(description="Scenery Testing Framework")
-    subparsers = parser.add_subparsers(dest="command", help="Testing command to run")
+
     # Add subparsers
-    integration_parser = parse_integration_args(subparsers)
-    load_parser = parse_load_args(subparsers) 
+    subparsers = parser.add_subparsers(dest="command", help="Testing command to run")
+    parse_integration_args(subparsers)
+    parse_load_args(subparsers) 
 
     args = parser.parse_args()
 
     if hasattr(args, "test"):
         args.manifest, args.case_id, args.scene_pos = parse_arg_test_restriction(args.test)
 
-    print("SET LEVEL TO", args.log)
     logger.level = logging._nameToLevel[args.log]
-
 
     return args
 
@@ -130,9 +129,6 @@ def parse_integration_args(subparser: argparse._SubParsersAction) -> argparse.Na
     parser.add_argument('--headless', action='store_true')
 
 
-
-
-
 def parse_load_args(subparser: argparse._SubParsersAction):
 
     parser = subparser.add_parser('load', help='Load tests')
@@ -180,10 +176,7 @@ def table_from_dict(d, col1_title, col2_title, title=None, formatting={}):
 def histogram(x):
     """Display a histogram leveraging Rich progress bars and return a renderable object"""
     # Calculate histogram data
-    min_val, max_val = min(x), max(x)
-    # bins = 10  # Number of bins
-    # range_val = max_val - min_val
-    # bin_width = range_val / bins if range_val > 0 else 0.001
+    max_val = max(x)
     
     bins = [
         (0, 50), 
@@ -233,7 +226,6 @@ def histogram(x):
 def command(func):
     def wrapper(*args):
 
-        print("KIKOU")
 
         command_label = func.__name__.replace("_", " ").capitalize()
 
@@ -261,22 +253,22 @@ def report_integration(data):
     panel_color = "green"
     report_tables = []
 
-    command_success = True
+    command_level_success = True
 
     for key, val in data.items():
 
-        overall_success = True
-        overall_summary = collections.Counter()
+        key_level_success = True
+        key_level_summary = collections.Counter()
 
         for success, summary in val:
             
-            overall_success &= success
-            overall_summary.update(summary)
+            key_level_success &= success
+            key_level_summary.update(summary)
 
         if val:
-            emojy, msg, color, log_lvl = interpret(overall_success)
+            emojy, msg, color, log_lvl = interpret(key_level_success)
 
-            if overall_success:
+            if key_level_success:
                 msg = f"all {key} tests {msg}"
             else:
                 msg = f"some {key} tests {msg}"
@@ -286,11 +278,11 @@ def report_integration(data):
             if panel_msg != "":
                 panel_msg += "\n"
             panel_msg += f"{emojy} {msg}"
-            report_tables.append(scenery.cli.table_from_dict(overall_summary, key, ""))
+            report_tables.append(scenery.cli.table_from_dict(key_level_summary, key, ""))
 
-            command_success &= overall_success
+            command_level_success &= key_level_success
 
-    emojy, msg, color, log_lvl = interpret(command_success)
+    emojy, msg, color, log_lvl = interpret(command_level_success)
     logger.log(log_lvl, f"integration tests {msg}", style=color)
 
     report_tables = Columns(report_tables, equal=False, expand=True)
@@ -300,7 +292,7 @@ def report_integration(data):
 
     console.print(Rule(f"{emojy} Integration tests {msg}", style=color))
 
-    return command_success
+    return command_level_success
 
 
 
@@ -420,13 +412,8 @@ def main():
 
     logger.debug(args)
 
-
-
     success, out = command(scenery.commands.scenery_setup)(args)
-
-    # if args.mode == "dev":
     success, out = command(scenery.commands.django_setup)(args)
-
 
     if args.command == "integration":
         success, out = command(scenery.commands.integration_tests)(args)
