@@ -308,6 +308,8 @@ def report_load(data: dict, threshold_p95: int = 500, threshold_p99: int = 5000)
     # OUTPUT
     #####################
 
+    command_level_success = True
+
 
     console = Console()
 
@@ -363,6 +365,8 @@ def report_load(data: dict, threshold_p95: int = 500, threshold_p99: int = 5000)
         else:
             success = False
         
+        command_level_success &= success
+
         formatting = {
             "error_rate": ("{:.2f}%", None),
             "min_time": ("{:.2f}ms", None),
@@ -403,7 +407,7 @@ def report_load(data: dict, threshold_p95: int = 500, threshold_p99: int = 5000)
 
         console.print(Panel(panel_content, title=f"{endpoint=}"))
     
-    return success
+    return command_level_success
 
 
 
@@ -420,7 +424,7 @@ def report_inspect(data: dict, code_threshold: int=300) -> bool:
     for key, value in data.items():
 
         code, doc, other = value.get("code"), value.get("docstring"), value.get("other")
-        success = code < code_threshold
+        success = code <= code_threshold
         emojy, msg, color, log_lvl = interpret(success)
         # lbl = f"[{color}]{key}[/{color}]"
         lbl = f"{key}"

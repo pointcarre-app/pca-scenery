@@ -155,7 +155,7 @@ class MethodBuilder:
             if isinstance(testcase, (RemoteBackendTestCase, LoadTestCase,)):
                 testcase.session = requests.Session()
                 testcase.headers = {}
-            if isinstance(testcase, (RemoteBackendTestCase, RemoteFrontendTestCase,)) :
+            if isinstance(testcase, (RemoteBackendTestCase, RemoteFrontendTestCase, LoadTestCase)) :
                 testcase.base_url = os.environ[f"SCENERY_{testcase.mode.upper()}_URL"]
             if isinstance(testcase, (DjangoFrontendTestCase,)) :
                 testcase.base_url = testcase.live_server_url
