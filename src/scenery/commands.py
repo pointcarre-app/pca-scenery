@@ -1,16 +1,16 @@
 import argparse
-from collections import Counter, defaultdict
-import http
 import importlib
 import os
+from pathlib import Path
+
 import sys
 import sysconfig
-import unittest
 
 
 from scenery.common import summarize_test_result, interpret, iter_on_manifests
 import scenery.cli
 from scenery import logger
+
 
 
 
@@ -92,6 +92,10 @@ def django_setup(args: argparse.Namespace) -> int:
     return True, {}
 
 
+###################
+# INTEGRATION TESTS
+###################
+
 def integration_tests(args):
     """
     Execute the main functionality of the scenery test runner.
@@ -133,6 +137,11 @@ def integration_tests(args):
     return success, {}
 
 
+
+###################
+# LOAD TESTS
+###################
+
 def load_tests(args):
 
 
@@ -151,110 +160,35 @@ def load_tests(args):
     return success, {}
 
 
+###################
+# CODE
+###################
 
+def inspect_nlines(args):
+
+    from scenery.count_lines import count_line_types
+
+    report_data = {}
+
+    # Get all files recursively
+    folder = Path(args.folder)
+
+    # All files
+    for file_path in folder.rglob('*.py'):
+        if file_path.is_file():
+            # print(f"File: {file_path}")
+            report_data[str(file_path)] = count_line_types(file_path)
+        # elif file_path.is_dir():
+        #     print(f"Directory: {file_path}")
+
+    success = scenery.cli.report_inspect(report_data)
+
+    return success, {}
 
 
 ################################################
 ################### DRAFT ######################
 ################################################
-
-
-# def load_tests(args):
-
-#     from rehearsal import CustomDiscoverRunner
-
-#     import unittest
-
-#     from django.contrib.staticfiles.testing import StaticLiveServerTestCase
-
-#     from scenery.load_test import LoadTester
-
-#     # from scenery.core import TestsLoader, TestsRunner
-
-#     # from rehearsal import CustomTestResult, CustomDiscoverRunner
-
-
-#     # loader = TestsLoader()
-#     # runner = TestsRunner()
-#     # runner.runner.resultclass = CustomTestResult
-
-#     # url = "http://localhost:8000"
-#     # endpoint = ""
-#     users = 20
-#     requests_per_user = 5
-
-
-#     # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
-#     # from scenery.core import TestsLoader
-#     from scenery.manifest_parser import ManifestParser
-#     from scenery.core import iter_on_takes_from_manifest
-#     from collections import defaultdict
-
-#     folder = os.environ["SCENERY_MANIFESTS_FOLDER"]
-
-#     django_runner = CustomDiscoverRunner(None)
-
-
-#     only_url = args.url
-#     only_case_id = args.case_id
-#     only_scene_pos = args.scene_pos
-
-#     data = defaultdict(list)
-
-#     for manifest_filename in iter_on_manifests(args):
-
-#         logger.info(f"{manifest_filename=}")
-
-
-#         # Parse manifest
-#         manifest = ManifestParser.parse_yaml(os.path.join(folder, manifest_filename))
-#         ttype = manifest.testtype
-
-#         for case_id, scene_pos, take in iter_on_takes_from_manifest(
-#             manifest, only_url, only_case_id, only_scene_pos
-#         ):
-#             logger.debug(take)
-
-#             class LoadTestCase(StaticLiveServerTestCase):
-
-#                 def setUp(self):
-#                     super().setUp()
-#                     self.tester = LoadTester(self.live_server_url)
-
-#                 def test_load(self):
-
-#                     # Run a load test against a specific endpoint
-#                     self.tester.run_load_test(
-#                         endpoint=take.url, 
-#                         method=take.method,
-#                         data=take.data,
-#                         headers=None,
-#                         users=users,             
-#                         requests_per_user=requests_per_user,
-#                     )
-
-                
-#             # django_runner.test_runner.resultclass = CustomTestResult  
-
-#             django_test = LoadTestCase("test_load")
-
-#             suite = unittest.TestSuite()
-#             suite.addTest(django_test)
-#             result = django_runner.run_suite(suite)
-
-#             for key, val in django_test.tester.data.items():
-#                 data[key] += val
-
-#             # break
-
-#         # break
-
-
-#     scenery.cli.report_load_tests(data)
-
-#     return True, {}
-
-
 
 
 

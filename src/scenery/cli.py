@@ -35,6 +35,7 @@ def parse_args():
     subparsers = parser.add_subparsers(dest="command", help="Testing command to run")
     parse_integration_args(subparsers)
     parse_load_args(subparsers) 
+    parse_inspect_args(subparsers) 
 
     args = parser.parse_args()
 
@@ -143,7 +144,12 @@ def parse_load_args(subparser: argparse._SubParsersAction):
     parser.add_argument('-u', '--users', type=int)
     parser.add_argument('-r', '--requests', type=int)
 
+def parse_inspect_args(subparser: argparse._SubParsersAction):
 
+    parser = subparser.add_parser('inspect', help='Inspect files')
+    add_common_arguments(parser)
+
+    parser.add_argument('-f', '--folder', type=str, help='Folder to inspect')
 
 #################
 # UI
@@ -247,7 +253,6 @@ def command(func):
 
 def report_integration(data):
 
-    # TODO mad: better names for overall_*
 
     panel_msg = ""
     panel_color = "green"
@@ -278,7 +283,7 @@ def report_integration(data):
             if panel_msg != "":
                 panel_msg += "\n"
             panel_msg += f"{emojy} {msg}"
-            report_tables.append(scenery.cli.table_from_dict(key_level_summary, key, ""))
+            report_tables.append(table_from_dict(key_level_summary, key, ""))
 
             command_level_success &= key_level_success
 
@@ -394,8 +399,82 @@ def report_load(data: dict):
         # group = Group(table, histogram)
         # console.print(Panel(group, title=f"{endpoint=}"))
 
-        # TODO: message if response times too high ?
+    # TODO: message if response times too high ?
+    return True
 
+
+
+def report_inspect(data):
+
+
+    panel_msg = ""
+    panel_color = ""
+    report_tables = []
+
+    show_header = True
+    table = Table(title="Line count", box=box.ROUNDED, show_header=show_header)
+    table.add_column("File", style="cyan", no_wrap=True)
+    table.add_column("Code", justify="right")
+    table.add_column("Docstring", justify="right")
+    table.add_column("Other", justify="right")
+
+    for key, value in data.items():
+
+        # format_str, color = formatting.get(key, ("{}", None))
+        # label = str(key).replace("_", " ").capitalize()
+        row_values = [key, str(value.get("code")), str(value.get("docstring")), str(value.get("other"))]
+        # value = d.get(key)
+        # formatted_value = format_str.format(value)
+        # if color:
+        #     formatted_value = f"[{color}]{formatted_value}[/{color}]"
+        # row_values.append(formatted_value)
+
+        print(row_values)
+        
+        table.add_row(*row_values)
+
+    console.print(table)
+
+    # command_level_success = True
+
+    # for key, val in data.items():
+
+    #     key_level_success = True
+    #     key_level_summary = collections.Counter()
+
+    #     for success, summary in val:
+            
+    #         key_level_success &= success
+    #         key_level_summary.update(summary)
+
+    #     if val:
+    #         emojy, msg, color, log_lvl = interpret(key_level_success)
+
+    #         if key_level_success:
+    #             msg = f"all {key} tests {msg}"
+    #         else:
+    #             msg = f"some {key} tests {msg}"
+    #             panel_color = "red"
+
+    #         logger.log(log_lvl, msg, style=color)
+    #         if panel_msg != "":
+    #             panel_msg += "\n"
+    #         panel_msg += f"{emojy} {msg}"
+    #         report_tables.append(table_from_dict(key_level_summary, key, ""))
+
+    #         command_level_success &= key_level_success
+
+    # emojy, msg, color, log_lvl = interpret(command_level_success)
+    # logger.log(log_lvl, f"integration tests {msg}", style=color)
+
+    # report_tables = Columns(report_tables, equal=False, expand=True)
+    # panel_report = Group(panel_msg, report_tables)
+
+    # console.print(Panel(panel_report, title="Results", border_style=panel_color))
+
+    # console.print(Rule(f"{emojy} Integration tests {msg}", style=color))
+
+    return True
 
 ###############
 # MAIN
@@ -413,12 +492,16 @@ def main():
     logger.debug(args)
 
     success, out = command(scenery.commands.scenery_setup)(args)
-    success, out = command(scenery.commands.django_setup)(args)
+    if args.command in ["integration", "load"]:
+        success, out = command(scenery.commands.django_setup)(args)
 
     if args.command == "integration":
         success, out = command(scenery.commands.integration_tests)(args)
     elif args.command == "load":
         command(scenery.commands.load_tests)(args)
+    elif args.command == "inspect":
+        command(scenery.commands.inspect_nlines)(args)
+
 
 
 

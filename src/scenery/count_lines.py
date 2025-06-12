@@ -24,7 +24,7 @@ def count_line_types(file_path):
     docstring_lines = set()
     
     # Extract all docstrings
-    extract_docstrings(tree)
+    extract_docstrings(tree, docstring_lines)
     
     # Tokenize the file to count comments and total lines
     with open(file_path, 'rb') as file:
@@ -50,11 +50,13 @@ def count_line_types(file_path):
     # Calculate code lines (total - docstrings - other)
     code_lines = total_lines - len(docstring_lines) - other_lines
     
-    return code_lines, len(docstring_lines), other_lines
+    return {"code": code_lines, "docstring": len(docstring_lines), "other": other_lines}
 
 
 # Helper function to extract docstrings from AST nodes
-def extract_docstrings(node):
+def extract_docstrings(node, docstring_lines):
+
+
     # Check for module, class, and function docstrings
     if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
         docstring = ast.get_docstring(node)
@@ -70,19 +72,23 @@ def extract_docstrings(node):
     
     # Recursively process all child nodes
     for child in ast.iter_child_nodes(node):
-        extract_docstrings(child)
+        extract_docstrings(child, docstring_lines)
 
-# Example usage
-if __name__ == "__main__":
-    import sys
+    return docstring_lines
+
+
+
+# # Example usage
+# if __name__ == "__main__":
+#     import sys
     
-    if len(sys.argv) > 1:
-        file_path = sys.argv[1]
-        code, docs, other = count_line_types(file_path)
-        print(f"Analysis of {file_path}:")
-        print(f"Code lines: {code}")
-        print(f"Docstring lines: {docs}")
-        print(f"Other lines (comments, blank): {other}")
-        print(f"Total lines: {code + docs + other}")
-    else:
-        print("Please provide a Python file path as an argument.")
+#     if len(sys.argv) > 1:
+#         file_path = sys.argv[1]
+#         code, docs, other = count_line_types(file_path)
+#         print(f"Analysis of {file_path}:")
+#         print(f"Code lines: {code}")
+#         print(f"Docstring lines: {docs}")
+#         print(f"Other lines (comments, blank): {other}")
+#         print(f"Total lines: {code + docs + other}")
+#     else:
+#         print("Please provide a Python file path as an argument.")

@@ -1,24 +1,18 @@
-# load_test_framework.py
+from collections import defaultdict
+import os
+import http
 import time
 import threading
 
-import http
-from collections import defaultdict
-
 from scenery import logger
-import os
-
-
-# TODO: lancer avec gunicorn plutot que django
-
 
 class LoadTester:
-    def __init__(self, manifest, mode):
+    def __init__(self, mode):
 
-        self.manifest = manifest
+        # self.manifest = manifest
         self.mode = mode
-        self.data = defaultdict(list)
-        self.lock = threading.Lock()  # Thread synchronization
+        # self.data = defaultdict(list)
+        # self.lock = threading.Lock()  # Thread synchronization
 
 
     @property

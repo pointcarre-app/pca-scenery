@@ -6,7 +6,7 @@ import unittest
 import pprint
 
 from scenery import logger
-from scenery.common import BackendDjangoTestCase, CustomDiscoverRunner, DjangoTestCase
+from scenery.common import DjangoBackendTestCase, CustomDiscoverRunner, DjangoTestCase
 
 
 from django.apps import apps as django_apps
@@ -102,7 +102,7 @@ class TestCaseOfBackendDjangoTestCase(CustomTestCase):
     def setUp(self) -> None:
         super().setUp()
         # NOTE mad: We create a django TestCase (customized) to which we will dynamically add setUpTestData, setUp and test_* functions
-        self.django_testcase = type("BackendDjangoTestCase", (BackendDjangoTestCase,), {})
+        self.django_testcase = type("BackendDjangoTestCase", (DjangoBackendTestCase,), {})
 
     def tearDown(self) -> None:
         super().tearDown()

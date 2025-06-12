@@ -7,12 +7,12 @@ import typing
 from scenery.response_checker import Checker
 import scenery.manifest
 from scenery.manifest_parser import ManifestParser
-from scenery.core import MetaDevFrontendTest
+from scenery.core import MetaTest
 from scenery.method_builder import MethodBuilder
 import rehearsal
 from rehearsal.django_project.some_app.models import SomeModel
 from scenery.set_up_handler import SetUpHandler
-from scenery.common import FrontendDjangoTestCase, get_selenium_driver
+from scenery.common import DjangoFrontendTestCase, get_selenium_driver
 
 import django.http
 
@@ -284,7 +284,8 @@ class TestManifest(unittest.TestCase):
         scenery.manifest.Manifest(set_up_test_data, set_up, scenes, cases, "origin", None)
         scenery.manifest.Manifest.from_formatted_dict(
             {
-                "set_up_test_data": ["reset_db"],
+                # "set_up_test_data": ["reset_db"],
+                "set_up_class": ["reset_db"],
                 "set_up": ["login"],
                 "cases": {"case_id": {"item_id": {}}},
                 "scenes": [
@@ -351,7 +352,7 @@ class TestTake(unittest.TestCase):
 class TestManifestParser(unittest.TestCase):
     def test_validate_dict(self):
         manifest_base_dict = {
-            "set_up_test_data": object(),
+            # "set_up_test_data": object(),
             "set_up": object(),
             "cases": object(),
             "scenes": object(),
@@ -396,7 +397,7 @@ class TestManifestParser(unittest.TestCase):
         # Success no optional field
         manifest = manifest_base_dict.copy()
         manifest.pop("set_up")
-        manifest.pop("set_up_test_data")
+        # manifest.pop("set_up_test_data")
         ManifestParser.validate_dict(manifest)
 
     def test_format_dict(self):
@@ -418,8 +419,9 @@ class TestManifestParser(unittest.TestCase):
                 "cases": [case_a, case_b],
                 "scenes": [scene_a, scene_b],
                 "manifest_origin": "origin",
-                "set_up_test_data": [],
+                # "set_up_test_data": [],
                 "set_up": [],
+                "set_up_class": [],
                 "testtype": None
             },
         )
@@ -427,7 +429,8 @@ class TestManifestParser(unittest.TestCase):
             "case": case_a,
             "scene": scene_a,
             "manifest_origin": "origin",
-            "set_up_test_data": ["a", "b"],
+            # "set_up_test_data": ["a", "b"],
+            "set_up_class": [],
             "set_up": ["c", "d"],
         }
         ManifestParser.validate_dict(d)
@@ -438,8 +441,9 @@ class TestManifestParser(unittest.TestCase):
                 "cases": {"CASE": case_a},
                 "scenes": [scene_a],
                 "manifest_origin": "origin",
-                "set_up_test_data": ["a", "b"],
+                # "set_up_test_data": ["a", "b"],
                 "set_up": ["c", "d"],
+                "set_up_class": [],
                 "testtype": None
             },
         )
@@ -511,7 +515,7 @@ class TestManifestParser(unittest.TestCase):
                 "directives": [{"status_code": 200}],
             },
             "manifest_origin": "origin",
-            "set_up_test_data": ["reset_db"],
+            # "set_up_test_data": ["reset_db"],
             "set_up": ["create_testuser"],
         }
         ManifestParser.parse_dict(d)
@@ -894,9 +898,9 @@ class TestSelenium(unittest.TestCase):
             "manifest_origin": "origin",
         }
         manifest = ManifestParser.parse_dict(d)
-        frontend_test_cls = MetaDevFrontendTest(
+        frontend_test_cls = MetaTest(
                 "some_manifest.frontend",
-                (FrontendDjangoTestCase,),
+                (DjangoFrontendTestCase,),
                 manifest,
                 driver=get_selenium_driver(headless=True)
                 
@@ -940,15 +944,15 @@ class TestSelenium(unittest.TestCase):
                 "directives": [{"status_code": 200}],
             },
             "manifest_origin": "origin",
-            "set_up_test_data": ["reset_db"],
+            # "set_up_test_data": ["reset_db"],
             "set_up": ["create_testuser"],
         }
         manifest = ManifestParser.parse_dict(d)
 
         # Create first test class instance and check initial cache
-        frontend_test_cls = MetaDevFrontendTest(
+        frontend_test_cls = MetaTest(
                 "some_manifest.frontend",
-                (FrontendDjangoTestCase,),
+                (DjangoFrontendTestCase,),
                 manifest,
                 driver=get_selenium_driver(headless=True)
             )

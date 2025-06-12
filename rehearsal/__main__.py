@@ -79,23 +79,22 @@ def main() -> int:
 
     console.print(Rule("[section]SCENERY ON DUMMY APP[/section]", style="yellow"))
 
-    from scenery.commands import integration_tests, load_tests, load_tests_prod
+    from scenery.commands import integration_tests 
 
     args = argparse.Namespace(
         scenery_settings_module="rehearsal.scenery_settings", 
-        only_manifest=None, 
-        only_back=False, 
-        only_front=False,
-        only_url=None,
-        only_case_id=None,
-        only_scene_pos=None,
+        manifest=None, 
+        back=False, 
+        front=False,
+        url=None,
+        case_id=None,
+        scene_pos=None,
         timeout_waiting_time=None,
         headless=True,
-        log=args.log
+        log=args.log,
+        mode="dev",
         )
     scenery_success, scenery_out = scenery.cli.command(integration_tests)(args)
-    # load_success, load_out = scenery.cli.command(load_tests)(args)
-    # load_success, load_out = scenery.cli.command(load_tests_prod)(args)
 
 
 
