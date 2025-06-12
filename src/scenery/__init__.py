@@ -1,19 +1,9 @@
 """A versatile integration testing framework for django apps."""
 
 import logging
-# from rich.logging import RichHandler
-
-# logging.basicConfig(
-#         level=logging.INFO,
-#         format="%(name)s %(message)s",
-#         datefmt="[%X]",
-#         handlers=[RichHandler(rich_tracebacks=True, markup=True)]
-#     )
-
+from typing import Any
 
 from rich.console import Console
-
-
 
 class SceneryLogger:
 
@@ -24,12 +14,12 @@ class SceneryLogger:
         logging.ERROR: "red",
     }
 
-    def __init__(self, level):
+    def __init__(self, level: int):
         self.level = level
         self.console = console
         # pass
 
-    def log(self, level, msg: str, style: str = None):
+    def log(self, level: int, msg: Any, style: str | None = None) -> None:
         if self.level <= level:
             level_name = f"{logging.getLevelName(level)}"
             level_name = f"{level_name:<10}"
@@ -39,16 +29,16 @@ class SceneryLogger:
                 msg = level_name + str(msg)
             self.console.log(msg, style=style)
 
-    def info(self, msg, style=None):
+    def info(self, msg: Any, style: str | None =None) -> None:
         self.log(logging.INFO, msg, style)
 
-    def debug(self, msg, style=None):
+    def debug(self, msg: Any, style: str | None =None) -> None:
         self.log(logging.DEBUG, msg, style)
 
-    def warning(self, msg, style=None):
+    def warning(self, msg: Any, style: str | None =None) -> None:
         self.log(logging.WARNING, msg, style)
 
-    def error(self, msg, style=None):
+    def error(self, msg: Any, style: str | None =None) -> None:
         self.log(logging.ERROR, msg, style)
         
 console = Console()

@@ -2,9 +2,8 @@ import argparse
 import importlib
 import os
 from pathlib import Path
-
 import sys
-import sysconfig
+import typing
 
 
 from scenery.common import summarize_test_result, interpret, iter_on_manifests
@@ -12,13 +11,11 @@ import scenery.cli
 from scenery import logger
 
 
-
-
 ########################
 # SCENERY CONFIG
 ########################
 
-def scenery_setup(args: argparse.Namespace) -> None:
+def scenery_setup(args: argparse.Namespace) -> bool:
     """Read the settings module and set the corresponding environment variables.
 
     This function imports the specified settings module and sets environment variables
@@ -36,9 +33,6 @@ def scenery_setup(args: argparse.Namespace) -> None:
         ImportError: If the settings module cannot be imported.
     """
 
-    # NOTE mad: we choose convention over verification here
-    # settings = importlib.import_module("rehearsal.scenery_settings")
-    # if setting_module == "rehearsal.scenery_settings":
     sys.path.append(os.path.join('.'))
     settings = importlib.import_module(args.scenery_settings_module)
     
@@ -54,20 +48,13 @@ def scenery_setup(args: argparse.Namespace) -> None:
     emojy, msg, color, log_lvl = interpret(True)
     logger.info("scenery set-up", style=color)
     
-
-    return (
-        True, 
-        {
-            "stdlib": sysconfig.get_paths()["stdlib"],
-            "purelib": sysconfig.get_paths()["purelib"],
-        }
-    )
+    return True
 
 ###################
 # DJANGO CONFIG
 ###################
 
-def django_setup(args: argparse.Namespace) -> int:
+def django_setup(args: argparse.Namespace) -> bool:
     """Set up the Django environment.
 
     This function sets the DJANGO_SETTINGS_MODULE environment variable and calls django.setup().
@@ -75,7 +62,6 @@ def django_setup(args: argparse.Namespace) -> int:
     Args:
         settings_module (str): The import path to the Django settings module.
     """
-
     import django
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", args.django_settings_module)
@@ -89,22 +75,20 @@ def django_setup(args: argparse.Namespace) -> int:
     emojy, msg, color, log_lvl = interpret(True)
     logger.log(log_lvl, "django set-up", style=color)
     
-    return True, {}
+    return True
 
 
 ###################
 # INTEGRATION TESTS
 ###################
 
-def integration_tests(args):
+def integration_tests(args: argparse.Namespace) -> bool:
     """
     Execute the main functionality of the scenery test runner.
 
     Returns:
         exit_code (int): Exit code indicating success (0) or failure (1)
     """
-
-
     # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
     from scenery.core import process_manifest_as_integration_test
 
@@ -115,7 +99,7 @@ def integration_tests(args):
     # driver = get_selenium_driver(headless=args.headless)
     driver = None
 
-    report_data = {
+    report_data  : dict[str, typing.List[typing.Tuple[bool, dict]]] = {
         "dev_backend": [],
         "dev_frontend": [],
         "remote_backend": [],
@@ -134,7 +118,7 @@ def integration_tests(args):
 
     success = scenery.cli.report_integration(report_data)
 
-    return success, {}
+    return success
 
 
 
@@ -142,14 +126,12 @@ def integration_tests(args):
 # LOAD TESTS
 ###################
 
-def load_tests(args):
-
-
-    # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
+def load_tests(args: argparse.Namespace) -> bool:
+    # NOTE mad: this needs to be loaded after scenery_setup and django_setup
     from scenery.core import process_manifest_as_load_test
 
     success = True
-    report_data = {}
+    report_data : dict[str, typing.List] = {}
 
     for filename in iter_on_manifests(args):        
         results = process_manifest_as_load_test(filename, args=args)
@@ -157,130 +139,29 @@ def load_tests(args):
         report_data.update(results)
         success &= file_level_success
 
-    return success, {}
+    return success
 
 
 ###################
 # CODE
 ###################
 
-def inspect_nlines(args):
-
-    from scenery.count_lines import count_line_types
+def inspect_code(args: argparse.Namespace) -> bool:
+    from scenery.inspect_code import count_line_types
 
     report_data = {}
 
     # Get all files recursively
     folder = Path(args.folder)
 
+    # TODO: just the directory (make option)
+
     # All files
     for file_path in folder.rglob('*.py'):
         if file_path.is_file():
-            # print(f"File: {file_path}")
             report_data[str(file_path)] = count_line_types(file_path)
-        # elif file_path.is_dir():
-        #     print(f"Directory: {file_path}")
 
     success = scenery.cli.report_inspect(report_data)
 
-    return success, {}
+    return success
 
-
-################################################
-################### DRAFT ######################
-################################################
-
-
-
-
-# def load_tests_prod(args):
-
-
-#     from scenery.load_test import LoadTester
-
-#     from rehearsal import CustomDiscoverRunner
-
-
-#     # from scenery.core import TestsLoader, TestsRunner
-
-#     # from rehearsal import CustomTestResult, CustomDiscoverRunner
-
-
-#     # loader = TestsLoader()
-#     # runner = TestsRunner()
-#     # runner.runner.resultclass = CustomTestResult
-
-#     # url = "http://localhost:8000"
-#     # endpoint = ""
-#     url = "https://pointcarre.app"
-#     users = 1
-#     requests_per_user = 5
-
-
-#     # NOTE mad: this needs to be loaded afeter scenery_setup and django_setup
-#     # from scenery.core import TestsLoader
-
-
-
-#     django_runner = CustomDiscoverRunner(None)
-
-
-#     data = defaultdict(list)
-
-#     for endpoint in [
-#         "/", 
-#         "/v1/chapter/troiz/revisions-brevet-30j", 
-#         "/v1/block/troiz/revisions-brevet-30j/2-01",
-#         ]:
-
-#         logger.info(f"{url}{endpoint}")
-
-#         for method in [http.HTTPMethod.GET, http.HTTPMethod.POST]:
-#             if method != http.HTTPMethod.GET and endpoint in [
-#                 "/", 
-#                 "/v1/chapter/troiz/revisions-brevet-30j", 
-#             ]:
-#                 continue
-
-#             # take = Take(
-#             #     method=http.HTTPMethod.GET,
-#             #     # url=endpoint,
-#             #     checks=[],
-#             #     data={},
-#             #     query_parameters={},
-#             #     url_parameters={}
-#             # )
-
-#             # logging.debug(take)
-
-#             class LoadTestCase(unittest.TestCase):
-
-#                 def setUp(self):
-#                     super().setUp()
-#                     self.tester = LoadTester(url)
-
-#                 def test_load(self):
-
-#                     # Run a load test against a specific endpoint
-#                     self.tester.run_load_test(
-#                         endpoint=endpoint, 
-#                         method=method,
-#                         data={},
-#                         headers=None,
-#                         users=users,             
-#                         requests_per_user=requests_per_user,
-#                     )
-
-
-#             django_test = LoadTestCase("test_load")
-
-#             suite = unittest.TestSuite()
-#             suite.addTest(django_test)
-#             result = django_runner.run_suite(suite)
-
-#             for key, val in django_test.tester.data.items():
-#                 data[key] += val
-
-#     scenery.cli.report_load(data)
-
-#     return True, {}

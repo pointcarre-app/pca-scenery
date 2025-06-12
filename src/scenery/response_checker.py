@@ -4,14 +4,15 @@ import http
 import importlib
 import json
 import time
-from typing import Any, cast
+from typing import Any, cast, Protocol, Mapping
+import requests
 
 from  scenery import logger
 from scenery.common import (
-    ResponseProtocol, 
-    DjangoTestCase, 
+    SceneryTestCase, 
     DjangoBackendTestCase, 
     DjangoFrontendTestCase,
+    RemoteBackendTestCase,
     )
 from scenery.manifest import Take, Check, DirectiveCommand, DomArgument
 
@@ -19,6 +20,42 @@ import bs4
 import django.http
 
 from selenium import webdriver
+
+
+# RESPONSE PROTOCOL
+###################
+
+class ResponseProtocol(Protocol):
+    """A protocol for HTTP responses, covering both basic Django http response and from Selenium Driver."""
+
+    @property
+    def status_code(self) -> int:
+        """The HTTP status code of the response."""
+
+    @property
+    def headers(self) -> Mapping[str, str]:
+        """The headers of the response."""
+
+    @property
+    def content(self) -> Any:
+        """The content of the response."""
+
+    # @property
+    # def json(self) -> str | None:
+    #     """The json of the response."""
+    #     raise NotImplementedError
+
+    # @property
+    # def charset(self) -> str | None:
+    #     """The charset of the response."""
+
+    # def has_header(self, header_name: str) -> bool:
+    #     """Check if the response has a specific header."""
+
+    # def __getitem__(self, header_name: str) -> str: ...
+
+    # def __setitem__(self, header_name: str, value: str) -> None: ...
+
 
 
 # NOTE mad: we do not declare any django.http.HttpResponse child 
@@ -89,7 +126,8 @@ class SeleniumResponse(ResponseProtocol):
         self._headers[header_name] = value
 
 
-
+# RESPONSE CHECKER
+##################
 
 class Checker:
     """A utility class for performing HTTP requests and assertions on responses.
@@ -100,21 +138,25 @@ class Checker:
 
     # NOTE mad: the first functions take a Take 
     # as argument to retrieve the server respone
-    # The next function takes the response protocola 
+    # The next function takes the response protocols
     # and potentially other arguments to perform checks
 
-    # TODO mad: should move to respective class as get_client_response ?
-    # NOTE mad: I am not sure this is so simple as right now I can't import stuff 
-    # from core before setting scenery up, and tpe checking would become tricky 
+
+
+    # COLLECT RESPONSE
+    ##################
+
+    selenium_module = importlib.import_module(os.environ["SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM"])
+
 
     @staticmethod
     def get_django_client_response(
-        django_testcase: DjangoBackendTestCase, take: Take
+        testcase: DjangoBackendTestCase, take: Take
     ) -> django.http.HttpResponse:
         """Execute an HTTP request based on the given HttpTake object.
 
         Args:
-            django_testcase (BackendDjangoTestCase): The Django testcase instance.
+            testcase (BackendDjangoTestCase): The Django testcase instance.
             take (scenery.manifest.HttpTake): The HttpTake object specifying the request details.
 
         Returns:
@@ -123,8 +165,6 @@ class Checker:
         Raises:
             NotImplementedError: If the HTTP method specified in the take is not implemented.
         """
-
-
         logger.debug(Checker.get_django_client_response)
         logger.debug(f"{take.url=}")
         logger.debug(f"{take.method=}")
@@ -132,12 +172,12 @@ class Checker:
             logger.debug(take.data)
 
         if take.method == http.HTTPMethod.GET:
-            response = django_testcase.client.get(
+            response = testcase.client.get(
                 take.url,
                 take.data,
             )
         elif take.method == http.HTTPMethod.POST:
-            response = django_testcase.client.post(
+            response = testcase.client.post(
                 take.url,
                 take.data,
             )
@@ -149,9 +189,9 @@ class Checker:
         # Incompatible return value type (got "_MonkeyPatchedWSGIResponse", expected "HttpResponse")
         return response # type: ignore[return-value]
     
-    @staticmethod
+    @classmethod
     def get_selenium_response(
-        django_testcase: DjangoFrontendTestCase, take: Take
+        cls, testcase: DjangoFrontendTestCase, take: Take
     ) -> SeleniumResponse:
         """Create a SeleniumResponse by executing a request through Selenium WebDriver.
 
@@ -159,7 +199,7 @@ class Checker:
         it dynamically loads and executes request handlers from a configured Selenium module.
 
         Args:
-            django_testcase (FrontendDjangoTestCase): The test case instance containing
+            testcase (FrontendDjangoTestCase): The test case instance containing
                 the Selenium WebDriver and live server URL.
             take (Take): The request specification containing method, URL, and data
                 for the request to be executed.
@@ -177,13 +217,8 @@ class Checker:
             - The Selenium module path must be specified in the SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM
             environment variable.
         """
-
-        # print("WAITING")
-
-        # Get the correct url form the FrontendDjangoTestCase
-        url = django_testcase.live_server_url + take.url
-
-
+        # url = testcase.live_server_url + take.url
+        url = testcase.base_url + take.url
 
         logger.debug(Checker.get_selenium_response)
         logger.debug(f"{url=}")
@@ -192,19 +227,17 @@ class Checker:
             logger.debug(take.data)
 
 
-        response = SeleniumResponse(django_testcase.driver)
+        response = SeleniumResponse(testcase.driver)
 
-        # TODO: should be a class attribute or something, maybe module could be loaded at the beggining
-        selenium_module = importlib.import_module(os.environ["SCENERY_POST_REQUESTS_INSTRUCTIONS_SELENIUM"])
 
         if take.method == http.HTTPMethod.GET:
-            django_testcase.driver.get(url)
+            testcase.driver.get(url)
         if take.method == http.HTTPMethod.POST:
             # TODO mad: improve and or document
             method_name = take.url_name.replace(":", "_")
             method_name =  f"post_{method_name}"
-            post_method = getattr(selenium_module, method_name)
-            post_method(django_testcase, url, take.data)
+            post_method = getattr(cls.selenium_module, method_name)
+            post_method(testcase, url, take.data)
 
         # time.sleep(1000)
 
@@ -212,9 +245,9 @@ class Checker:
         return response 
     
     @staticmethod
-    def get_http_response(remote_testcase, take):
+    def get_http_response(testcase: RemoteBackendTestCase, take: Take) -> requests.Response:
 
-        url = remote_testcase.base_url + take.url
+        url = testcase.base_url + take.url
 
         logger.debug(Checker.get_http_response)
         logger.debug(f"{url=}")
@@ -223,25 +256,28 @@ class Checker:
             logger.debug(take.data)
 
         if take.method == http.HTTPMethod.GET:
-            response = remote_testcase.session.get(
+            response = testcase.session.get(
                 url,
                 data=take.data,
-                headers=remote_testcase.headers,
+                headers=testcase.headers,
             )
         elif take.method == http.HTTPMethod.POST:
-            response = remote_testcase.session.post(
-                remote_testcase.base_url + take.url,
+            response = testcase.session.post(
+                testcase.base_url + take.url,
                 take.data,
-                headers=remote_testcase.headers,
+                headers=testcase.headers,
             )
         else:
             raise NotImplementedError(take.method)
 
         return response
 
+    # CHECKS
+    ################################
+
     @staticmethod
     def exec_check(
-        django_testcase: DjangoTestCase,
+        testcase: SceneryTestCase,
         response: ResponseProtocol,
         check: Check,
     ) -> None:
@@ -251,7 +287,7 @@ class Checker:
         specified in the HttpCheck object.
 
         Args:
-            django_testcase (DjangoTestCase): The Django test case instance.
+            testcase (DjangoTestCase): The Django test case instance.
             response (ResponseProtocol): The response to check.
             check (scenery.manifest.HttpCheck): The check to perform on the response.
 
@@ -262,39 +298,40 @@ class Checker:
         logger.debug(check)
 
         if check.instruction == DirectiveCommand.STATUS_CODE:
-            Checker.check_status_code(django_testcase, response, check.args)
+            Checker.check_status_code(testcase, response, check.args)
         elif check.instruction == DirectiveCommand.REDIRECT_URL:
-            Checker.check_redirect_url(django_testcase, response, check.args)
+            Checker.check_redirect_url(testcase, response, check.args)
         elif check.instruction == DirectiveCommand.COUNT_INSTANCES:
-            Checker.check_count_instances(django_testcase, response, check.args)
+            Checker.check_count_instances(testcase, response, check.args)
         elif check.instruction == DirectiveCommand.DOM_ELEMENT:
-            Checker.check_dom(django_testcase, response, check.args)
+            Checker.check_dom(testcase, response, check.args)
         elif check.instruction == DirectiveCommand.JSON:
-            Checker.check_json(django_testcase, response, check.args)
+            Checker.check_json(testcase, response, check.args)
         elif check.instruction == DirectiveCommand.FIELD_OF_INSTANCE:
-            Checker.check_field_of_instance(django_testcase, response, check.args)
+            Checker.check_field_of_instance(testcase, response, check.args)
+        # NOTE mad: do not erase
         # elif check.instruction == scenery.manifest.DirectiveCommand.JS_VARIABLE:
-        #     Checker.check_js_variable(django_testcase, response, check.args)
+        #     Checker.check_js_variable(testcase, response, check.args)
         # elif check.instruction == scenery.manifest.DirectiveCommand.JS_STRINGIFY:
-        #     Checker.check_js_stringify(django_testcase, response, check.args)
+        #     Checker.check_js_stringify(testcase, response, check.args)
         else:
             raise NotImplementedError(check)
         
 
     @staticmethod
     def check_status_code(
-        django_testcase: DjangoTestCase,
+        testcase: SceneryTestCase,
         response: ResponseProtocol,
         args: int,
     ) -> None:
         """Check if the response status code matches the expected code.
 
         Args:
-            django_testcase (DjangoTestCase): The Django test case instance.
+            testcase (DjangoTestCase): The Django test case instance.
             response (ResponseProtocol): The HTTP response to check.
             args (int): The expected status code.
         """
-        django_testcase.assertEqual(
+        testcase.assertEqual(
             response.status_code,
             args,
             f"Expected status code {args}, but got {response.status_code}",
@@ -302,27 +339,27 @@ class Checker:
 
     @staticmethod
     def check_redirect_url(
-        django_testcase: DjangoTestCase,
+        testcase: SceneryTestCase,
         response: ResponseProtocol,
         args: str,
     ) -> None:
         """Check if the response redirect URL matches the expected URL.
 
         Args:
-            django_testcase (DjangoTestCase): The Django test case instance.
+            testcase (DjangoTestCase): The Django test case instance.
             response (django.http.HttpResponseRedirect): The HTTP redirect response to check.
             args (str): The expected redirect URL.
         """
         # NOTE mad: this will fail when we try with frontend for login etc... 
-        # but I should rather skip those kind of test in the method builder
-        django_testcase.assertIsInstance(
+        # but I skip those kind of test in the method builder
+        testcase.assertIsInstance(
             response,
             django.http.HttpResponseRedirect,
             f"Expected HttpResponseRedirect but got {type(response)}",
         )
         # FIXME mad: this is done for static type checking
         redirect = cast(django.http.HttpResponseRedirect, response)
-        django_testcase.assertEqual(
+        testcase.assertEqual(
             redirect.url,
             args,
             f"Expected redirect URL '{args}', but got '{redirect.url}'",
@@ -330,19 +367,19 @@ class Checker:
 
     @staticmethod
     def check_count_instances(
-        django_testcase: DjangoTestCase,
+        testcase: SceneryTestCase,
         response: ResponseProtocol,
         args: dict,
     ) -> None:
         """Check if the count of model instances matches the expected count.
 
         Args:
-            django_testcase (DjangoTestCase): The Django test case instance.
+            testcase (DjangoTestCase): The Django test case instance.
             response (ResponseProtocol): The HTTP response (not used in this check).
             args (dict): A dictionary containing 'model' (the model class) and 'n' (expected count).
         """
         instances = list(args["model"].objects.all())
-        django_testcase.assertEqual(
+        testcase.assertEqual(
             len(instances),
             args["n"],
             f"Expected {args['n']} instances of {args['model'].__name__}, but found {len(instances)}",
@@ -350,7 +387,7 @@ class Checker:
 
     @staticmethod
     def check_dom(
-        django_testcase: DjangoTestCase,
+        testcase: SceneryTestCase,
         response: ResponseProtocol,
         args: dict[DomArgument, Any],
     ) -> None:
@@ -360,7 +397,7 @@ class Checker:
         checks on DOM elements as specified in the args dictionary.
 
         Args:
-            django_testcase (DjangoTestCase): The Django test case instance.
+            testcase (DjangoTestCase): The Django test case instance.
             response (django.ResponseProtocol): The HTTP response to check.
             args (dict): A dictionary of DomArgument keys and their corresponding values,
                          specifying the checks to perform.
@@ -369,7 +406,6 @@ class Checker:
             ValueError: If neither 'find' nor 'find_all' arguments are provided in args.
         """
         # NOTE mad: this is incredibly important for the frontend test
-        # TODO mad: put this somewhere else or more clean?
         time.sleep(1)
 
         soup = bs4.BeautifulSoup(response.content, "html.parser")
@@ -377,28 +413,27 @@ class Checker:
         # Apply the scope
         if scope := args.get(DomArgument.SCOPE):
             scope_result = soup.find(**scope)
-            django_testcase.assertIsNotNone(
+            testcase.assertIsNotNone(
                 scope,
                 f"Expected to find an element matching {args[DomArgument.SCOPE]}, but found none",
             )
         else:
             scope_result = soup
 
-        # NOTE mad: we inforce type checking by regarding bs4 objects as Tag
-        # FIXME mad
+        # FIXME mad: we inforce type checking by regarding bs4 objects as Tag
         scope_result = cast(bs4.Tag, scope_result)
 
         # Locate the element(s)
         if args.get(DomArgument.FIND_ALL):
             dom_elements = scope_result.find_all(**args[DomArgument.FIND_ALL])
-            django_testcase.assertGreaterEqual(
+            testcase.assertGreaterEqual(
                 len(dom_elements),
                 1,
                 f"Expected to find at least one element matching {args[DomArgument.FIND_ALL]}, but found none",
             )
         elif args.get(DomArgument.FIND):
             dom_element = scope_result.find(**args[DomArgument.FIND])
-            django_testcase.assertIsNotNone(
+            testcase.assertIsNotNone(
                 dom_element,
                 f"Expected to find an element matching {args[DomArgument.FIND]}, but found none",
             )
@@ -410,14 +445,14 @@ class Checker:
 
         # Perform the additional checks
         if count := args.get(DomArgument.COUNT):
-            django_testcase.assertEqual(
+            testcase.assertEqual(
                 len(dom_elements),
                 count,
                 f"Expected to find {count} elements, but found {len(dom_elements)}",
             )
         for dom_element in dom_elements:
             if text := args.get(DomArgument.TEXT):
-                django_testcase.assertEqual(
+                testcase.assertEqual(
                     dom_element.text,
                     text,
                     f"Expected element text to be '{text}', but got '{dom_element.text}'",
@@ -425,8 +460,8 @@ class Checker:
             if attribute := args.get(DomArgument.ATTRIBUTE):
 
                 if value := attribute.get("value"):
-                    # TODO mad: should this move to manifest parser? we will decide in v2
-                    # TODO mad: in manifest _format_dom_element should be used here, or even before and just disappear
+                    # TODO mad: should this move to manifest parser?
+                    # in manifest _format_dom_element should be used here, or even before and just disappear
                     if isinstance(value, (str, list)):
                         pass
                     elif isinstance(value, int):
@@ -435,23 +470,23 @@ class Checker:
                         raise TypeError(
                             f"attribute value can only by `str` or `list[str]` not '{type(value)}'"
                         )
-                    django_testcase.assertEqual(
+                    testcase.assertEqual(
                         dom_element[attribute["name"]],
                         value,
                         f"Expected attribute '{attribute['name']}' to have value '{value}', but got '{dom_element[attribute['name']]}'",
                     )
                 elif regex := attribute.get("regex"):
 
-                    django_testcase.assertRegex(
+                    testcase.assertRegex(
                         dom_element[attribute["name"]],
                         regex,
                         f"Expected attribute '{attribute['name']}' to match regex '{regex}', but got '{dom_element[attribute['name']]}'",
                     )
                 if exepected_value_from_ff := attribute.get("json_stringify"):
 
-                    # print("GOING HERE", dom_element[attribute["name"]])
-                    if isinstance(django_testcase, DjangoFrontendTestCase):
-                        value_from_ff = django_testcase.driver.execute_script( # type: ignore[no-untyped-call]
+                    if isinstance(testcase, DjangoFrontendTestCase):
+                        # NOTE mad: we cannot anotate it.
+                        value_from_ff = testcase.driver.execute_script( # type: ignore[no-untyped-call]
                         f"return JSON.stringify({dom_element[attribute['name']]})"
                     )
                     else:
@@ -462,7 +497,7 @@ class Checker:
                         pass
                     else:
                         value_from_ff = json.loads(value_from_ff)
-                        django_testcase.assertEqual(
+                        testcase.assertEqual(
                             value_from_ff,
                             exepected_value_from_ff,
                             f"Expected attribute '{attribute['name']}' to have value '{exepected_value_from_ff}', but got '{value_from_ff}'",
@@ -470,19 +505,20 @@ class Checker:
                 
     @staticmethod
     def check_json(
-        django_testcase: DjangoTestCase,
+        testcase: SceneryTestCase,
         response: ResponseProtocol,
         args: dict,
-    ):
+    ) -> None:
         # print(f"{response.json()=}")
-        django_testcase.assertIsInstance(response, django.http.JsonResponse)
-        data = response.json()
-        django_testcase.assertEqual(data[args["key"]], args["value"])
+        testcase.assertIsInstance(response, django.http.JsonResponse)
+        # FIXME
+        data = response.json() # type: ignore [attr-defined]
+        testcase.assertEqual(data[args["key"]], args["value"])
 
 
     @staticmethod
     def check_field_of_instance(
-        django_testcase: DjangoTestCase,
+        testcase: SceneryTestCase,
         response: ResponseProtocol,
         args: dict,
     ) -> None:
@@ -490,37 +526,37 @@ class Checker:
 
         instances = list(args["find"]["model"].objects.all())
         if len(instances) != 1:
-            django_testcase.fail(f"Checking the {args["field"]} field of {args["find"]["model"]} requires that there is a single instance in the db, but found {len(instances)}.")
+            testcase.fail(f"Checking the {args["field"]} field of {args["find"]["model"]} requires that there is a single instance in the db, but found {len(instances)}.")
         
         instance = instances[0]
         field_value = getattr(instance, args["field"])
-        django_testcase.assertEqual(
+        testcase.assertEqual(
             field_value, 
             args["value"],
             f"{args["find"]["model"].__name__}.{args["field"]} = {field_value} but expected {args['value']}"
         )
 
-        # django_testcase.assertEqual(
+        # testcase.assertEqual(
         #     len(instances),
         #     args["n"],
         #     f"Expected {args['n']} instances of {args['model'].__name__}, but found {len(instances)}",
         # )
 
 # NOTE mad: do not erase
-    # def check_js_variable(self, django_testcase: DjangoFrontendTestCase, args: dict) -> None:
+    # def check_js_variable(self, testcase: DjangoFrontendTestCase, args: dict) -> None:
     #     """
     #     Check if a JavaScript variable has the expected value.
     #     Args:
-    #         django_testcase (DjangoTestCase): The Django test case instance.
+    #         testcase (DjangoTestCase): The Django test case instance.
     #         args (dict): The arguments for the check.
     #     """
 
     #     variable_name = args["name"]
     #     expected_value = args["value"]
-    #     actual_value = django_testcase.driver.execute_script(
+    #     actual_value = testcase.driver.execute_script(
     #         f"return {variable_name};"
     #     )
-    #     django_testcase.assertEqual(
+    #     testcase.assertEqual(
     #         actual_value,
     #         expected_value,
     #         f"Expected JavaScript variable '{variable_name}' to have value '{expected_value}', but got '{actual_value}'",

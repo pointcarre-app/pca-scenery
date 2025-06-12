@@ -299,7 +299,7 @@ class TestManifest(unittest.TestCase):
                     }
                 ],
                 "manifest_origin": "origin",
-                "testtype": None
+                "ttype": None
             }
         )
 
@@ -357,7 +357,7 @@ class TestManifestParser(unittest.TestCase):
             "cases": object(),
             "scenes": object(),
             "manifest_origin": "origin",
-            # "testtype": None,
+            # "ttype": None,
         }
 
         # Unknown key
@@ -422,7 +422,7 @@ class TestManifestParser(unittest.TestCase):
                 # "set_up_test_data": [],
                 "set_up": [],
                 "set_up_class": [],
-                "testtype": None
+                "ttype": None
             },
         )
         d = {
@@ -444,7 +444,7 @@ class TestManifestParser(unittest.TestCase):
                 # "set_up_test_data": ["a", "b"],
                 "set_up": ["c", "d"],
                 "set_up_class": [],
-                "testtype": None
+                "ttype": None
             },
         )
 
@@ -757,18 +757,8 @@ class TestMethodBuilder(rehearsal.TestCaseOfBackendDjangoTestCase):
         Note that currently, there is only one single test by TestCase (ie by Take)
         But we could therefore easily go beyond
         """
-        # print(scenery.common.colorize("yellow", "execution order skipped, needs to be fixed."))
-        # self.skipTest("")
-        # # NOTE mad: do not erase code below
-
-        # Reset class attribute
-        # TestMethodBuilder.exec_order = []
 
         exec_order= []
-
-        # take = scenery.manifest.Take(
-        #     http.HTTPMethod.GET, "http://127.0.0.1:8000/hello/", [], {}, {}, {}
-        # )
 
         @typing.overload
         def watch(func: classmethod) -> classmethod: ...
@@ -786,10 +776,8 @@ class TestMethodBuilder(rehearsal.TestCaseOfBackendDjangoTestCase):
                     x = func(*args, **kwargs)
 
                 # NOTE claude: Get the original function name even for classmethods
-                # func_name = func.__name__ if not isinstance(func, classmethod) else func.__func__.__name__
-                # TestMethodBuilder.exec_order.append(func.__name__)
-                exec_order.append(func.__name__)
-                # print(f"Added {func_name} to exec_order. Current order: {TestMethodBuilder.exec_order}")  # Debug print
+                func_name = func.__name__ if not isinstance(func, classmethod) else func.__func__.__name__
+                exec_order.append(func_name)
                 
                 return x
             # NOTE claude: Preserve the original function name
@@ -808,31 +796,23 @@ class TestMethodBuilder(rehearsal.TestCaseOfBackendDjangoTestCase):
         def setUp(django_testcase):
             pass
 
+        # FIXME mad: if we include this, the exec_orider becomes an empty list...
+        # @watch
+        # @classmethod
+        # def setUpClass(django_testcase):
+        #     super(django_testcase).setUpClass()
+        #     pass
 
-        # TODO: add setUpClass and SetUpTestData
-        # TODO: use functions comming from method builder
+        # setattr(self.django_testcase, "setUpClass", setUpClass)
         setattr(self.django_testcase, "setUp", setUp)
         setattr(self.django_testcase, "test_1", test_1)
         setattr(self.django_testcase, "test_2", test_2)
 
 
-        # setattr(self.django_testcase, "setUpTestData", watch(MethodBuilder.build_setUpTestData([])))
-        # setattr(self.django_testcase, "setUp", watch(MethodBuilder.build_setUp([])))
-
-        # test_1 = MethodBuilder.build_backend_test_from_take(take)
-        # test_1.__name__ = "test_1"
-        # test_2 = MethodBuilder.build_backend_test_from_take(take)
-        # test_2.__name__ = "test_2"
-
-        # setattr(self.django_testcase, "test_1", watch(test_1))
-        # setattr(self.django_testcase, "test_2", watch(test_2))
-
         self.run_django_testcase()
 
         self.assertListEqual(
-            # TestMethodBuilder.exec_order,
             exec_order,
-            # ["setUpTestData", "setUp", "test_1", "setUp", "test_2"],
             ["setUp", "test_1", "setUp", "test_2"],
         )
 

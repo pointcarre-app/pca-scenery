@@ -27,7 +27,6 @@ from django.urls import reverse
 class RawManifestDict(typing.TypedDict, total=False):
     """The type of dict which can appear in the yamls."""
 
-    # set_up_test_data: typing.Sequence[dict]
     set_up_class: typing.Sequence[dict]
     set_up: typing.Sequence[dict]
     case: dict
@@ -35,7 +34,7 @@ class RawManifestDict(typing.TypedDict, total=False):
     scene: dict
     scenes: typing.List[dict]
     manifest_origin: str
-    testtype: str
+    ttype: str
 
 
 class ManifestDict(typing.TypedDict):
@@ -44,9 +43,9 @@ class ManifestDict(typing.TypedDict):
     scenes: typing.List[dict]
     cases: dict[str, dict]
     manifest_origin: str
-    set_up_test_data: typing.Sequence[str | dict]
+    set_up_class: typing.Sequence[str | dict]
     set_up: typing.Sequence[str | dict]
-    testtype: typing.Optional[str]
+    ttype: typing.Optional[str]
 
 
 ########################
@@ -262,7 +261,6 @@ class Directive:
 
     def __post_init__(self) -> None:
         """Format self.args."""
-
         match self.instruction, self.args:
             case DirectiveCommand.STATUS_CODE, int(n):
                 self.args = http.HTTPStatus(n)
@@ -420,7 +418,7 @@ class Manifest:
     scenes: list[Scene]
     cases: dict[str, Case]
     manifest_origin: str
-    testtype: str | None #TODO mad: do I really use this?
+    ttype: str | None
 
     @classmethod
     def from_formatted_dict(cls, d: ManifestDict) -> "Manifest":
@@ -447,7 +445,7 @@ class Manifest:
             },
             # d[ManifestFormattedDictKeys.manifest_origin],
             d["manifest_origin"],
-            d.get("testtype")
+            d.get("ttype")
         )
     
     def iter_on_takes(
@@ -455,7 +453,7 @@ class Manifest:
         only_url: str | None, 
         only_case_id: str | None, 
         only_scene_pos: str | None
-    ) -> typing.Iterable[typing.Tuple[str, Case, int, Scene]]:
+    ) -> typing.Iterable[typing.Tuple[str, int, "Take"]]:
         for (case_id, case), (scene_pos, scene) in itertools.product(
             self.cases.items(), enumerate(self.scenes)
         ):
@@ -494,17 +492,15 @@ class Check(Directive):
                 pass
             case DirectiveCommand.COUNT_INSTANCES, {"model": ModelBase(), "n": int(n)}:
                 # NOTE mad: Validate model is registered
-                # TODO mad: is this really needed?
                 app_config = django_apps.get_app_config(os.environ["SCENERY_TESTED_APP_NAME"])
                 app_config.get_model(self.args["model"].__name__)
             case DirectiveCommand.JS_STRINGIFY, _:
-                # TODO mad
+                # TODO mad: js_stringify
                 pass
-            case DirectiveCommand.JSON, {"key": str(s), "value": _} :
+            case DirectiveCommand.JSON, {"key": str(_), "value": _} :
                 pass
-            case DirectiveCommand.FIELD_OF_INSTANCE, {"find":{"model": ModelBase()}, "field": str(s), "value": _}:
+            case DirectiveCommand.FIELD_OF_INSTANCE, {"find":{"model": ModelBase()}, "field": str(_), "value": _}:
                 # NOTE mad: Validate model is registered
-                # TODO mad: is this really needed?
                 app_config = django_apps.get_app_config(os.environ["SCENERY_TESTED_APP_NAME"])
                 app_config.get_model(self.args["find"]["model"].__name__)
             

@@ -1,11 +1,13 @@
 
 import ast
+import pathlib
 import tokenize
 
-def count_line_types(file_path):
+# NOTE mad: claude wrote this
+
+def count_line_types(file_path: pathlib.Path) -> dict[str, int]:
     """
-    Count the number of code lines, docstring lines, and other lines in a Python file
-    using the ast module for more accurate parsing.
+    Count the number of code lines, docstring lines, and other lines in a Python file.
     
     Args:
         file_path (str): Path to the Python file to analyze
@@ -21,7 +23,7 @@ def count_line_types(file_path):
     tree = ast.parse(content)
     
     # Track line numbers for docstrings
-    docstring_lines = set()
+    docstring_lines: set[int] = set()
     
     # Extract all docstrings
     extract_docstrings(tree, docstring_lines)
@@ -54,7 +56,7 @@ def count_line_types(file_path):
 
 
 # Helper function to extract docstrings from AST nodes
-def extract_docstrings(node, docstring_lines):
+def extract_docstrings(node: ast.AST, docstring_lines: set) -> set:
 
 
     # Check for module, class, and function docstrings
@@ -77,18 +79,3 @@ def extract_docstrings(node, docstring_lines):
     return docstring_lines
 
 
-
-# # Example usage
-# if __name__ == "__main__":
-#     import sys
-    
-#     if len(sys.argv) > 1:
-#         file_path = sys.argv[1]
-#         code, docs, other = count_line_types(file_path)
-#         print(f"Analysis of {file_path}:")
-#         print(f"Code lines: {code}")
-#         print(f"Docstring lines: {docs}")
-#         print(f"Other lines (comments, blank): {other}")
-#         print(f"Total lines: {code + docs + other}")
-#     else:
-#         print("Please provide a Python file path as an argument.")

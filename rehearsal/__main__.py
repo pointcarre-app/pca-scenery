@@ -10,7 +10,7 @@ from scenery.common import summarize_test_result
 
 
 
-def rehearsal_unitary_tests():
+def rehearsal_unit_tests() -> bool:
 
     import rehearsal.tests
 
@@ -23,19 +23,20 @@ def rehearsal_unitary_tests():
     rehearsal_result = rehearsal_runner.run(rehearsal_tests)
     rehearsal_success, rehearsal_summary = summarize_test_result(rehearsal_result, "unitary tests")
 
-    return rehearsal_success, rehearsal_summary
+    return rehearsal_success
 
 
-def main() -> int:
+def main() -> bool:
     """Test the package `scenery` itself. First run rehearsal unitary tests 
     then check that the main command works by running it on the dummy django app"""
+
+    rehearsal_success = True
 
     console = Console()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--log", default="INFO")
     args = parser.parse_args()
-
 
     ###################
     # CONFIG SCENERY
@@ -45,47 +46,40 @@ def main() -> int:
 
     args.scenery_settings_module = "rehearsal.scenery_settings"
     args.django_settings_module = "rehearsal.django_project.django_project.settings"
-    
-    # args = argparse.Namespace(
-    #     scenery_settings_module="rehearsal.scenery_settings", 
-    #     django_settings_module="rehearsal.django_project.django_project.settings",
-    #     log="INFO"
-    #     # log="DEBUG"
-    # )
-
-
 
     import scenery.cli
     from scenery.commands import scenery_setup, django_setup
 
-    scenery.cli.command(scenery_setup)(args)
-    scenery.cli.command(django_setup)(args)
+    scenery_setup_success = scenery.cli.command(scenery_setup)(args)
+    rehearsal_success &=  scenery_setup_success
+
+    django_setup_success = scenery.cli.command(django_setup)(args)    
+    rehearsal_success &=  django_setup_success
 
     ####################
     # RUN
     ####################
 
 
-    # Rehearsal
+    # Unit
     ###########
 
     console.print(Rule("[section]REHEARSAL[/section]", style="yellow"))
 
-    unit_success, unit_out = rehearsal_unitary_tests()
-
+    unit_success = rehearsal_unit_tests()
+    rehearsal_success &=  unit_success
 
     # Dummy django app
     ##################
+    from scenery.commands import integration_tests, load_tests, inspect_code
 
     console.print(Rule("[section]SCENERY ON DUMMY APP[/section]", style="yellow"))
-
-    from scenery.commands import integration_tests 
 
     args = argparse.Namespace(
         scenery_settings_module="rehearsal.scenery_settings", 
         manifest=None, 
-        back=False, 
-        front=False,
+        back=True, 
+        front=True,
         url=None,
         case_id=None,
         scene_pos=None,
@@ -94,12 +88,46 @@ def main() -> int:
         log=args.log,
         mode="dev",
         )
-    scenery_success, scenery_out = scenery.cli.command(integration_tests)(args)
+    integration_success = scenery.cli.command(integration_tests)(args)
+    rehearsal_success &= integration_success
 
+    # TODO mad: there must be a way to launch the server from here
+    args = argparse.Namespace(
+        scenery_settings_module="rehearsal.scenery_settings", 
+        manifest="hello_http", 
+        url=None,
+        case_id=None,
+        scene_pos=None,
+        users=2,
+        requests=2,
+        log=args.log,
+        mode="local",
+        )
+    load_success = scenery.cli.command(load_tests)(args)
+    rehearsal_success &= load_success
 
+    args = argparse.Namespace(
+        folder='src/scenery',
+        log=args.log,
+        mode="dev",
+        )
+    inspect_success = scenery.cli.command(inspect_code)(args)
+    rehearsal_success &= inspect_success
+
+    # args = argparse.Namespace(
+    #     folder='rehearsal',
+    #     log=args.log,
+    #     mode="dev",
+    #     )
+    # scenery_success, scenery_out = scenery.cli.command(inspect_nlines)(args)
+
+    return rehearsal_success
 
 
 if __name__ == "__main__":
-
-    exit_code = main()
-    # sys.exit(exit_code)
+    import sys
+    success = main()
+    if success:
+        sys.exit(0)
+    else:
+        sys.exit(1)

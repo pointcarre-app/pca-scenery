@@ -8,3 +8,4 @@ pca_scenery.egg-info/
 **/.mypy_cache
 **/.ruff_cache
 *.sqlite3
+.env

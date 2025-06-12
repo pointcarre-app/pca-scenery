@@ -9,17 +9,17 @@ import http
 
 from scenery import logger
 from scenery.manifest import SetUpInstruction, Take, DirectiveCommand
-from scenery.response_checker import Checker
+from scenery.response_checker import Checker, ResponseProtocol
 from scenery.set_up_handler import SetUpHandler
 from scenery.common import (
-    DjangoTestCase,
+    SceneryTestCase,
     DjangoBackendTestCase,
     DjangoFrontendTestCase,
     RemoteBackendTestCase,
+    RemoteFrontendTestCase,
     LoadTestCase,
     get_selenium_driver,
 )
-from scenery.load_test import LoadTester
 
 from selenium import webdriver
 
@@ -37,7 +37,7 @@ class MethodBuilder:
     that can be added to Django test cases.
     """
 
-    # NOTE mad: do not erase, but this is unused right now
+    # NOTE mad: do not erase, but this is unused right now, but tested
     @staticmethod
     def build_setUpTestData(instructions: list[SetUpInstruction]) -> classmethod:
         """Build a setUpTestData class method for a Django test case.
@@ -52,8 +52,9 @@ class MethodBuilder:
             classmethod: A class method that can be added to a Django test case.
         """
 
-        def setUpTestData(testcase_cls: type[DjangoTestCase]) -> None:
-            super(testcase_cls, testcase_cls).setUpTestData()  # type: ignore[misc]
+        def setUpTestData(testcase_cls: type[SceneryTestCase]) -> None:
+            # TODO mad: not sure why this is needed
+            super(testcase_cls, testcase_cls).setUpTestData() # type: ignore[misc]
 
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(testcase_cls, instruction)
@@ -82,12 +83,12 @@ class MethodBuilder:
             classmethod: A class method that handles test case setup operations
         """
 
-        def setUpClass(testcase_cls: type[DjangoTestCase]) -> None:
-            # logger.debug(f"{django_testcase_cls}.setUpClass")
+        def setUpClass(testcase_cls: type[SceneryTestCase]) -> None:
             logger.debug(setUpClass)
+            # TODO mad: not sure why this is needed
             super(testcase_cls, testcase_cls).setUpClass()  # type: ignore[misc]
 
-            if issubclass(testcase_cls, DjangoFrontendTestCase):
+            if issubclass(testcase_cls, (DjangoFrontendTestCase, RemoteFrontendTestCase)):
                 if driver is None:
                     testcase_cls.driver = get_selenium_driver(headless)
                 else:
@@ -99,8 +100,8 @@ class MethodBuilder:
                 # if headless:
                 #     chrome_options.add_argument("--headless=new")     # NOTE mad: For newer Chrome versions
                 #     # chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions (Framework)
-                # django_testcase_cls.driver = webdriver.Chrome(options=chrome_options) #  service=service
-                # django_testcase_cls.driver.implicitly_wait(10)
+                # testcase_cls.driver = webdriver.Chrome(options=chrome_options) #  service=service
+                # testcase_cls.driver.implicitly_wait(10)
 
             for instruction in instructions:
                 SetUpHandler.exec_set_up_instruction(testcase_cls, instruction)
@@ -120,9 +121,11 @@ class MethodBuilder:
             classmethod: A class method that handles test case teardown operations
         """
 
-        def tearDownClass(testcase_cls: type[DjangoTestCase]) -> None:
+        def tearDownClass(testcase_cls: type[SceneryTestCase]) -> None:
             if issubclass(testcase_cls, DjangoFrontendTestCase):
                 testcase_cls.driver.quit()
+            # TODO mad: not sure why this is needed
+
             super(testcase_cls, testcase_cls).tearDownClass()  # type: ignore[misc]
 
         return classmethod(tearDownClass)
@@ -131,7 +134,7 @@ class MethodBuilder:
     @staticmethod
     def build_setUp(
         instructions: list[SetUpInstruction]
-    ) -> Callable[[DjangoTestCase], None]:
+    ) -> Callable[[SceneryTestCase], None]:
         """Build a setUp instance method for a Django test case.
 
         This method creates an instance method that executes a series of setup
@@ -143,20 +146,21 @@ class MethodBuilder:
         Returns:
             function: An instance method that can be added to a Django test case.
         """
-        def setUp(testcase: DjangoTestCase) -> None:
+        def setUp(testcase: SceneryTestCase) -> None:
 
             logger.debug(setUp)
 
-            if isinstance(testcase, (RemoteBackendTestCase, LoadTestCase, DjangoBackendTestCase)):
-                testcase.session = requests.Session()
+            # if isinstance(testcase, (RemoteBackendTestCase, LoadTestCase, DjangoFrontendTestCase)):
+            #     testcase.session = requests.Session()
             if isinstance(testcase, (RemoteBackendTestCase, LoadTestCase,)):
+                testcase.session = requests.Session()
                 testcase.headers = {}
+            if isinstance(testcase, (RemoteBackendTestCase, RemoteFrontendTestCase,)) :
                 testcase.base_url = os.environ[f"SCENERY_{testcase.mode.upper()}_URL"]
+            if isinstance(testcase, (DjangoFrontendTestCase,)) :
+                testcase.base_url = testcase.live_server_url
             if isinstance(testcase, (LoadTestCase,)):
                 testcase.data = collections.defaultdict(list)
-            #     django_testcase.tester = LoadTester(manifest, mode)
-            #     # self.manifest = manifest
-            #     django_testcase.mode = mode
 
 
             for instruction in instructions:
@@ -165,10 +169,9 @@ class MethodBuilder:
         return setUp
 
 
-    # TODO: all three functions could be one, with prpoer if else
 
     @staticmethod
-    def build_dev_backend_test(take: Take) -> Callable:
+    def build_test_integration(take: Take) -> Callable:
         """Build a test method from an Take object.
 
         This method creates a test function that sends an HTTP request
@@ -183,77 +186,47 @@ class MethodBuilder:
             function: A test method that can be added to a Django test case.
         """
 
-        def test(testcase: DjangoBackendTestCase) -> None:
+        # print("ON EST AL")
 
+        def test(testcase: SceneryTestCase) -> None:
             logger.debug(test)
 
-            response = Checker.get_django_client_response(testcase, take)
-            for i, check in enumerate(take.checks):
-                with testcase.subTest(f"directive {i}"):
-                    Checker.exec_check(testcase, response, check)
+            response: ResponseProtocol
+            if isinstance(testcase, DjangoBackendTestCase):
+                response = Checker.get_django_client_response(testcase, take)
 
-        return test
+            elif isinstance(testcase, (DjangoFrontendTestCase, RemoteFrontendTestCase)):
+                response = Checker.get_selenium_response(testcase, take)
 
-    @staticmethod
-    def build_dev_frontend_test(take: Take) -> Callable:
-        """Build a test method from a Take object for frontend testing.
-
-        This method creates a test function that uses Selenium
-        based on the take's specifications and executes a series of checks
-        on the response. Unlike backend tests, it skips status code checks.
-
-        Args:
-            take (scenery.manifest.Take): A Take object specifying
-                the browser actions to be performed and the checks to be executed.
-
-        Returns:
-            function: A test method that can be added to a Django test case.
-        """
-
-        def test(testcase: DjangoFrontendTestCase) -> None:
-
-            logger.debug(test)
-
-            response = Checker.get_selenium_response(testcase, take)
+            elif isinstance(testcase, RemoteBackendTestCase):
+                response = Checker.get_http_response(testcase, take)
+            else:
+                raise ValueError(f"Unsupported test case type: {type(testcase)}")
+            
 
             for i, check in enumerate(take.checks):
-                if check.instruction == DirectiveCommand.STATUS_CODE:
+
+                if isinstance(testcase, (DjangoFrontendTestCase, RemoteFrontendTestCase)) and check.instruction == DirectiveCommand.STATUS_CODE:
                     continue
-                with testcase.subTest(f"directive {i}"):
-                    Checker.exec_check(testcase, response, check)
 
-        return test
-
-    @staticmethod
-    def build_remote_backend_test(take: Take) -> Callable:
-        def test(remote_testcase: RemoteBackendTestCase) -> None:
-
-            logger.debug(test)
-
-            response = Checker.get_http_response(remote_testcase, take)
-
-            for i, check in enumerate(take.checks):
-                with remote_testcase.subTest(f"directive {i}"):
-                    # print(f"{check=}")
-                    if check.instruction in [
+                if isinstance(testcase, RemoteBackendTestCase) and check.instruction in [
                         DirectiveCommand.COUNT_INSTANCES,
                         DirectiveCommand.FIELD_OF_INSTANCE,
                     ]:
                         continue
-                    Checker.exec_check(remote_testcase, response, check)
 
+                with testcase.subTest(f"directive {i}"):
+                    Checker.exec_check(testcase, response, check)
 
         return test
 
     @staticmethod
-    def build_remote_load_test_from_take(take: Take) -> Callable:
-        print("GOTCHA")
-        def test(testcase: RemoteBackendTestCase) -> None:
-
+    def build_test_load(take: Take) -> Callable:
+        def test(testcase: LoadTestCase) -> None:
             
             lock = threading.Lock()  # Thread synchronization
 
-            def make_request(testcase, session, take, headers):
+            def make_request(testcase: LoadTestCase, session: requests.Session, take: Take, headers: dict[str, str]) -> dict[str, int|float]:
                 """Execute a single request and return response time and status"""
 
                 start_time = time.time()
@@ -280,7 +253,6 @@ class MethodBuilder:
 
 
                 if not (200 <= response.status_code < 300):
-                #     ...
                     logger.warning(f"{response.status_code=}")
                     logger.debug(f"{response.content.decode("utf8")=}")
                 return {
@@ -289,7 +261,7 @@ class MethodBuilder:
                     'success': 200 <= response.status_code < 300
                 }
 
-            def _worker_task(testcase, take, num_requests):
+            def _worker_task(testcase: LoadTestCase, take: Take, num_requests: int) -> None:
                 """Worker function executed by each thread"""
                 for _ in range(num_requests):
                     result = make_request(testcase, testcase.session, take, testcase.headers)
@@ -297,10 +269,6 @@ class MethodBuilder:
                     with lock:
                         testcase.data[take.url].append(result)
 
-            # response = Checker.get_http_response(remote_testcase, take)
-
-
-    #             def test(self):
             # logger.info(f"{ramp_up=}")
             logger.info(f"{testcase.users=}")
             logger.info(f"{testcase.requests_per_user=}")

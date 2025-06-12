@@ -6,8 +6,7 @@ import unittest
 import pprint
 
 from scenery import logger
-from scenery.common import DjangoBackendTestCase, CustomDiscoverRunner, DjangoTestCase
-
+from scenery.common import CustomDiscoverRunner, DjangoBackendTestCase, SceneryTestCase
 
 from django.apps import apps as django_apps
 
@@ -123,7 +122,7 @@ class TestCaseOfBackendDjangoTestCase(CustomTestCase):
 
         return typing.cast(CustomTestResult, result)
 
-    def run_django_test(self, django_test: DjangoTestCase) -> CustomTestResult:
+    def run_django_test(self, django_test: SceneryTestCase) -> CustomTestResult:
         suite = unittest.TestSuite()
         suite.addTest(django_test)
         result = self.django_runner.run_suite(suite)
@@ -133,19 +132,19 @@ class TestCaseOfBackendDjangoTestCase(CustomTestCase):
 
         return typing.cast(CustomTestResult, result)
 
-    def assertTestPasses(self, django_test: DjangoTestCase) -> None:
+    def assertTestPasses(self, django_test: SceneryTestCase) -> None:
         result = self.run_django_test(django_test)
         if result.errors:
             pprint.pprint(result.errors)
         self.assertTrue(result.wasSuccessful(), f"{django_test} was not succesfull")
 
-    def assertTestFails(self, django_test: DjangoTestCase) -> None:
+    def assertTestFails(self, django_test: SceneryTestCase) -> None:
         result = self.run_django_test(django_test)
         self.assertFalse(result.wasSuccessful(), f"{django_test} was not succesfull")
         self.assertEqual(len(result.errors), 0, f"{django_test} did not raise any error")
 
     def assertTestRaises(
-        self, django_test: DjangoTestCase, expected: type[BaseException]
+        self, django_test: SceneryTestCase, expected: type[BaseException]
     ) -> None:
         result = self.run_django_test(django_test)
         self.assertGreater(len(result.errors), 0, f"{django_test} did not raise any error")

@@ -1,6 +1,7 @@
 """Parse manifest YAML files and build proper Manifests."""
 
 import os
+import io
 from typing import Any, cast
 
 import scenery.common
@@ -84,7 +85,7 @@ class ManifestParser:
             "scenes": ManifestParser._format_dict_scenes(d),
             "cases": ManifestParser._format_dict_cases(d),
             "manifest_origin": d["manifest_origin"],
-            "testtype": d.get("testtype")
+            "ttype": d.get("ttype")
         }
 
     @staticmethod
@@ -178,14 +179,14 @@ class ManifestParser:
 
     @staticmethod
     # def read_manifest_yaml(filename: str) -> Any:
-    def read_manifest_yaml(stream) -> Any:
+    def read_manifest_yaml(stream: str | io.TextIOWrapper) -> Any:
         """
-        Read a YAML manifest file with custom tags.
+        Read a YAML manifest stream with custom tags.
 
         This method uses a custom YAML loader to handle special tags like !case and !common-item.
 
         Args:
-            filename (str): The filename of the YAML manifest to read.
+            stream(str | StringIO): The stream of the YAML manifest to read.
 
         Returns:
             dict: The parsed content of the YAML file.
@@ -204,8 +205,9 @@ class ManifestParser:
         ManifestParser.validate_yaml(content)
         return content
 
+
     @staticmethod
-    def parse_yaml_from_file(filename) -> scenery.manifest.Manifest:
+    def parse_yaml_from_file(filename: str) -> scenery.manifest.Manifest:
         """
         Parse a YAML manifest file into a Manifest object.
 

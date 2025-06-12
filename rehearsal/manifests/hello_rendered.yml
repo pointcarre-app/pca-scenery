@@ -1,4 +1,4 @@
-testtype: frontend
+ttype: frontend
 
 set_up:
   - reset_db

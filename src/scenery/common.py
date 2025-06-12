@@ -3,12 +3,11 @@
 import argparse
 from collections import Counter
 import os
-import io
 import logging
-import re
 import typing
 import unittest
 from typing import TypeVar, Union
+import requests
 
 import django
 from django.test.runner import DiscoverRunner as DjangoDiscoverRunner
@@ -31,11 +30,14 @@ import yaml
 def get_selenium_driver(headless: bool) -> webdriver.Chrome:
     """Return a Selenium WebDriver instance configured for Chrome."""
     chrome_options = Options()
-    # NOTE mad: service does not play well with headless mode
-    # service = Service(executable_path='/usr/bin/google-chrome')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--window-size=1920,1080')
+    chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
     if headless:
-        chrome_options.add_argument("--headless=new")  # NOTE mad: For newer Chrome versions
-        # chrome_options.add_argument("--headless")           # NOTE mad: For older Chrome versions (Framework)
+        chrome_options.add_argument("--headless=new")         # NOTE mad: For newer Chrome versions
+        # chrome_options.add_argument("--headless")           
     driver = webdriver.Chrome(options=chrome_options)  #  service=service
     driver.implicitly_wait(10)
     return driver
@@ -45,9 +47,8 @@ def get_selenium_driver(headless: bool) -> webdriver.Chrome:
 # CLASSES
 ###################
 
-# TODO mad: clarify whether this here instead of core as 
-# I want to be able to import before scenery_setup
-
+# NOTE mad: this is here to prevent circular import and still use those types
+# in reponse_checker and toher scripts for instance. 
 
 class DjangoBackendTestCase(django.test.TestCase):
     """A Django TestCase for backend testing."""
@@ -59,57 +60,40 @@ class DjangoFrontendTestCase(StaticLiveServerTestCase):
     driver: webdriver.Chrome
 
 class RemoteBackendTestCase(unittest.TestCase):
+    """A TestCase for backend testing on a remote server."""
     mode: str
+    session: requests.Session
+    base_url: str
+    headers: dict[str, str]
+
+class RemoteFrontendTestCase(unittest.TestCase):
+    """A TestCase for backend testing on a remote server."""
+    mode: str
+    driver: webdriver.Chrome
+    # session: requests.Session
+    base_url: str
+    headers: dict[str, str]
+
 
 
 class LoadTestCase(unittest.TestCase):
+    """A TestCase for load testing on a remote server."""
     mode: str
-
-    # def setUp(self):
-    #     self.session = requests.Session()
-    #     self.
-    #     self.headers = {}
-    #     self.update_csrf()
-    #     self.login(
-    #         user_email=os.environ[f"SCENERY_{self.mode.upper()}_USER_EMAIL"],
-    #         password=os.environ[f"SCENERY_{self.mode.upper()}_PASSWORD"],
-
-    #     )
-    #     self.update_csrf()
+    session: requests.Session
+    headers: dict[str, str]
+    base_url: str
+    data: dict[str, typing.List[dict[str, int|float]]]
+    users:int
+    requests_per_user:int
 
 
-
-# TODO mad: this will become SceneryTestCase
-DjangoTestCaseTypes = Union[DjangoBackendTestCase, DjangoFrontendTestCase]
-DjangoTestCase = TypeVar("DjangoTestCase", bound=DjangoTestCaseTypes)
+SceneryTestCaseTypes = Union[DjangoBackendTestCase, DjangoFrontendTestCase, RemoteBackendTestCase, RemoteFrontendTestCase, LoadTestCase]
+SceneryTestCase = TypeVar("SceneryTestCase", bound=SceneryTestCaseTypes)
 
 
-class ResponseProtocol(typing.Protocol):
-    """A protocol for HTTP responses, covering both basic Django http response and from Selenium Driver."""
-
-    @property
-    def status_code(self) -> int:
-        """The HTTP status code of the response."""
-
-    @property
-    def headers(self) -> typing.Mapping[str, str]:
-        """The headers of the response."""
-
-    @property
-    def content(self) -> typing.Any:
-        """The content of the response."""
-
-    @property
-    def charset(self) -> str | None:
-        """The charset of the response."""
-
-    def has_header(self, header_name: str) -> bool:
-        """Check if the response has a specific header."""
-
-    def __getitem__(self, header_name: str) -> str: ...
-
-    def __setitem__(self, header_name: str, value: str) -> None: ...
-
+# NOTE mad: could be useful when we fit FastAPI
+# DjangoTestCaseTypes = Union[DjangoBackendTestCase, DjangoFrontendTestCase]
+# DjangoTestCase = TypeVar("DjangoTestCase", bound=DjangoTestCaseTypes)
 
 ########
 # YAML #
@@ -133,42 +117,13 @@ def read_yaml(filename: str) -> typing.Any:
         return yaml.safe_load(f)
 
 
-def iter_on_manifests(args: argparse.Namespace):
+def iter_on_manifests(args: argparse.Namespace) -> typing.Iterable[str]:
     for filename in os.listdir(os.environ["SCENERY_MANIFESTS_FOLDER"]):
         if args.manifest is not None and filename.replace(".yml", "") != args.manifest:
             continue
 
         yield filename
 
-
-#######################
-# STRING MANIPULATION #
-#######################
-
-
-def snake_to_camel_case(s: str) -> str:
-    """Transform a string from snake_case to CamelCase.
-
-    If the input string respect snake_case format, transform into camelCase format, else raises an error.
-    It also handles strings containing '/' and '-' characters.
-
-    Args:
-        s (str): The input string in snake_case format.
-
-    Returns:
-        str: The input string converted to CamelCase.
-
-    Raises:
-        ValueError: If the input string is not in valid snake_case format.
-    """
-    # TODO: there must be an even more built-in solution
-    s = s.replace("/", "_")
-    s = s.replace("-", "")
-    if not re.fullmatch(r"[a-z0-9_]+", s):
-        raise ValueError(f"'{s}' is not snake_case")
-    words = s.split("_")
-    camel_case = "".join(word.capitalize() for word in words)
-    return camel_case
 
 
 ##################
@@ -200,9 +155,8 @@ def serialize_unittest_result(result: unittest.TestResult) -> Counter:
     return Counter(d)
 
 
-def summarize_test_result(result: unittest.TestResult, test_label) -> tuple[bool, Counter]:
+def summarize_test_result(result: unittest.TestResult, test_label: str) -> tuple[bool, Counter]:
     """Return true if the tests all succeeded, false otherwise."""
-
     for failed_test, traceback in result.failures:
         test_name = failed_test.id()
         emojy, msg, color, log_lvl = interpret(False)
@@ -236,7 +190,8 @@ def summarize_test_result(result: unittest.TestResult, test_label) -> tuple[bool
     return success, summary
 
 
-def interpret(success):
+def interpret(success: bool) -> typing.Tuple[str, str, str, int]:
+    """Return emojy, success/failure message, color and log level corresponding to the succes of an execution."""
     if success:
         emojy, msg, color, log_lvl = "🟢", "passed", "green", logging.INFO
     else:
@@ -277,16 +232,19 @@ def overwrite_get_runner_kwargs(
     return kwargs
 
 
-# NOTE mad: this is done to shut down the original stream
 class CustomDiscoverRunner(DjangoDiscoverRunner):
     """Custom test runner that allows for stream capture."""
+    
+    # NOTE mad: this was done to potentially shut down the original stream
+    # NOTE mad: used both in rehearsal and core module (for the runner
+    # TODO mad: once we fit FastAPI, this runner should only be used 
+    # for the django backend and frontend test
 
-    def __init__(self, stream: io.StringIO, *args: typing.Any, **kwargs: typing.Any) -> None:
+    def __init__(self, stream: typing.Any , *args: typing.Any, **kwargs: typing.Any) -> None:
         super().__init__(*args, **kwargs)
         self.stream = stream
 
     # def __del__(self):
-    #     print("HERE")
     #     print(self.stream.getvalue())
 
     def get_test_runner_kwargs(self) -> dict[str, typing.Any]:

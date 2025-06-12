@@ -2,15 +2,18 @@
 
 import importlib
 import os
+from typing import Callable
 
 from scenery import logger
-from scenery.common import DjangoTestCase, RemoteBackendTestCase, LoadTestCase
+from scenery.common import SceneryTestCase, RemoteBackendTestCase, LoadTestCase
 from scenery.manifest import SetUpInstruction
 
 
-def local_execution_only(func):
+def local_execution_only(func: Callable) -> Callable:
     """Simple decorator that marks function as executable"""
-    func._local_execution_only = True
+    # NOTE mad: this type ignore is here to stay, this is the whole
+    # point to create a non existing attribute.
+    func._local_execution_only = True # type: ignore [attr-defined]
     return func
 
 class SetUpHandler:
@@ -29,10 +32,10 @@ class SetUpHandler:
 
     @staticmethod
     def exec_set_up_instruction(
-        # NOTE: it either takes the instance or the class
+        # NOTE mad: it either takes the instance or the class
         # depending whether it is class method or not
-        # (setUp vs. setUpTestData)
-        django_testcase: DjangoTestCase | type[DjangoTestCase],
+        # (setUp vs. setUpClass)
+        testcase: SceneryTestCase | type[SceneryTestCase],
         instruction: SetUpInstruction,
     ) -> None:
         """Execute the method corresponding to the SetUpInstruction.
@@ -41,7 +44,7 @@ class SetUpHandler:
         by the SetUpInstruction. It logs the execution for debugging purposes.
 
         Args:
-            django_testcase (DjangoTestCase): The Django test case class or instance.
+            testcase (SceneryTestCase): The Scenery test case class or instance.
             instruction (scenery.manifest.SetUpInstruction): The setup instruction to execute.
 
         Raises:
@@ -50,9 +53,9 @@ class SetUpHandler:
         func = getattr(SetUpHandler.instructions_module, instruction.command)
 
 
-        if isinstance(django_testcase, (RemoteBackendTestCase, LoadTestCase)) and hasattr(func, "_local_execution_only"):
+        if isinstance(testcase, (RemoteBackendTestCase, LoadTestCase)) and hasattr(func, "_local_execution_only"):
             pass
         else:
             logger.debug(instruction)
-            func(django_testcase, **instruction.args)
+            func(testcase, **instruction.args)
 

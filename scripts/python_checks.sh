@@ -16,7 +16,7 @@ printf "\n## src\n"
 python -m mypy src
 
 # Pydocstyle
-printf "\nPydocstyle\n"
+printf "\n # Pydocstyle\n"
 # pydocstyle rehearsal
 pydocstyle src
 

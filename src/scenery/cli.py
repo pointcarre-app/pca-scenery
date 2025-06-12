@@ -27,7 +27,7 @@ from scenery.common import interpret
 #################
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command line arguments with subcommands."""
     parser = argparse.ArgumentParser(description="Scenery Testing Framework")
 
@@ -47,7 +47,7 @@ def parse_args():
     return args
 
 
-def add_common_arguments(parser: argparse.ArgumentParser):
+def add_common_arguments(parser: argparse.ArgumentParser) -> None:
 
     parser.add_argument(
         "-s",
@@ -106,7 +106,7 @@ def parse_arg_test_restriction(test_name_pattern: str|None) -> typing.Tuple[str|
         return None, None, None
 
 
-def parse_integration_args(subparser: argparse._SubParsersAction) -> argparse.Namespace:
+def parse_integration_args(subparser: argparse._SubParsersAction) -> None:
     """Parse command line arguments."""
 
     parser = subparser.add_parser('integration', help='Integration tests')
@@ -130,7 +130,7 @@ def parse_integration_args(subparser: argparse._SubParsersAction) -> argparse.Na
     parser.add_argument('--headless', action='store_true')
 
 
-def parse_load_args(subparser: argparse._SubParsersAction):
+def parse_load_args(subparser: argparse._SubParsersAction) -> None:
 
     parser = subparser.add_parser('load', help='Load tests')
     add_common_arguments(parser)
@@ -144,7 +144,8 @@ def parse_load_args(subparser: argparse._SubParsersAction):
     parser.add_argument('-u', '--users', type=int)
     parser.add_argument('-r', '--requests', type=int)
 
-def parse_inspect_args(subparser: argparse._SubParsersAction):
+
+def parse_inspect_args(subparser: argparse._SubParsersAction) -> None:
 
     parser = subparser.add_parser('inspect', help='Inspect files')
     add_common_arguments(parser)
@@ -152,14 +153,12 @@ def parse_inspect_args(subparser: argparse._SubParsersAction):
     parser.add_argument('-f', '--folder', type=str, help='Folder to inspect')
 
 #################
-# UI
+# RICH HELPERS
 #################
 
-
-
-def table_from_dict(d, col1_title, col2_title, title=None, formatting={}):
+def table_from_dict(d: dict[str, typing.Any], col1_title : str = "", col2_title:str = "", title: str | None =None, formatting: dict[str, typing.Tuple[str, typing.Any]]={}) -> Table:
         
-    show_header = col1_title is not None or col2_title is not None
+    show_header = col1_title != "" or col2_title != ""
     table = Table(title=title, box=box.ROUNDED, show_header=show_header)
     table.add_column(col1_title, style="cyan", no_wrap=True)
     table.add_column(col2_title, justify="right")
@@ -179,7 +178,7 @@ def table_from_dict(d, col1_title, col2_title, title=None, formatting={}):
     
     return table
 
-def histogram(x):
+def histogram(x: typing.Iterable[int]) -> Progress:
     """Display a histogram leveraging Rich progress bars and return a renderable object"""
     # Calculate histogram data
     max_val = max(x)
@@ -229,19 +228,21 @@ def histogram(x):
 ##################
 
 
-def command(func):
-    def wrapper(*args):
+def command(func: typing.Callable) -> typing.Callable:
+    def wrapper(*args: typing.Any) -> typing.Any:
 
 
         command_label = func.__name__.replace("_", " ").capitalize()
 
-        console.print(Rule(f"[section]{command_label}[/section]", style="cyan"))
-        logger.info(f"starting {func.__name__}...")
+        console.print(Rule(f"[section]{command_label} start...[/section]", style="cyan"))
+        # logger.info(f"starting {func.__name__}...")
 
-        success, out = func(*args)
+        success = func(*args)
 
-        # TODO mad: add interpretation        
-        return success, out
+        emojy, msg, color, log_lvl = interpret(success)
+        console.print(Rule(f"{emojy} {command_label} {msg}", style=color))
+
+        return success
 
     return wrapper
 
@@ -251,7 +252,7 @@ def command(func):
 ##################
 
 
-def report_integration(data):
+def report_integration(data: dict) -> bool:
 
 
     panel_msg = ""
@@ -263,7 +264,7 @@ def report_integration(data):
     for key, val in data.items():
 
         key_level_success = True
-        key_level_summary = collections.Counter()
+        key_level_summary : dict[str, int] = collections.Counter()
 
         for success, summary in val:
             
@@ -290,25 +291,23 @@ def report_integration(data):
     emojy, msg, color, log_lvl = interpret(command_level_success)
     logger.log(log_lvl, f"integration tests {msg}", style=color)
 
-    report_tables = Columns(report_tables, equal=False, expand=True)
-    panel_report = Group(panel_msg, report_tables)
+    fmt_tables = Columns(report_tables, equal=False, expand=True)
+    panel_report = Group(panel_msg, fmt_tables)
 
     console.print(Panel(panel_report, title="Results", border_style=panel_color))
 
-    console.print(Rule(f"{emojy} Integration tests {msg}", style=color))
 
     return command_level_success
 
 
 
 
-def report_load(data: dict):
+def report_load(data: dict, threshold_p95: int = 500, threshold_p99: int = 5000) -> bool:
 
     #####################
     # OUTPUT
     #####################
 
-    # TODO: Report and testing should focus on on 90, 95, 99
 
     console = Console()
 
@@ -334,24 +333,35 @@ def report_load(data: dict):
         }
 
 
-        # TODO mad: confirm with sel if success_times is the right one
         
         if success_times:
             quantiles = statistics.quantiles(success_times, n=100)
             # quantiles = statistics.quantiles(success_times, n=4)
 
+            p50 = statistics.median(success_times)
+            p90 = quantiles[90-1]
+            p95 = quantiles[95-1]
+            p99 = quantiles[99-1]
+
             ep_analysis.update({
                 'min_time': min(success_times),
-                'p50': statistics.median(success_times),
-                'p90': quantiles[90-1],
-                'p95': quantiles[95-1],
-                '[bold]p99[/bold]': quantiles[99-1],
+                'p50': p50,
+                'p90': p90,
+                'p95': p95,
+                '[bold]p99[/bold]': p99,
                 'max': max(success_times),
 
             })
             
             if len(success_times) > 1:
                 ep_analysis['stdev'] = statistics.stdev(success_times)
+
+            # TODO mad: confirm with sel
+            success = bool(p95 < threshold_p95)
+            success &= bool(p99 < threshold_p99)
+
+        else:
+            success = False
         
         formatting = {
             "error_rate": ("{:.2f}%", None),
@@ -373,10 +383,10 @@ def report_load(data: dict):
             formatting,
             )
         
-        histogram_plot = histogram(success_times)
+        plot = histogram(success_times)
 
-        histogram_plot = Group(Text("\n"*1), histogram_plot)
-        successes_columns = Columns([table, histogram_plot], equal=False, expand=True)
+        fmt_plot = Group(Text("\n"*1), plot)
+        successes_columns = Columns([table, fmt_plot], equal=False, expand=True)
 
         if failures:
             failures_status_codes = collections.Counter([r["status_code"] for r in failures])        
@@ -386,30 +396,18 @@ def report_load(data: dict):
                 "N", 
                 "",
                 )
-            
             panel_content = Group(successes_columns, failures_table)
 
         else:
-            panel_content = successes_columns
+            panel_content = Group(successes_columns)
 
-        
         console.print(Panel(panel_content, title=f"{endpoint=}"))
-
-        
-        # group = Group(table, histogram)
-        # console.print(Panel(group, title=f"{endpoint=}"))
-
-    # TODO: message if response times too high ?
-    return True
+    
+    return success
 
 
 
-def report_inspect(data):
-
-
-    panel_msg = ""
-    panel_color = ""
-    report_tables = []
+def report_inspect(data: dict, code_threshold: int=300) -> bool:
 
     show_header = True
     table = Table(title="Line count", box=box.ROUNDED, show_header=show_header)
@@ -418,92 +416,48 @@ def report_inspect(data):
     table.add_column("Docstring", justify="right")
     table.add_column("Other", justify="right")
 
+    command_level_success = True
     for key, value in data.items():
 
-        # format_str, color = formatting.get(key, ("{}", None))
-        # label = str(key).replace("_", " ").capitalize()
-        row_values = [key, str(value.get("code")), str(value.get("docstring")), str(value.get("other"))]
-        # value = d.get(key)
-        # formatted_value = format_str.format(value)
-        # if color:
-        #     formatted_value = f"[{color}]{formatted_value}[/{color}]"
-        # row_values.append(formatted_value)
-
-        print(row_values)
-        
+        code, doc, other = value.get("code"), value.get("docstring"), value.get("other")
+        success = code < code_threshold
+        emojy, msg, color, log_lvl = interpret(success)
+        # lbl = f"[{color}]{key}[/{color}]"
+        lbl = f"{key}"
+        code, doc, other = str(code), str(doc), str(other)
+        if not success:
+            code = f"[{color}]{code}[/{color}]"
+        row_values = [lbl, code,doc,other,]
         table.add_row(*row_values)
+
+        command_level_success &= success
 
     console.print(table)
 
-    # command_level_success = True
-
-    # for key, val in data.items():
-
-    #     key_level_success = True
-    #     key_level_summary = collections.Counter()
-
-    #     for success, summary in val:
-            
-    #         key_level_success &= success
-    #         key_level_summary.update(summary)
-
-    #     if val:
-    #         emojy, msg, color, log_lvl = interpret(key_level_success)
-
-    #         if key_level_success:
-    #             msg = f"all {key} tests {msg}"
-    #         else:
-    #             msg = f"some {key} tests {msg}"
-    #             panel_color = "red"
-
-    #         logger.log(log_lvl, msg, style=color)
-    #         if panel_msg != "":
-    #             panel_msg += "\n"
-    #         panel_msg += f"{emojy} {msg}"
-    #         report_tables.append(table_from_dict(key_level_summary, key, ""))
-
-    #         command_level_success &= key_level_success
-
-    # emojy, msg, color, log_lvl = interpret(command_level_success)
-    # logger.log(log_lvl, f"integration tests {msg}", style=color)
-
-    # report_tables = Columns(report_tables, equal=False, expand=True)
-    # panel_report = Group(panel_msg, report_tables)
-
-    # console.print(Panel(panel_report, title="Results", border_style=panel_color))
-
-    # console.print(Rule(f"{emojy} Integration tests {msg}", style=color))
-
-    return True
+    return command_level_success
 
 ###############
 # MAIN
 ###############
 
 
-def main():
+def main() -> bool:
 
-    out: dict[str, dict[str, int | str | dict[str, typing.Any]]] = {}
-
+    # out: dict[str, dict[str, int | str | dict[str, typing.Any]]] = {}
+    success = True
     args = parse_args()
-
-
 
     logger.debug(args)
 
-    success, out = command(scenery.commands.scenery_setup)(args)
+    success &= command(scenery.commands.scenery_setup)(args)
     if args.command in ["integration", "load"]:
-        success, out = command(scenery.commands.django_setup)(args)
+        success &= command(scenery.commands.django_setup)(args)
 
     if args.command == "integration":
-        success, out = command(scenery.commands.integration_tests)(args)
+        success &= command(scenery.commands.integration_tests)(args)
     elif args.command == "load":
-        command(scenery.commands.load_tests)(args)
+        success &= command(scenery.commands.load_tests)(args)
     elif args.command == "inspect":
-        command(scenery.commands.inspect_nlines)(args)
+        success &= command(scenery.commands.inspect_code)(args)
 
-
-
-
-    # out["metadata"] = {"args": args.__dict__}
-
+    return success
