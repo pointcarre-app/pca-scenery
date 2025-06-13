@@ -56,7 +56,7 @@ class DjangoBackendTestCase(django.test.TestCase):
 
 class DjangoFrontendTestCase(StaticLiveServerTestCase):
     """A Django TestCase for frontend testing."""
-
+    base_url: str
     driver: webdriver.Chrome
 
 class RemoteBackendTestCase(unittest.TestCase):

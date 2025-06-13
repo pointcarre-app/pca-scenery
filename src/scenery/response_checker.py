@@ -13,6 +13,7 @@ from scenery.common import (
     DjangoBackendTestCase, 
     DjangoFrontendTestCase,
     RemoteBackendTestCase,
+    RemoteFrontendTestCase,
     )
 from scenery.manifest import Take, Check, DirectiveCommand, DomArgument
 
@@ -191,7 +192,7 @@ class Checker:
     
     @classmethod
     def get_selenium_response(
-        cls, testcase: DjangoFrontendTestCase, take: Take
+        cls, testcase: DjangoFrontendTestCase | RemoteFrontendTestCase, take: Take
     ) -> SeleniumResponse:
         """Create a SeleniumResponse by executing a request through Selenium WebDriver.
 
