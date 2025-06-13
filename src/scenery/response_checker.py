@@ -527,14 +527,14 @@ class Checker:
 
         instances = list(args["find"]["model"].objects.all())
         if len(instances) != 1:
-            testcase.fail(f"Checking the {args["field"]} field of {args["find"]["model"]} requires that there is a single instance in the db, but found {len(instances)}.")
+            testcase.fail(f"Checking the {args['field']} field of {args['find']['model']} requires that there is a single instance in the db, but found {len(instances)}.")
         
         instance = instances[0]
         field_value = getattr(instance, args["field"])
         testcase.assertEqual(
             field_value, 
             args["value"],
-            f"{args["find"]["model"].__name__}.{args["field"]} = {field_value} but expected {args['value']}"
+            f"{args['find']['model'].__name__}.{args['field']} = {field_value} but expected {args['value']}"
         )
 
         # testcase.assertEqual(
