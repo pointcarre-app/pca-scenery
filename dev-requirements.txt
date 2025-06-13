@@ -1,3 +1,4 @@
+
 babel==2.16.0
 build==1.2.2.post1
 certifi==2024.8.30
@@ -36,13 +37,13 @@ regex==2024.9.11
 requests==2.32.3
 rich==14.0.0
 ruff==0.7.2
+six==1.16.0
+snowballstemmer==2.2.0
+urllib3==2.2.3
+watchdog==5.0.3
 types-beautifulsoup4==4.12.0.20241020
 types-html5lib==1.1.11.20241018
 types-PyYAML==6.0.12.20240917
 typing_extensions==4.12.2
-types-requests==
-six==1.16.0
-snowballstemmer==2.2.0
-urllib3==2.2.3
-watchdog==5.0.32.32.4.20250611
+types-requests==2.32.4.20250611
 
