@@ -19,6 +19,12 @@ source "env_test_$PYTHON_VERSION/bin/activate"
 pip install --upgrade pip
 pip install .
 
+# Prepare db
+cd rehearsal/django_project
+python manage.py makemigrations
+python manage.py migrate
+cd ../..
+
 # Test
 printf "\n\nRehearsal\n"
 python -m rehearsal

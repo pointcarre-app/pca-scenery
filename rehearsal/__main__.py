@@ -92,19 +92,19 @@ def main() -> bool:
     rehearsal_success &= integration_success
 
     # TODO mad: there must be a way to launch the server from here
-    args = argparse.Namespace(
-        scenery_settings_module="rehearsal.scenery_settings", 
-        manifest="hello_http", 
-        url=None,
-        case_id=None,
-        scene_pos=None,
-        users=2,
-        requests=2,
-        log=args.log,
-        mode="local",
-        )
-    load_success = scenery.cli.command(load_tests)(args)
-    rehearsal_success &= load_success
+    # args = argparse.Namespace(
+    #     scenery_settings_module="rehearsal.scenery_settings", 
+    #     manifest="hello_http", 
+    #     url=None,
+    #     case_id=None,
+    #     scene_pos=None,
+    #     users=2,
+    #     requests=2,
+    #     log=args.log,
+    #     mode="local",
+    #     )
+    # load_success = scenery.cli.command(load_tests)(args)
+    # rehearsal_success &= load_success
 
     args = argparse.Namespace(
         folder='src/scenery',
